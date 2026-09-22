@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raster — dithering i raster drukarski</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Archivo+Expanded:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+<header>
+  <h1>Raster</h1>
+  <span class="tagline">dithering i raster drukarski</span>
+  <span class="reg" aria-hidden="true">
+    <i style="background:var(--cyan)"></i><i style="background:var(--magenta)"></i><i style="background:var(--yellow)"></i>
+  </span>
+</header>
+
+<div class="layout">
+  <aside class="panel">
+
+    <div class="group">
+      <h2>Obraz</h2>
+      <div class="btns">
+        <button class="btn solid" id="load">Wczytaj obraz</button>
+        <button class="btn" id="sample">Próbka</button>
+      </div>
+      <p class="hint">Możesz też przeciągnąć plik na podgląd albo wkleić ze schowka (Ctrl/Cmd+V).</p>
+      <input type="file" id="file" accept="image/*" class="hidden">
+    </div>
+
+    <div class="group">
+      <h2>Tryb</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-dither" aria-selected="true">Dithering</button>
+        <button role="tab" id="tab-half" aria-selected="false">Raster drukarski</button>
+      </div>
+      <div class="presets" style="margin-top:10px" id="presets"></div>
+    </div>
+
+    <div class="group">
+      <h2>Korekta przed rastrem</h2>
+      <div class="row"><label for="bri">Jasność</label><span class="val" id="bri-v">0</span></div>
+      <input type="range" id="bri" min="-100" max="100" value="0">
+      <div class="row"><label for="con">Kontrast</label><span class="val" id="con-v">0</span></div>
+      <input type="range" id="con" min="-100" max="100" value="0">
+      <div class="row"><label for="gam">Gamma</label><span class="val" id="gam-v">1.00</span></div>
+      <input type="range" id="gam" min="30" max="300" value="100">
+      <div class="row"><label for="pix">Pikselizacja</label><span class="val" id="pix-v">1×</span></div>
+      <input type="range" id="pix" min="1" max="16" value="1">
+      <label class="check"><input type="checkbox" id="inv"> Negatyw</label>
+    </div>
+
+    <!-- DITHER -->
+    <div class="group" id="g-dither">
+      <h2>Algorytm</h2>
+      <select id="algo">
+        <optgroup label="Dyfuzja błędu">
+          <option value="floyd" selected>Floyd–Steinberg</option>
+          <option value="atkinson">Atkinson</option>
+          <option value="jjn">Jarvis–Judice–Ninke</option>
+          <option value="stucki">Stucki</option>
+          <option value="burkes">Burkes</option>
+          <option value="sierra">Sierra</option>
+          <option value="sierra2">Sierra 2</option>
+          <option value="sierraLite">Sierra Lite</option>
+        </optgroup>
+        <optgroup label="Uporządkowany">
+          <option value="bayer2">Bayer 2×2</option>
+          <option value="bayer4">Bayer 4×4</option>
+          <option value="bayer8">Bayer 8×8</option>
+          <option value="cluster">Siatka punktowa 4×4</option>
+          <option value="noise">Szum losowy</option>
+        </optgroup>
+        <optgroup label="Bez ditheringu">
+          <option value="threshold">Próg</option>
+        </optgroup>
+      </select>
+      <div class="row" style="margin-top:12px"><label for="str">Siła</label><span class="val" id="str-v">100%</span></div>
+      <input type="range" id="str" min="0" max="150" value="100">
+      <div class="row"><label for="thr">Punkt bieli</label><span class="val" id="thr-v">0</span></div>
+      <input type="range" id="thr" min="-80" max="80" value="0">
+      <label class="check"><input type="checkbox" id="serp" checked> Skanowanie wężykiem</label>
+    </div>
+
+    <div class="group" id="g-pal">
+      <h2>Paleta</h2>
+      <select id="pal">
+        <option value="bw" selected>1-bit (dwa kolory)</option>
+        <option value="gray4">Szarości — 4 poziomy</option>
+        <option value="gray8">Szarości — 8 poziomów</option>
+        <option value="gameboy">Game Boy</option>
+        <option value="cga">CGA</option>
+        <option value="rgb3">3-bit RGB</option>
+        <option value="quant">Kolor — 4 poziomy na kanał</option>
+      </select>
+      <div class="swatches" style="margin-top:12px" id="duo">
+        <input type="color" id="ink" value="#000000" aria-label="Kolor farby">
+        <input type="color" id="paper" value="#ffffff" aria-label="Kolor papieru">
+        <button class="btn" id="swap" style="width:auto; padding:6px 10px">Zamień</button>
+      </div>
+    </div>
+
+    <!-- HALFTONE -->
+    <div class="group hidden" id="g-half">
+      <h2>Siatka rastra</h2>
+      <div class="row"><label for="cell">Gęstość (px)</label><span class="val" id="cell-v">8</span></div>
+      <input type="range" id="cell" min="3" max="40" value="8">
+      <div class="row"><label for="ang">Kąt</label><span class="val" id="ang-v">45°</span></div>
+      <input type="range" id="ang" min="0" max="90" value="45">
+      <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>
+      <input type="range" id="dot" min="40" max="180" value="100">
+      <div class="row" style="margin-top:12px"><label for="shape">Kształt</label></div>
+      <select id="shape">
+        <option value="circle" selected>Punkt</option>
+        <option value="square">Kwadrat</option>
+        <option value="diamond">Romb</option>
+        <option value="line">Linia</option>
+        <option value="cross">Krzyż</option>
+      </select>
+      <div class="row" style="margin-top:12px"><label for="inkmode">Farby</label></div>
+      <select id="inkmode">
+        <option value="mono" selected>Jedna farba</option>
+        <option value="duo">Duotone (czarny + akcent)</option>
+        <option value="cmyk">CMYK — cztery siatki</option>
+      </select>
+      <div class="row"><label for="mis">Pasowanie</label><span class="val" id="mis-v">0.0</span></div>
+      <input type="range" id="mis" min="0" max="60" value="0">
+      <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
+      <input type="range" id="grain" min="0" max="60" value="0">
+    </div>
+
+    <div class="group">
+      <h2>Eksport</h2>
+      <div class="row"><label for="scl">Skala</label><span class="val" id="scl-v">1×</span></div>
+      <input type="range" id="scl" min="1" max="6" value="1">
+      <select id="fmt" style="margin-top:12px">
+        <option value="png" selected>PNG — bitmapa</option>
+        <option value="svg">SVG — wektor</option>
+      </select>
+      <button class="btn solid" id="save" style="margin-top:10px">Zapisz PNG</button>
+      <p class="hint" id="dims">—</p>
+    </div>
+
+  </aside>
+
+  <section class="stage" id="stage">
+    <div class="drop" id="drop">
+      <strong>Przeciągnij tu obraz</strong>
+      albo kliknij „Wczytaj obraz”. Nic nie wychodzi poza tę kartę — wszystko liczy się lokalnie.
+    </div>
+    <canvas id="out" class="hidden pixelated"></canvas>
+  </section>
+</div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

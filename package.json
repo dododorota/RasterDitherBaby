@@ -1,0 +1,10 @@
+{
+  "name": "raster",
+  "version": "0.1.0",
+  "description": "Dithering i raster drukarski w przeglądarce, z eksportem do PNG i SVG",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve ."
+  }
+}
