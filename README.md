@@ -57,6 +57,7 @@ src/dither.js     ditherData() ogarnia canvas i worker, renderDither() rysuje
 src/halftone.js   sampler, collectScreen() liczy punkty, drawScreen() rysuje
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
+src/contours.js   obrys konturowy: śledzenie brzegów i wygładzanie ścieżek
 src/batch.js      przetwarzanie całego folderu tymi samymi ustawieniami
 src/zip.js        zapis paczki ZIP bez kompresji, bez zależności
 src/presets.js    wbudowane punkty startowe
@@ -74,6 +75,31 @@ są asynchroniczne i zwracają `null`, gdy zadanie zostało wyparte świeższym
 (przeciąganie suwaka). Do zapisu pliku wołaj je z `{keep:true}` — takie zadanie
 nie wypada z kolejki. Gdy workera nie ma, liczenie leci na głównym wątku tą samą
 funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
+
+## Kontury zamiast prostokątów
+
+Przy zapisie SVG z ditheringu można wybrać, jak zapisać piksele:
+
+- **Piksele — prostokąty** (domyślnie): sąsiednie piksele tego samego koloru
+  scalone w prostokąty.
+- **Kontury — ścieżki**, z suwakiem wygładzenia:
+  - *wygładzenie 0* — kontury dokładne: te same piksele co prostokąty, co do
+    piksela, ale jako jedna złożona ścieżka na kolor. W Illustratorze to
+    połączone kształty zamiast tysięcy obiektów; plik waży mniej więcej tyle
+    samo, a przy dużych jednolitych plamach dużo mniej (próg: 308 prostokątów →
+    3 ścieżki);
+  - *wygładzenie 1–10* — schodki zamieniają się w skosy, kropki w zaokrąglone
+    kształty. Ton zostaje zachowany (kropki mają to samo pole co piksele);
+    do wygładzenia 6 obraz odbiega od pikseli o 1–3% pola, przy 10 to już
+    wyraźna stylizacja.
+
+Wygładzanie działa do 8 kolorów w obrazie. Warstwy są ułożone piętrowo, żeby
+między wygładzonymi kolorami nie prześwitywało tło, a to oznacza obrysowanie
+szumiącego brzegu na nowo dla każdego koloru — przy 16 kolorach plik rósł do
+39 MB. Powyżej limitu zapis robi kontury dokładne i mówi o tym. Wygładzone
+kontury najlepiej wychodzą przy pikselizacji 3× i większej, przy progowaniu
+i przy ditheringu uporządkowanym; gęsty Floyd–Steinberg przy 1× daje plik
+~4× cięższy od prostokątów.
 
 ## Cały folder naraz
 
@@ -192,7 +218,6 @@ pikselizację na 3–4×.
 
 ## Co dalej
 
-- [ ] obrys konturowy zamiast kwadracików (potrace) jako druga opcja wektora
 
 ## Licencja
 

@@ -179,6 +179,17 @@
         <option value="png" selected>PNG — bitmapa</option>
         <option value="svg">SVG — wektor</option>
       </select>
+      <div id="svg-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="wektor">SVG z ditheringu</label></div>
+        <select id="wektor">
+          <option value="piksele" selected>Piksele — prostokąty</option>
+          <option value="kontury">Kontury — ścieżki</option>
+        </select>
+        <div id="wygl-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="wygl">Wygładzenie konturów</label><span class="val" id="wygl-v">3</span></div>
+          <input type="range" id="wygl" min="0" max="10" value="3">
+        </div>
+      </div>
       <button class="btn solid" id="save" style="margin-top:10px">Zapisz PNG</button>
       <p class="hint" id="dims">—</p>
     </div>

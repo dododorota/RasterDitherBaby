@@ -53,7 +53,8 @@ const SUWAKI = [
   {id:"sortOd", key:"sortOd", opis:v=>v+"%"},
   {id:"sortDo", key:"sortDo", opis:v=>v+"%"},
   {id:"rgb",    key:"rgb",    opis:v=>v?v+" px":"brak"},
-  {id:"rgbKat", key:"rgbKat", opis:v=>v+"°"}
+  {id:"rgbKat", key:"rgbKat", opis:v=>v+"°"},
+  {id:"wygl",   key:"wygl",   opis:v=>v?String(v):"brak — dokładne"}
 ];
 const PTASZKI = ["inv","serp"];
 const LISTY   = ["algo","pal","shape","inkmode","sort"];
@@ -72,6 +73,12 @@ function duo(){
   }
 }
 function efektyUI(){ $("#sort-opcje").classList.toggle("hidden", S.sort==="brak"); }
+/* wybór prostokąty/kontury ma sens tylko dla SVG z ditheringu — raster to i tak punkty */
+function eksportUI(){
+  $("#svg-opcje").classList.toggle("hidden", !(S.fmt==="svg" && S.mode==="dither"));
+  $("#wygl-opcje").classList.toggle("hidden", S.wektor!=="kontury");
+  $("#wektor").value = S.wektor;
+}
 /* Opcja „Własna" istnieje w liście tylko wtedy, gdy jest wczytana paleta — dzięki
    temu syncUI() sam odrzuci pal:"custom" z presetu, który palety nie przyniósł.
    Wołać przed syncUI() za każdym razem, gdy zmienia się S.custom. */
@@ -107,6 +114,7 @@ function syncUI(){
   for(const k of KOLORY){ const el=$("#"+k); el.value = S[k]; S[k]=el.value; }
   duo();
   efektyUI();
+  eksportUI();
 }
 for(const c of SUWAKI){
   const el=$("#"+c.id);
@@ -137,6 +145,7 @@ function setMode(m){
   $("#g-dither").classList.toggle("hidden", m!=="dither");
   $("#g-pal").classList.toggle("hidden", m!=="dither");
   $("#g-half").classList.toggle("hidden", m!=="half");
+  eksportUI();
   buildPresets();
   schedule();
 }
@@ -455,8 +464,10 @@ $("#batch-dir").addEventListener("change", async e=>{
   }
 });
 /* ---------- zapis ---------- */
+$("#wektor").addEventListener("change", e=>{ S.wektor=e.target.value; eksportUI(); });
 $("#fmt").addEventListener("change", e=>{
   S.fmt=e.target.value;
+  eksportUI();
   $("#save").textContent = S.fmt==="svg" ? "Zapisz SVG" : "Zapisz PNG";
   $("#scl").disabled = (S.fmt==="svg");
 });

@@ -103,6 +103,17 @@ przez z. Nie licz efektów od nowa w rozdzielczości zapisu — wyjdzie inny obr
 Test skali dla efektów: efekt na obrazie powiększonym z razy musi dać
 dokładnie powiększony efekt, co do bajtu (tak robi test w Node).
 
+**Kontury w SVG** (`contours.js`, `svgKontury()` w vector.js). Śledzenie po
+krawędziach pikseli z regułą skrętu w prawo na wierzchołkach siodłowych —
+obszar 4-spójny, więc szachownica daje osobne kropki. Kontury dokładne
+obrysowujemy per kolor (stykają się bez szczelin, bo leżą na siatce), wygładzone
+piętrowo (każda warstwa = swój kolor plus wszystkie nad nim), bo inaczej między
+wygładzonymi brzegami prześwituje tło. Małe pętle po wygładzeniu skalujemy do
+pola pikseli, z których powstały — bez tego kropka traciła 17% pola i rzadki
+dithering jaśniał. Testy: kontur dokładny musi dać pole równe liczbie pikseli
+i zgodność każdego środka piksela pod regułą evenodd; SVG z konturami
+dokładnymi po rasteryzacji musi być piksel w piksel jak SVG z prostokątów.
+
 **Przetwarzanie folderu** (`batch.js`) używa tych samych funkcji renderu co
 podgląd i zapis — nie pisz dla niego osobnej ścieżki, bo paczka rozjedzie się
 z pojedynczym eksportem (dziś PNG z paczki jest co do piksela taki sam jak

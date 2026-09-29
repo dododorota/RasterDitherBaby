@@ -4,7 +4,8 @@ export const MAX = 1400;   // maksymalny bok przetwarzanego obrazu w px
 
 /* Wygląd — wszystko, co składa się na obraz i co zapisuje się w presecie.
    Reszta stanu presetu nie dotyczy: img to wczytany obraz, custom to wczytana
-   paleta własna ({nazwa, kolory}), mode to zakładka, scl i fmt to zapis.
+   paleta własna ({nazwa, kolory}), mode to zakładka, scl, fmt, wektor i wygl
+   to ustawienia zapisu.
    Paleta własna jest materiałem jak obraz, a nie częścią wyglądu — gdyby
    siedziała w DEFAULTS, każdy wbudowany preset by ją kasował. Do pliku presetu
    trafia osobno, i tylko wtedy, gdy jest wybrana. */
@@ -17,4 +18,4 @@ export const DEFAULTS = {
 };
 export const LOOK = Object.keys(DEFAULTS);
 
-export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png" }, DEFAULTS);
+export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png", wektor:"piksele", wygl:3 }, DEFAULTS);
