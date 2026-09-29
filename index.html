@@ -148,6 +148,26 @@
       <input type="range" id="grain" min="0" max="60" value="0">
     </div>
 
+    <div class="group" id="g-fx">
+      <h2>Efekty po rastrze</h2>
+      <div class="row"><label for="sort">Sortowanie pikseli</label></div>
+      <select id="sort">
+        <option value="brak" selected>Brak</option>
+        <option value="poziomo">Poziomo</option>
+        <option value="pionowo">Pionowo</option>
+      </select>
+      <div id="sort-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="sortOd">Od jasności</label><span class="val" id="sortOd-v">25%</span></div>
+        <input type="range" id="sortOd" min="0" max="100" value="25">
+        <div class="row"><label for="sortDo">Do jasności</label><span class="val" id="sortDo-v">80%</span></div>
+        <input type="range" id="sortDo" min="0" max="100" value="80">
+      </div>
+      <div class="row" style="margin-top:12px"><label for="rgb">Przesunięcie RGB</label><span class="val" id="rgb-v">brak</span></div>
+      <input type="range" id="rgb" min="0" max="30" value="0">
+      <div class="row"><label for="rgbKat">Kierunek</label><span class="val" id="rgbKat-v">0°</span></div>
+      <input type="range" id="rgbKat" min="0" max="180" value="0">
+    </div>
+
     <div class="group">
       <h2>Eksport</h2>
       <div class="row"><label for="scl">Skala</label><span class="val" id="scl-v">1×</span></div>

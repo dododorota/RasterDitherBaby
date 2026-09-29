@@ -80,6 +80,23 @@ zmierzone było dwa razy wolniej od skanu: dla palet kolorowych jasność prawie
 niczego nie odcina, a wartości po dyfuzji często wypadają poza zakres. Jeśli
 duże palety kiedyś trzeba będzie przyspieszyć, mierz przed wdrożeniem.
 
+**Efekty po rastrze** (`effects.js`) są czyste i biegną w workerze razem
+z dyfuzją — worker i fallback wołają `ditherIEfekty()`, nie gołe
+`ditherPixels()`, i to tę parę porównuj w teście zgodności. Kolejność jest
+stała: sortowanie, przesunięcie RGB, a w rastrze na końcu ziarno. Ziarno musi
+iść po efektach, bo jest losowe — gdyby szło przed, kolejność sortowania
+zmieniałaby się przy każdym renderze. Permutację sortowania w rastrze liczymy
+na siatce podglądu (przy zapisie w skali z pomocniczego renderu 1×) i
+przenosimy blokami z×z; przesunięcie liczymy w pikselach podglądu i mnożymy
+przez z. Nie licz efektów od nowa w rozdzielczości zapisu — wyjdzie inny obraz.
+Test skali dla efektów: efekt na obrazie powiększonym z razy musi dać
+dokładnie powiększony efekt, co do bajtu (tak robi test w Node).
+
+**Cache przeglądarki przy testach.** `python3 -m http.server` nie wysyła
+nagłówków cache i przeglądarka potrafi podać stary moduł obok nowych — objawia
+się to błędami typu „X is not a function" dla funkcji, która na dysku istnieje.
+Do testów stawiaj serwer z `Cache-Control: no-store` albo rób twarde odświeżenie.
+
 **Ciężkie benchmarki odpalaj w Node, nie w panelu przeglądarki.** Skrypt, który
 przekroczy limit narzędzia, dalej mieli w tle i blokuje kartę tak, że nawet
 nawigacja przestaje odpowiadać — trzeba ją zamknąć. `dither-core.js`,

@@ -1,6 +1,7 @@
 import { S, MAX } from "./state.js";
 import { out, octx } from "./dom.js";
 import { adjust, fit } from "./image.js";
+import { efektyWlaczone, permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB } from "./effects.js";
 
 /* ---------- tryb 2: raster drukarski ----------
 
@@ -196,15 +197,42 @@ export function inkList(){
     {color:S.ink,     ang:S.ang,    cov:(r,g,b)=>cmyk(r,g,b)[3], off:off(4), name:"key"}
   ];
 }
+/* papier i wszystkie farby, bez ziarna i efektów, na płótnie (W·z)×(H·z) */
+function rysujRaster(ctx, W, H, z){
+  ctx.fillStyle = S.paper; ctx.fillRect(0,0,W*z,H*z);
+  const smp = sampler(W,H);
+  for(const k of inkList()) drawScreen(ctx, smp, W,H, k.ang, k.color, k.cov, k.off, z);
+}
 export function renderHalftone(scale){
   const z = Math.max(1, Math.round(scale));
   const [W,H] = fit(S.img.width, S.img.height, MAX);   /* kadr podglądu */
   const OW = W*z, OH = H*z;                            /* kadr wyjścia */
   out.width=OW; out.height=OH;
   out.classList.remove("pixelated");
-  octx.fillStyle = S.paper; octx.fillRect(0,0,OW,OH);
-  const smp = sampler(W,H);
-  for(const k of inkList()) drawScreen(octx, smp, W,H, k.ang, k.color, k.cov, k.off, z);
+  rysujRaster(octx, W, H, z);
+
+  /* Efekty przed ziarnem: ziarno jest losowe, więc gdyby szło pierwsze,
+     sortowanie wychodziłoby inaczej przy każdym renderze. Kolejność sortowania
+     liczymy na siatce podglądu — przy zapisie w skali z pomocniczego renderu
+     1× — i przenosimy blokami z×z. Tylko tak zapis jest powiększeniem
+     podglądu, a nie przesortowaniem od nowa w wyższej rozdzielczości. */
+  if(efektyWlaczone()){
+    const d = octx.getImageData(0,0,OW,OH);
+    let perm = null;
+    if(S.sort !== "brak"){
+      if(z === 1) perm = permutacjaSortu(d.data, W, H);
+      else {
+        const c = document.createElement("canvas"); c.width = W; c.height = H;
+        const x = c.getContext("2d");
+        rysujRaster(x, W, H, 1);
+        perm = permutacjaSortu(x.getImageData(0,0,W,H).data, W, H);
+      }
+    }
+    if(perm) zastosujPermutacje(d.data, perm, W, H, z);
+    const [dx, dy] = przesuniecieRGB(1);
+    przesunRGB(d.data, OW, OH, dx*z, dy*z);
+    octx.putImageData(d,0,0);
+  }
 
   if(S.grain){
     const d=octx.getImageData(0,0,OW,OH), p=d.data, g=S.grain*1.6;

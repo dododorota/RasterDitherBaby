@@ -14,7 +14,10 @@ python3 -m http.server 8000
 ```
 
 Potem `http://localhost:8000`. Zero zależności, zero buildu — edytujesz plik,
-odświeżasz kartę.
+odświeżasz kartę. **Jeśli zmiany nie widać, zrób twarde odświeżenie**
+(Cmd+Shift+R): `python3 -m http.server` nie wysyła nagłówków cache i przeglądarka
+potrafi podać stary moduł obok nowych — na przykład nowy `app.js` ze starym
+`dither-core.js`, co daje błędy, których w kodzie nie ma.
 
 ## Co robi
 
@@ -52,6 +55,7 @@ src/worker.js        wątek, w którym liczy się dyfuzja błędu
 src/worker-client.js kolejka zadań workera, wypieranie nieaktualnych
 src/dither.js     ditherData() ogarnia canvas i worker, renderDither() rysuje
 src/halftone.js   sampler, collectScreen() liczy punkty, drawScreen() rysuje
+src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
 src/presets.js    wbudowane punkty startowe
 src/app.js        kontrolki, presety, wczytywanie plików, zapis
@@ -68,6 +72,28 @@ są asynchroniczne i zwracają `null`, gdy zadanie zostało wyparte świeższym
 (przeciąganie suwaka). Do zapisu pliku wołaj je z `{keep:true}` — takie zadanie
 nie wypada z kolejki. Gdy workera nie ma, liczenie leci na głównym wątku tą samą
 funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
+
+## Efekty po rastrze
+
+Działają w obu trybach, na gotowym obrazie, w stałej kolejności: najpierw
+sortowanie, potem przesunięcie RGB, a w rastrze drukarskim dopiero na końcu
+ziarno papieru.
+
+- **Sortowanie pikseli** — w każdym wierszu (albo kolumnie) ciągłe odcinki
+  pikseli o jasności z wybranego przedziału są układane od najciemniejszego do
+  najjaśniejszego. Piksele spoza przedziału stoją w miejscu i przerywają
+  odcinki, więc zawężenie przedziału daje krótsze smugi. Sortowanie tylko
+  przestawia piksele, więc paleta zostaje zachowana.
+- **Przesunięcie RGB** — czerwony przesunięty w wybranym kierunku, niebieski
+  w przeciwnym, zielony zostaje. **Tworzy kolory spoza palety** (obwódki na
+  krawędziach), więc przy ditheringu pod konkretny sprzęt — Game Boy, CGA —
+  wynik przestaje być wierny palecie. W ditheringu przesunięcie jest w całych
+  pikselach po pikselizacji.
+
+Oba są deterministyczne, a zapis w skali pozostaje dokładnym powiększeniem
+podglądu. W ditheringu efekty trafiają też do SVG, bo tamten wektor to piksele
+zamienione na prostokąty. W rastrze drukarskim SVG to geometria punktów, więc
+efektów (ani ziarna) nie zawiera — po zapisie apka mówi, czego brakuje.
 
 ## Palety własne
 
@@ -143,7 +169,6 @@ pikselizację na 3–4×.
 
 - [ ] obrys konturowy zamiast kwadracików (potrace) jako druga opcja wektora
 - [ ] batch na folderze plików
-- [ ] efekty po rastrze: pixel sort, RGB shift, przesunięcie kanałów
 - [ ] szybsze szukanie koloru dla palet 128+ — skan kosztuje wtedy 4–7× więcej
       niż 1-bit; odcinanie po luminancji nie działa (patrz CLAUDE.md), trzeba
       by zmierzyć drzewo k-d albo siatkę kubełków

@@ -2,6 +2,7 @@ import { S } from "./state.js";
 import { palette, nearest, quantizer } from "./palettes.js";
 import { K, BAYER2, BAYER4, BAYER8, CLUSTER } from "./kernels.js";
 import { adjustPixels } from "./image.js";
+import { efektyWlaczone, permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB } from "./effects.js";
 
 /* Samo liczenie ditheringu: korekta tonalna i algorytm, w miejscu na buforze
    RGBA. Ani jednego odwołania do DOM-u, bo ten moduł biega też w workerze
@@ -51,4 +52,18 @@ export function ditherPixels(p, w, h){
       }
     }
   }
+}
+
+/* Dithering razem z efektami po rastrze — to woła worker i fallback, żeby oba
+   liczyły dokładnie to samo. Efekty idą na buforze roboczym, jeszcze przed
+   powiększeniem do podglądu, więc zapis w dowolnej skali jest powiększeniem.
+   Przesunięcie podajemy w pikselach obrazu, a bufor jest po pikselizacji,
+   stąd jednostka 1/pix. */
+export function ditherIEfekty(p, w, h){
+  ditherPixels(p, w, h);
+  if(!efektyWlaczone()) return;
+  const perm = permutacjaSortu(p, w, h);
+  if(perm) zastosujPermutacje(p, perm, w, h, 1);
+  const [dx, dy] = przesuniecieRGB(1/S.pix);
+  przesunRGB(p, w, h, dx, dy);
 }

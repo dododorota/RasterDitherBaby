@@ -12,7 +12,8 @@ export const DEFAULTS = {
   bri:0, con:0, gam:1, pix:1, inv:false,
   algo:"floyd", str:1, thr:0, serp:true,
   pal:"bw", ink:"#000000", paper:"#ffffff",
-  cell:8, ang:45, dot:1, blur:0, shape:"circle", inkmode:"mono", mis:0, grain:0
+  cell:8, ang:45, dot:1, blur:0, shape:"circle", inkmode:"mono", mis:0, grain:0,
+  sort:"brak", sortOd:25, sortDo:80, rgb:0, rgbKat:0
 };
 export const LOOK = Object.keys(DEFAULTS);
 

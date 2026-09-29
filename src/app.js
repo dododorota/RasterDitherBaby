@@ -48,10 +48,14 @@ const SUWAKI = [
   {id:"blur",  key:"blur",  opis:v=>v?v+" px":"brak"},
   {id:"mis",   key:"mis",   opis:v=>(v/10).toFixed(1)},
   {id:"grain", key:"grain", opis:v=>v},
-  {id:"scl",   key:"scl",   opis:v=>v+"×"}
+  {id:"scl",   key:"scl",   opis:v=>v+"×"},
+  {id:"sortOd", key:"sortOd", opis:v=>v+"%"},
+  {id:"sortDo", key:"sortDo", opis:v=>v+"%"},
+  {id:"rgb",    key:"rgb",    opis:v=>v?v+" px":"brak"},
+  {id:"rgbKat", key:"rgbKat", opis:v=>v+"°"}
 ];
 const PTASZKI = ["inv","serp"];
-const LISTY   = ["algo","pal","shape","inkmode"];
+const LISTY   = ["algo","pal","shape","inkmode","sort"];
 const KOLORY  = ["ink","paper"];
 
 function duo(){
@@ -66,6 +70,7 @@ function duo(){
     box.appendChild(i);
   }
 }
+function efektyUI(){ $("#sort-opcje").classList.toggle("hidden", S.sort==="brak"); }
 /* Opcja „Własna" istnieje w liście tylko wtedy, gdy jest wczytana paleta — dzięki
    temu syncUI() sam odrzuci pal:"custom" z presetu, który palety nie przyniósł.
    Wołać przed syncUI() za każdym razem, gdy zmienia się S.custom. */
@@ -100,6 +105,7 @@ function syncUI(){
   }
   for(const k of KOLORY){ const el=$("#"+k); el.value = S[k]; S[k]=el.value; }
   duo();
+  efektyUI();
 }
 for(const c of SUWAKI){
   const el=$("#"+c.id);
@@ -113,6 +119,7 @@ for(const k of PTASZKI) $("#"+k).addEventListener("change", e=>{ S[k]=e.target.c
 for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   S[k]=e.target.value;
   if(k==="pal") duo();
+  if(k==="sort") efektyUI();
   schedule();
 });
 for(const k of KOLORY) $("#"+k).addEventListener("input", e=>{ S[k]=e.target.value; schedule(); });

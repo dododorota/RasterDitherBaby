@@ -1,7 +1,7 @@
 import { S, MAX } from "./state.js";
 import { out, octx } from "./dom.js";
 import { fit } from "./image.js";
-import { ditherPixels } from "./dither-core.js";
+import { ditherIEfekty } from "./dither-core.js";
 import { hasWorker, compute } from "./worker-client.js";
 
 /* ---------- tryb 1: dithering ---------- */
@@ -34,7 +34,7 @@ export async function ditherData(opts){
     }
   }
   const d = ctx.getImageData(0,0,w,h);
-  ditherPixels(d.data, w, h);
+  ditherIEfekty(d.data, w, h);
   ctx.putImageData(d,0,0);
   return {c, w, h, d};
 }

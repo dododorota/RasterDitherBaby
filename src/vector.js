@@ -89,7 +89,17 @@ export async function saveSVG(){
   a.download=(S.mode==="dither"?"dither":"raster")+"-"+Date.now()+".svg";
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  /* W ditheringu SVG to piksele zamienione na prostokąty, więc efekty są w nim
+     z definicji. W rastrze SVG to geometria punktów — ziarna ani efektów
+     pikselowych nie da się w niej oddać, więc mówimy wprost, czego brakuje. */
+  const brak = [];
+  if(S.mode==="half"){
+    if(S.grain) brak.push("ziarna papieru");
+    if(S.sort!=="brak") brak.push("sortowania pikseli");
+    if(S.rgb>0) brak.push("przesunięcia RGB");
+  }
   $("#dims").textContent = "Zapisano SVG · " + count.toLocaleString("pl-PL") + " obiektów · " +
     Math.round(blob.size/1024).toLocaleString("pl-PL") + " kB" +
+    (brak.length ? " · Wektor nie zawiera " + brak.join(", ") + " — to efekty na pikselach, są tylko w PNG." : "") +
     (count>80000 ? " — przy tylu obiektach Illustrator będzie mulił, podnieś pikselizację albo gęstość." : "");
 }
