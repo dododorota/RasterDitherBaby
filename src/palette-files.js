@@ -20,7 +20,7 @@ export function czytajPalete(nazwaPliku, bufor){
   return hex(tekst, nazwa);
 }
 
-function domyslnaNazwa(plik){
+export function domyslnaNazwa(plik){
   return (plik || "paleta").replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim() || "paleta";
 }
 

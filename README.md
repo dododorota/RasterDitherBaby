@@ -73,8 +73,13 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
 
 „Wczytaj paletę" w grupie *Paleta*, albo przeciągnięcie pliku na podgląd.
 Czyta wszystko, co da się pobrać z lospec.com: `.hex`, `.gpl` (GIMP), `.pal`
-(JASC), `.txt` (Paint.NET) i `.ase` (Adobe). Format rozpoznaje po zawartości,
-nie po rozszerzeniu.
+(JASC), `.txt` (Paint.NET), `.ase` (Adobe) i pasek próbek PNG. Format
+rozpoznaje po zawartości, nie po rozszerzeniu.
+
+Z obrazka bierze unikalne kolory w kolejności, wiersz po wierszu, pomijając
+piksele przezroczyste — działa z paskiem 1×N, jego powiększeniami i siatką
+próbek. Obrazek z ponad 256 kolorami odrzuca jako zdjęcie. **PNG trzeba podać
+przyciskiem palety** — upuszczony na podgląd jest obrazem do przetworzenia.
 
 Z `.ase` bierze kolory RGB, szare i CMYK (to ostatnie przeliczone naiwnie, bez
 profilu); kolory Lab pomija i mówi o tym. Duplikaty wylatują, paleta ma od 2 do
@@ -131,8 +136,6 @@ pikselizację na 3–4×.
 - [ ] batch na folderze plików
 - [ ] efekty po rastrze: pixel sort, RGB shift, przesunięcie kanałów
 - [ ] własne presety zapamiętane w przeglądarce, żeby nie trzymać ich w plikach
-- [ ] paleta z obrazka PNG (Lospec daje też paski 1×N) — wymaga canvasu,
-      więc poza czystym `palette-files.js`
 - [ ] szybsze szukanie koloru dla palet 128+ — skan kosztuje wtedy 4–7× więcej
       niż 1-bit; odcinanie po luminancji nie działa (patrz CLAUDE.md), trzeba
       by zmierzyć drzewo k-d albo siatkę kubełków

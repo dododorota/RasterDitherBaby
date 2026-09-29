@@ -5,7 +5,7 @@ import { renderDither } from "./dither.js";
 import { renderHalftone } from "./halftone.js";
 import { saveSVG } from "./vector.js";
 import { PRESETS } from "./presets.js";
-import { czytajPalete, paletaZDanych } from "./palette-files.js";
+import { czytajPalete, paletaZDanych, domyslnaNazwa, MAX_KOLOROW } from "./palette-files.js";
 
 /* ---------- pętla ---------- */
 let queued=false;
@@ -222,9 +222,44 @@ $("#pal-file").addEventListener("change", e=>{
   e.target.value="";
   if(f) wczytajPaleteZPliku(f);
 });
+/* Paleta z obrazka: unikalne kolory w kolejności pojawiania się, wiersz po
+   wierszu. Lospec daje paski 1×N i ich powiększenia 8× i 32× — powtórzenia
+   i tak się zwijają. Bez konwersji przestrzeni barw, bo liczą się dokładne
+   wartości z pliku, a przeglądarka przestawia je po cichu, gdy PNG ma profil.
+   Piksele przezroczyste pomijamy (ramki i odstępy między próbkami).
+   Obrazka z ponad MAX_KOLOROW kolorami nie przycinamy, tylko odrzucamy —
+   pierwsze 256 kolorów zdjęcia to przypadek, a nie paleta. */
+async function paletaZObrazka(f){
+  let bmp;
+  try{ bmp = await createImageBitmap(f, {colorSpaceConversion:"none", premultiplyAlpha:"none"}); }
+  catch{ throw new Error("Nie udało się otworzyć obrazka."); }
+  const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+  const x = c.getContext("2d");
+  x.drawImage(bmp, 0, 0); bmp.close();
+  const p = x.getImageData(0, 0, c.width, c.height).data;
+  const widziane = new Set(), kolory = [];
+  let przezroczyste = 0;
+  for(let i=0; i<p.length; i+=4){
+    if(p[i+3] < 128){ przezroczyste++; continue; }
+    const k = (p[i]<<16) | (p[i+1]<<8) | p[i+2];
+    if(widziane.has(k)) continue;
+    widziane.add(k); kolory.push([p[i], p[i+1], p[i+2]]);
+    if(kolory.length > MAX_KOLOROW)
+      throw new Error("Ten obrazek ma ponad "+MAX_KOLOROW+" kolorów — to raczej zdjęcie niż paleta. "+
+                      "Nadaje się pasek próbek, np. PNG z Lospec.");
+  }
+  const nazwa = domyslnaNazwa(f.name).replace(/\s*\d+x$/i, "") || "paleta";
+  const wynik = paletaZDanych({nazwa, kolory});
+  if(przezroczyste) wynik.uwagi.push("pominięto piksele przezroczyste");
+  return wynik;
+}
 async function wczytajPaleteZPliku(f){
   let p;
-  try{ p = czytajPalete(f.name, await f.arrayBuffer()); }
+  try{
+    p = (/^image\//.test(f.type) || /\.(png|gif)$/i.test(f.name))
+      ? await paletaZObrazka(f)
+      : czytajPalete(f.name, await f.arrayBuffer());
+  }
   catch(err){ komunikatPalety(err.message || "Nie udało się odczytać palety."); return; }
   S.custom = {nazwa:p.nazwa, kolory:p.kolory};
   S.pal = "custom";

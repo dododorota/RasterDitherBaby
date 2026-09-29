@@ -32,7 +32,10 @@ nawet jeśli kod jest czystszy.
   `opcjaPalety()` przed `syncUI()` za każdym razem, gdy zmieniasz `S.custom`,
   bo inaczej `syncUI()` odrzuci `pal:"custom"` jako nieznaną opcję.
 - **`palette-files.js` jest czysty**, bez DOM-u — testuj go w Node, nie w
-  przeglądarce. Nowy format dopisuj tam, rozpoznawany po zawartości.
+  przeglądarce. Nowy format dopisuj tam, rozpoznawany po zawartości. Wyjątkiem
+  jest paleta z obrazka (`paletaZObrazka()` w app.js), bo potrzebuje canvasu;
+  czyta piksele przez `createImageBitmap` z `colorSpaceConversion:"none"`,
+  żeby przeglądarka nie przestawiła wartości z PNG z osadzonym profilem.
 - **Wartości domyślne w `DEFAULTS` muszą zgadzać się z `value` w markupie.**
   Panel startuje ze stanu, nie odwrotnie, więc rozjazd zmieni wygląd po starcie.
 
