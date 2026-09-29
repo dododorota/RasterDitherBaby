@@ -1,59 +1,126 @@
 /* Spinacz: kontrolki, presety, wczytywanie pliku, zapis. */
-import { S } from "./state.js";
-import { $, out, octx } from "./dom.js";
+import { S, DEFAULTS, LOOK } from "./state.js";
+import { $, out } from "./dom.js";
 import { renderDither } from "./dither.js";
 import { renderHalftone } from "./halftone.js";
 import { saveSVG } from "./vector.js";
 import { PRESETS } from "./presets.js";
+import { czytajPalete, paletaZDanych } from "./palette-files.js";
 
 /* ---------- pętla ---------- */
 let queued=false;
-function render(){
-  if(!S.img) return;
-  if(S.mode==="dither") renderDither(1); else renderHalftone(1);
+function dims(){
   $("#dims").textContent = "Podgląd " + out.width + "×" + out.height + " px · zapis " +
     (out.width*S.scl) + "×" + (out.height*S.scl) + " px";
+}
+/* Dither liczy się w workerze, więc render jest asynchroniczny. Gdy w trakcie
+   liczenia ruszy się suwak, to zadanie zostaje wyparte i zwraca null —
+   rysuje dopiero najświeższe. */
+async function render(){
+  if(!S.img) return;
+  if(S.mode==="dither"){
+    const slow = setTimeout(()=>{ $("#dims").textContent = "Liczę…"; }, 200);
+    const r = await renderDither(1);
+    clearTimeout(slow);
+    if(!r) return;
+  } else renderHalftone(1);
+  dims();
 }
 function schedule(){
   if(queued) return;
   queued=true;
   requestAnimationFrame(()=>{ queued=false; render(); });
 }
-/* ---------- kontrolki ---------- */
-function slider(id, key, fmt, map){
-  const el=$("#"+id), v=$("#"+id+"-v");
-  const upd=()=>{ const raw=+el.value; S[key]= map?map(raw):raw; v.textContent=fmt(S[key],raw); };
-  el.addEventListener("input", ()=>{ upd(); schedule(); });
-  upd();
-}
-slider("bri","bri", v=>v);
-slider("con","con", v=>v);
-slider("gam","gam", v=>v.toFixed(2), v=>v/100);
-slider("pix","pix", v=>v+"×");
-slider("str","str", (v,raw)=>raw+"%", v=>v/100);
-slider("thr","thr", v=>v);
-slider("cell","cell", v=>v);
-slider("ang","ang", v=>v+"°");
-slider("dot","dot", v=>v.toFixed(2), v=>v/100);
-slider("mis","mis", v=>(v/10).toFixed(1));
-slider("grain","grain", v=>v);
-slider("scl","scl", v=>v+"×");
+/* ---------- kontrolki ----------
+   Jedna tabela zamiast rozsypanych wywołań. Dzięki niej syncUI() potrafi
+   odtworzyć cały panel ze stanu, a presety — te wbudowane i te z pliku — nie
+   muszą wiedzieć, jakie kontrolki w ogóle istnieją. */
+const SUWAKI = [
+  {id:"bri",   key:"bri",   opis:v=>v},
+  {id:"con",   key:"con",   opis:v=>v},
+  {id:"gam",   key:"gam",   opis:v=>v.toFixed(2),        zS:v=>v/100, naS:v=>Math.round(v*100)},
+  {id:"pix",   key:"pix",   opis:v=>v+"×"},
+  {id:"str",   key:"str",   opis:v=>Math.round(v*100)+"%", zS:v=>v/100, naS:v=>Math.round(v*100)},
+  {id:"thr",   key:"thr",   opis:v=>v},
+  {id:"cell",  key:"cell",  opis:v=>v},
+  {id:"ang",   key:"ang",   opis:v=>v+"°"},
+  {id:"dot",   key:"dot",   opis:v=>v.toFixed(2),        zS:v=>v/100, naS:v=>Math.round(v*100)},
+  {id:"blur",  key:"blur",  opis:v=>v?v+" px":"brak"},
+  {id:"mis",   key:"mis",   opis:v=>(v/10).toFixed(1)},
+  {id:"grain", key:"grain", opis:v=>v},
+  {id:"scl",   key:"scl",   opis:v=>v+"×"}
+];
+const PTASZKI = ["inv","serp"];
+const LISTY   = ["algo","pal","shape","inkmode"];
+const KOLORY  = ["ink","paper"];
 
-$("#inv").addEventListener("change", e=>{ S.inv=e.target.checked; schedule(); });
-$("#serp").addEventListener("change", e=>{ S.serp=e.target.checked; schedule(); });
-["algo","pal","shape","inkmode"].forEach(id=>{
-  $("#"+id).addEventListener("change", e=>{
-    S[id]=e.target.value;
-    if(id==="pal") $("#duo").style.display = (S.pal==="bw") ? "flex" : "none";
+function duo(){
+  $("#duo").style.display = (S.pal==="bw") ? "flex" : "none";
+  const box = $("#pal-probki"), widac = !!S.custom && S.pal==="custom";
+  box.classList.toggle("hidden", !widac);
+  box.innerHTML = "";
+  if(widac) for(const [r,g,b] of S.custom.kolory){
+    const i = document.createElement("i");
+    i.style.background = "rgb("+r+","+g+","+b+")";
+    i.title = "#"+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+    box.appendChild(i);
+  }
+}
+/* Opcja „Własna" istnieje w liście tylko wtedy, gdy jest wczytana paleta — dzięki
+   temu syncUI() sam odrzuci pal:"custom" z presetu, który palety nie przyniósł.
+   Wołać przed syncUI() za każdym razem, gdy zmienia się S.custom. */
+function opcjaPalety(){
+  let opt = $("#pal-custom");
+  if(S.custom){
+    if(!opt){
+      opt = document.createElement("option");
+      opt.value = "custom"; opt.id = "pal-custom";
+      $("#pal").appendChild(opt);
+    }
+    opt.textContent = "Własna: "+S.custom.nazwa+" ("+S.custom.kolory.length+")";
+  } else if(opt) opt.remove();
+}
+
+/* stan → panel, a potem z powrotem: przeglądarka przycina liczby do zakresu
+   suwaka i odrzuca nieznane opcje listy, więc odczyt po zapisie gwarantuje,
+   że w S nie zostanie wartość, której panel nie potrafi pokazać */
+function syncUI(){
+  for(const c of SUWAKI){
+    const el=$("#"+c.id);
+    el.value = c.naS ? c.naS(S[c.key]) : S[c.key];
+    S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
+    $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
+  }
+  for(const k of PTASZKI){ const el=$("#"+k); el.checked = !!S[k]; S[k]=el.checked; }
+  for(const k of LISTY){
+    const el=$("#"+k);
+    el.value = S[k];
+    if(el.selectedIndex < 0) el.value = DEFAULTS[k];
+    S[k] = el.value;
+  }
+  for(const k of KOLORY){ const el=$("#"+k); el.value = S[k]; S[k]=el.value; }
+  duo();
+}
+for(const c of SUWAKI){
+  const el=$("#"+c.id);
+  el.addEventListener("input", ()=>{
+    S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
+    $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
     schedule();
   });
+}
+for(const k of PTASZKI) $("#"+k).addEventListener("change", e=>{ S[k]=e.target.checked; schedule(); });
+for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
+  S[k]=e.target.value;
+  if(k==="pal") duo();
+  schedule();
 });
-$("#ink").addEventListener("input", e=>{ S.ink=e.target.value; schedule(); });
-$("#paper").addEventListener("input", e=>{ S.paper=e.target.value; schedule(); });
+for(const k of KOLORY) $("#"+k).addEventListener("input", e=>{ S[k]=e.target.value; schedule(); });
 $("#swap").addEventListener("click", ()=>{
   const a=S.ink; S.ink=S.paper; S.paper=a;
   $("#ink").value=S.ink; $("#paper").value=S.paper; schedule();
 });
+syncUI();
 
 function setMode(m){
   S.mode=m;
@@ -77,19 +144,97 @@ function buildPresets(){
     box.appendChild(b);
   }
 }
+/* Preset to pełny opis wyglądu: klucze, których nie podaje, wracają do wartości
+   domyślnych, zamiast zostawać po poprzednim presecie. Inaczej „Gazeta" po
+   „Promo" dziedziczyła jego punkt bieli, a negatyw i wężyk nie wracały nigdy. */
 function applyPreset(cfg){
-  Object.assign(S, cfg);
-  $("#bri").value=S.bri; $("#con").value=S.con; $("#gam").value=Math.round(S.gam*100);
-  $("#pix").value=S.pix; $("#str").value=Math.round(S.str*100); $("#thr").value=S.thr;
-  $("#cell").value=S.cell; $("#ang").value=S.ang; $("#dot").value=Math.round(S.dot*100);
-  $("#mis").value=S.mis; $("#grain").value=S.grain;
-  $("#algo").value=S.algo; $("#pal").value=S.pal; $("#shape").value=S.shape; $("#inkmode").value=S.inkmode;
-  $("#ink").value=S.ink; $("#paper").value=S.paper;
-  $("#duo").style.display = (S.pal==="bw") ? "flex" : "none";
-  ["bri","con","gam","pix","str","thr","cell","ang","dot","mis","grain"].forEach(id=>
-    $("#"+id).dispatchEvent(new Event("input")));
+  for(const k of LOOK) S[k] = (k in cfg) ? cfg[k] : DEFAULTS[k];
+  syncUI();
+  schedule();
 }
 buildPresets();
+/* ---------- presety w pliku ---------- */
+const WERSJA = 1;
+function komunikat(t){ $("#preset-msg").textContent = t; }
+
+$("#preset-save").addEventListener("click", ()=>{
+  const look={}; for(const k of LOOK) look[k]=S[k];
+  const dane={app:"raster", wersja:WERSJA, zapisano:new Date().toISOString(), tryb:S.mode, look};
+  /* bez kolorów preset z paletą własną byłby nieodtwarzalny */
+  if(S.pal==="custom" && S.custom) dane.paleta = {nazwa:S.custom.nazwa, kolory:S.custom.kolory};
+  const blob=new Blob([JSON.stringify(dane,null,2)], {type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="raster-"+S.mode+"-"+Date.now()+".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  komunikat("Zapisano ustawienia do pliku.");
+});
+$("#preset-load").addEventListener("click", ()=>$("#preset-file").click());
+$("#preset-file").addEventListener("change", e=>{
+  const f=e.target.files[0];
+  e.target.value="";                       /* żeby ten sam plik dało się wczytać drugi raz */
+  if(f) wczytajPreset(f);
+});
+function wczytajPreset(f){
+  const fr=new FileReader();
+  fr.onerror=()=>komunikat("Nie udało się odczytać pliku.");
+  fr.onload=()=>{
+    let dane;
+    try{ dane=JSON.parse(fr.result); }
+    catch{ komunikat("To nie jest poprawny JSON."); return; }
+    if(!dane || typeof dane!=="object" || dane.app!=="raster" || !dane.look || typeof dane.look!=="object"){
+      komunikat("To nie wygląda na preset Rastra."); return;
+    }
+    /* bierzemy tylko klucze o typie zgodnym z domyślnym — plik z innej wersji
+       albo ręcznie podłubany nie wsadzi do S czegoś, czego panel nie ogarnie */
+    let odrzucone=0;
+    for(const k of LOOK){
+      const v=dane.look[k];
+      if(v!==undefined && typeof v===typeof DEFAULTS[k]) S[k]=v;
+      else { S[k]=DEFAULTS[k]; if(v!==undefined) odrzucone++; }
+    }
+    /* syncUI przycina liczby do zakresu suwaków, odrzuca nieznane opcje list
+       i normalizuje kolory. Porównanie przed i po wyłapuje te poprawki, bo
+       inaczej plik z gęstością 9999 wczytywałby się bez słowa komentarza. */
+    let uwagaPalety = "";
+    if(dane.paleta !== undefined){
+      try{ const p = paletaZDanych(dane.paleta); S.custom = {nazwa:p.nazwa, kolory:p.kolory}; }
+      catch{ uwagaPalety = " Paleta zapisana w pliku była uszkodzona i została pominięta."; }
+    }
+    opcjaPalety();
+    const chciane={}; for(const k of LOOK) chciane[k]=S[k];
+    if(dane.tryb==="dither" || dane.tryb==="half") setMode(dane.tryb);
+    syncUI();
+    const poprawione = LOOK.filter(k => S[k]!==chciane[k]).length;
+    schedule();
+    const n = odrzucone + poprawione;
+    komunikat((n ? "Wczytano. Wartości spoza tego, co panel potrafi ustawić: "+n+" — cofnięte do poprawnych."
+                 : "Wczytano ustawienia z pliku.") + uwagaPalety);
+  };
+  fr.readAsText(f);
+}
+/* ---------- paleta własna ---------- */
+function komunikatPalety(t){ $("#pal-msg").textContent = t; }
+$("#pal-load").addEventListener("click", ()=>$("#pal-file").click());
+$("#pal-file").addEventListener("change", e=>{
+  const f=e.target.files[0];
+  e.target.value="";
+  if(f) wczytajPaleteZPliku(f);
+});
+async function wczytajPaleteZPliku(f){
+  let p;
+  try{ p = czytajPalete(f.name, await f.arrayBuffer()); }
+  catch(err){ komunikatPalety(err.message || "Nie udało się odczytać palety."); return; }
+  S.custom = {nazwa:p.nazwa, kolory:p.kolory};
+  S.pal = "custom";
+  opcjaPalety();
+  if(S.mode !== "dither") setMode("dither");   /* paleta działa tylko w ditheringu */
+  syncUI();
+  schedule();
+  komunikatPalety("Wczytano „"+p.nazwa+"”, kolorów: "+p.kolory.length+"."+
+    (p.uwagi.length ? " Uwaga: "+p.uwagi.join("; ")+"." : ""));
+}
 /* ---------- wczytywanie ---------- */
 function setImage(img){
   S.img=img;
@@ -110,7 +255,14 @@ $("#file").addEventListener("change", e=>fromFile(e.target.files[0]));
 const stage=$("#stage");
 ["dragenter","dragover"].forEach(ev=>stage.addEventListener(ev, e=>{ e.preventDefault(); stage.classList.add("over"); }));
 ["dragleave","drop"].forEach(ev=>stage.addEventListener(ev, e=>{ e.preventDefault(); stage.classList.remove("over"); }));
-stage.addEventListener("drop", e=>{ if(e.dataTransfer.files[0]) fromFile(e.dataTransfer.files[0]); });
+stage.addEventListener("drop", e=>{
+  const f=e.dataTransfer.files[0];
+  if(!f) return;
+  /* na podgląd można rzucić i obraz, i zapisany preset */
+  if(f.type==="application/json" || /\.json$/i.test(f.name)) wczytajPreset(f);
+  else if(/\.(hex|gpl|pal|ase|txt)$/i.test(f.name)) wczytajPaleteZPliku(f);
+  else fromFile(f);
+});
 window.addEventListener("paste", e=>{
   for(const it of e.clipboardData.items) if(it.type.startsWith("image/")) fromFile(it.getAsFile());
 });
@@ -139,10 +291,10 @@ $("#fmt").addEventListener("change", e=>{
   $("#save").textContent = S.fmt==="svg" ? "Zapisz SVG" : "Zapisz PNG";
   $("#scl").disabled = (S.fmt==="svg");
 });
-$("#save").addEventListener("click", ()=>{
+$("#save").addEventListener("click", async ()=>{
   if(!S.img) return;
-  if(S.fmt==="svg"){ saveSVG(); return; }
-  if(S.mode==="dither") renderDither(S.scl); else renderHalftone(S.scl);
+  if(S.fmt==="svg"){ await saveSVG(); return; }
+  if(S.mode==="dither") await renderDither(S.scl, {keep:true}); else renderHalftone(S.scl);
   out.toBlob(b=>{
     const a=document.createElement("a");
     a.href=URL.createObjectURL(b);

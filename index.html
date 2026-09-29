@@ -38,6 +38,12 @@
         <button role="tab" id="tab-half" aria-selected="false">Raster drukarski</button>
       </div>
       <div class="presets" style="margin-top:10px" id="presets"></div>
+      <div class="btns" style="margin-top:8px">
+        <button class="btn" id="preset-save">Zapisz ustawienia</button>
+        <button class="btn" id="preset-load">Wczytaj plik</button>
+      </div>
+      <input type="file" id="preset-file" accept="application/json,.json" class="hidden">
+      <p class="hint" id="preset-msg"></p>
     </div>
 
     <div class="group">
@@ -101,6 +107,10 @@
         <input type="color" id="paper" value="#ffffff" aria-label="Kolor papieru">
         <button class="btn" id="swap" style="width:auto; padding:6px 10px">Zamień</button>
       </div>
+      <div class="probki hidden" id="pal-probki"></div>
+      <button class="btn" id="pal-load" style="margin-top:10px">Wczytaj paletę</button>
+      <input type="file" id="pal-file" accept=".hex,.gpl,.pal,.ase,.txt" class="hidden">
+      <p class="hint" id="pal-msg">.hex, .gpl, .pal, .ase albo .txt — na przykład z lospec.com.</p>
     </div>
 
     <!-- HALFTONE -->
@@ -112,6 +122,8 @@
       <input type="range" id="ang" min="0" max="90" value="45">
       <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>
       <input type="range" id="dot" min="40" max="180" value="100">
+      <div class="row"><label for="blur">Rozmycie</label><span class="val" id="blur-v">0</span></div>
+      <input type="range" id="blur" min="0" max="20" value="0">
       <div class="row" style="margin-top:12px"><label for="shape">Kształt</label></div>
       <select id="shape">
         <option value="circle" selected>Punkt</option>

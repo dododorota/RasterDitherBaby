@@ -1,0 +1,13 @@
+/* Wątek liczący dyfuzję błędu. Ma własną kopię S — główny wątek dosyła jej
+   snapshot razem z każdym zadaniem, bo tutaj nie ma ani DOM-u, ani obrazu,
+   tylko gotowy bufor pikseli. */
+import { S } from "./state.js";
+import { ditherPixels } from "./dither-core.js";
+
+self.onmessage = e => {
+  const {id, snap, buf, w, h} = e.data;
+  Object.assign(S, snap);
+  const p = new Uint8ClampedArray(buf);
+  ditherPixels(p, w, h);
+  self.postMessage({id, buf:p.buffer, w, h}, [p.buffer]);
+};

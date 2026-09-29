@@ -35,8 +35,8 @@ export function mergeRects(p,w,h){
   }
   return groups;
 }
-export function svgDither(){
-  const {d,w,h} = ditherData();
+export async function svgDither(){
+  const {d,w,h} = await ditherData({keep:true});
   const groups = mergeRects(d.data, w, h);
   let bg=null, bgArea=-1, count=0;
   for(const [k,rects] of groups){
@@ -81,8 +81,8 @@ export function svgHalftone(){
   parts.push("</svg>");
   return {svg:parts.join("\n"), count};
 }
-export function saveSVG(){
-  const {svg,count} = (S.mode==="dither") ? svgDither() : svgHalftone();
+export async function saveSVG(){
+  const {svg,count} = (S.mode==="dither") ? await svgDither() : svgHalftone();
   const blob=new Blob([svg],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
