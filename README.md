@@ -115,9 +115,11 @@ przyciskiem.
 Paleta własna przeżywa kliknięcie wbudowanego presetu — to materiał jak obraz,
 nie część wyglądu — i jest zapisywana w pliku presetu, gdy jest wybrana.
 
-Koszt rośnie z liczbą kolorów: 16–32 kolory to ok. 1,7× czasu palety 1-bit,
-128 to 4×, 256 to 7×. Dithering liczy się w workerze, więc interfejs nie staje,
-ale podgląd przy dużych paletach dociera z opóźnieniem.
+Koszt rośnie z liczbą kolorów, ale od 32 kolorów najbliższy kolor jest szukany
+przez siatkę kubełków zamiast przeglądania całej palety: 16–32 kolory to ok.
+1,5–2× czasu palety 1-bit, a 64–256 kolorów ok. 2× (bez siatki 256 kolorów
+kosztowało prawie 9×). Wynik jest identyczny co do bajtu z pełnym
+przeglądaniem. Dithering liczy się w workerze, więc interfejs i tak nie staje.
 
 ## Presety
 
@@ -169,9 +171,6 @@ pikselizację na 3–4×.
 
 - [ ] obrys konturowy zamiast kwadracików (potrace) jako druga opcja wektora
 - [ ] batch na folderze plików
-- [ ] szybsze szukanie koloru dla palet 128+ — skan kosztuje wtedy 4–7× więcej
-      niż 1-bit; odcinanie po luminancji nie działa (patrz CLAUDE.md), trzeba
-      by zmierzyć drzewo k-d albo siatkę kubełków
 
 ## Licencja
 

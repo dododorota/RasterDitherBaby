@@ -74,11 +74,22 @@ Raster jest tani — liczba punktów to `W*H/cell²` na farbę — ale przy CMYK
 i gęstości 3 px to już setki tysięcy rysowań. Przy zmianach w `collectScreen()`
 testuj na gęstości 3 i 40.
 
-Palety własne lecą zwykłym skanem w `nearest()`. **Nie próbuj odcinania po
-luminancji** — z Cauchy'ego–Schwarza wychodzi dokładna granica d ≥ ΔY², ale
-zmierzone było dwa razy wolniej od skanu: dla palet kolorowych jasność prawie
-niczego nie odcina, a wartości po dyfuzji często wypadają poza zakres. Jeśli
-duże palety kiedyś trzeba będzie przyspieszyć, mierz przed wdrożeniem.
+Palety własne od 32 kolorów szukają najbliższego koloru przez siatkę kubełków
+(`szukaczSiatka()` w palettes.js) — dokładnie, z tymi samymi remisami co
+`nearest()`, zmierzone ×1,2 przy 32 kolorach do ×4 przy 256. Siatka obejmuje
+−256…512, bo po dyfuzji wartości wychodzą poza 0–255 (przy małych, słabo
+pokrywających obraz paletach nawet w większości). Zmieniając ją, puść test
+dokładności na złośliwych paletach: same szarości, kolory na granicach
+kubełków, siatka pełna remisów, wartości tuż pod górną granicą.
+
+**Nie próbuj odcinania po luminancji** — z Cauchy'ego–Schwarza wychodzi
+dokładna granica d ≥ ΔY², ale zmierzone było dwa razy wolniej od skanu: dla
+palet kolorowych jasność prawie niczego nie odcina.
+
+**Losowe palety do testów generuj przez `Math.imul`.** LCG na zwykłych liczbach
+(`s*1103515245`) gubi precyzję powyżej 2⁵³, ciąg się zapętla po ~100 kolorach
+i pętla szukająca N różnych kolorów wisi — to wyglądało jak „wolna siatka
+przy 128 kolorach", a było błędem w teście.
 
 **Efekty po rastrze** (`effects.js`) są czyste i biegną w workerze razem
 z dyfuzją — worker i fallback wołają `ditherIEfekty()`, nie gołe
