@@ -21,12 +21,15 @@
 <div class="layout">
   <aside class="panel">
 
-    <div class="group">
+    <div class="group" id="g-obraz">
       <h2>Obraz</h2>
       <div class="btns">
         <button class="btn solid" id="load">Wczytaj obraz</button>
         <button class="btn" id="sample">Próbka</button>
       </div>
+      <button class="btn" id="batch" style="margin-top:8px">Przetwórz cały folder</button>
+      <input type="file" id="batch-dir" webkitdirectory multiple class="hidden">
+      <p class="hint" id="batch-msg"></p>
       <p class="hint">Możesz też przeciągnąć plik na podgląd albo wkleić ze schowka (Ctrl/Cmd+V).</p>
       <input type="file" id="file" accept="image/*" class="hidden">
     </div>

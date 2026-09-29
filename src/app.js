@@ -6,6 +6,7 @@ import { renderHalftone } from "./halftone.js";
 import { saveSVG } from "./vector.js";
 import { PRESETS } from "./presets.js";
 import { czytajPalete, paletaZDanych, domyslnaNazwa, MAX_KOLOROW } from "./palette-files.js";
+import { przetworzFolder } from "./batch.js";
 
 /* ---------- pętla ---------- */
 let queued=false;
@@ -347,6 +348,7 @@ async function wczytajPaleteZPliku(f){
 }
 /* ---------- wczytywanie ---------- */
 function setImage(img){
+  if(wTrakcie) return;          /* obraz podglądu wraca po przetwarzaniu folderu — nie podmieniamy go w trakcie */
   S.img=img;
   $("#drop").classList.add("hidden");
   out.classList.remove("hidden");
@@ -394,6 +396,63 @@ $("#sample").addEventListener("click", ()=>{
   x.fillStyle="rgba(0,0,0,.35)"; x.beginPath();
   x.ellipse(470,690,290,46,0,0,6.2832); x.fill();
   const im=new Image(); im.onload=()=>setImage(im); im.src=c.toDataURL();
+});
+/* ---------- przetwarzanie folderu ---------- */
+let wTrakcie = false, przerwij = false;
+function komunikatFolderu(t){ $("#batch-msg").textContent = t; }
+/* Na czas pracy reszta panelu dostaje `inert` — samo pointer-events odcięłoby
+   myszkę, a klawiatura dalej ruszałaby suwaki w połowie folderu. */
+function zablokujPanel(tak){
+  const panel = $(".panel");
+  panel.classList.toggle("zajete", tak);
+  for(const g of panel.querySelectorAll(".group")) if(g.id !== "g-obraz") g.inert = tak;
+  for(const b of $("#g-obraz").querySelectorAll(".btn")) if(b.id !== "batch") b.disabled = tak;
+}
+function nazwaFolderu(pliki){
+  const p = (pliki[0].webkitRelativePath || "").split("/")[0];
+  return (p || "obrazy").replace(/[^\p{L}\p{N}_-]+/gu, "-").slice(0, 40) || "obrazy";
+}
+function opisWyniku(w){
+  let t = (w.przerwane ? "Przerwano po " : "Gotowe: ") + w.zrobione + " z " + w.wszystkich + " obrazów";
+  if(w.zip) t += " · " + (w.zip.size/1048576).toFixed(1).replace(".", ",") + " MB";
+  if(w.pominiete.length) t += " · pominięte (" + w.pominiete.length + "): " +
+    w.pominiete.slice(0, 3).join(", ") + (w.pominiete.length > 3 ? "…" : "");
+  if(w.nieobrazy) t += " · plików, które nie są obrazami: " + w.nieobrazy;
+  return t + ".";
+}
+$("#batch").addEventListener("click", ()=>{
+  if(wTrakcie){ przerwij = true; $("#batch").textContent = "Przerywam po bieżącym pliku…"; return; }
+  $("#batch-dir").click();
+});
+$("#batch-dir").addEventListener("change", async e=>{
+  const pliki = [...e.target.files];
+  e.target.value = "";
+  if(!pliki.length) return;
+  wTrakcie = true; przerwij = false;
+  zablokujPanel(true);
+  $("#batch").textContent = "Przerwij";
+  try{
+    const w = await przetworzFolder(pliki, {
+      postep: (i, n, nazwa) => komunikatFolderu("Przetwarzam " + (i+1) + " z " + n + ": " + nazwa),
+      przerwano: () => przerwij
+    });
+    if(!w.wszystkich){ komunikatFolderu("W wybranym folderze nie ma obrazów."); return; }
+    if(w.zip){
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(w.zip);
+      a.download = "raster-" + nazwaFolderu(pliki) + "-" + Date.now() + ".zip";
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 10000);
+    }
+    komunikatFolderu(opisWyniku(w));
+  } catch(err){
+    komunikatFolderu("Przerwano: " + err.message);
+  } finally {
+    wTrakcie = false;
+    zablokujPanel(false);
+    $("#batch").textContent = "Przetwórz cały folder";
+    schedule();                 /* podgląd wraca do obrazu sprzed przetwarzania */
+  }
 });
 /* ---------- zapis ---------- */
 $("#fmt").addEventListener("change", e=>{

@@ -57,6 +57,8 @@ src/dither.js     ditherData() ogarnia canvas i worker, renderDither() rysuje
 src/halftone.js   sampler, collectScreen() liczy punkty, drawScreen() rysuje
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
+src/batch.js      przetwarzanie całego folderu tymi samymi ustawieniami
+src/zip.js        zapis paczki ZIP bez kompresji, bez zależności
 src/presets.js    wbudowane punkty startowe
 src/app.js        kontrolki, presety, wczytywanie plików, zapis
 ```
@@ -72,6 +74,27 @@ są asynchroniczne i zwracają `null`, gdy zadanie zostało wyparte świeższym
 (przeciąganie suwaka). Do zapisu pliku wołaj je z `{keep:true}` — takie zadanie
 nie wypada z kolejki. Gdy workera nie ma, liczenie leci na głównym wątku tą samą
 funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
+
+## Cały folder naraz
+
+„Przetwórz cały folder" w grupie *Obraz* przepuszcza wszystkie obrazy z
+wybranego folderu (razem z podfolderami) przez bieżące ustawienia — tryb,
+wygląd, paletę, skalę i format zapisu — i oddaje jeden plik ZIP. Struktura
+podfolderów zostaje zachowana, a nazwy plików są takie jak oryginały, tylko
+z rozszerzeniem `.png` albo `.svg`.
+
+Na czas pracy panel jest zablokowany, żeby cały folder wyszedł w jednych
+ustawieniach; „Przerwij" kończy po bieżącym pliku i oddaje to, co już jest
+gotowe. Pliki, które nie są obrazami albo się nie otwierają, są pomijane
+i wymienione w komunikacie. Obraz w podglądzie wraca na miejsce po skończeniu.
+
+Paczka powstaje w pamięci przeglądarki i ma limit 4 GB (klasyczny ZIP).
+Przy zapisie w skali 4–6× każdy plik to dziesiątki MB, więc duże foldery
+lepiej dzielić albo zejść ze skalą.
+
+Paczkę otwieraj dwuklikiem w Finderze. Systemowy `unzip` w terminalu macOS
+przekręca polskie znaki w nazwach plików — nie obsługuje flagi UTF-8, którą
+ZIP ustawia. Z terminala użyj `ditto -x -k paczka.zip folder`.
 
 ## Efekty po rastrze
 
@@ -170,7 +193,6 @@ pikselizację na 3–4×.
 ## Co dalej
 
 - [ ] obrys konturowy zamiast kwadracików (potrace) jako druga opcja wektora
-- [ ] batch na folderze plików
 
 ## Licencja
 

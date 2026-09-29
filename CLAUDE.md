@@ -103,6 +103,14 @@ przez z. Nie licz efektów od nowa w rozdzielczości zapisu — wyjdzie inny obr
 Test skali dla efektów: efekt na obrazie powiększonym z razy musi dać
 dokładnie powiększony efekt, co do bajtu (tak robi test w Node).
 
+**Przetwarzanie folderu** (`batch.js`) używa tych samych funkcji renderu co
+podgląd i zapis — nie pisz dla niego osobnej ścieżki, bo paczka rozjedzie się
+z pojedynczym eksportem (dziś PNG z paczki jest co do piksela taki sam jak
+zapis tego obrazu ręcznie). Stan zapamiętywany na starcie i przywracany przed
+każdym plikiem; nowe pole w S, które wpływa na wynik, musi być w `LOOK` albo
+w `KLUCZE` w batch.js. Panel na czas pracy dostaje `inert`, nie samo
+`pointer-events`, bo klawiatura dalej ruszałaby suwaki.
+
 **Cache przeglądarki przy testach.** `python3 -m http.server` nie wysyła
 nagłówków cache i przeglądarka potrafi podać stary moduł obok nowych — objawia
 się to błędami typu „X is not a function" dla funkcji, która na dysku istnieje.

@@ -114,3 +114,6 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 .stage.over{outline:2px solid var(--magenta); outline-offset:-10px}
 .hint{color:var(--soft); font-size:12px; margin:8px 0 0}
 .hidden{display:none !important}
+
+/* przetwarzanie folderu: reszta panelu przygaszona i wyłączona (inert) */
+.panel.zajete .group[inert], .panel.zajete #g-obraz .btn:disabled{opacity:.4}
