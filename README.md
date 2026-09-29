@@ -218,6 +218,7 @@ pikselizację na 3–4×.
 
 ## Co dalej
 
+Wszystko z dotychczasowej listy jest zrobione.
 
 ## Licencja
 
