@@ -94,6 +94,11 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 
 .presets{display:flex; flex-wrap:wrap; gap:6px}
 .presets .btn{width:auto; flex:1 1 auto; padding:5px 9px; font-size:13px}
+.presets .moj{display:flex; flex:1 1 auto}
+.presets .moj .btn{border-style:dashed}
+.presets .moj .usun{flex:0 0 auto; padding:5px 8px; border-left:0; color:var(--soft)}
+.presets .moj .usun:hover{color:var(--ink)}
+.btns input[type=text]{flex:1 1 auto; min-width:0}
 
 .stage{
   background:var(--stage); display:flex; align-items:center; justify-content:center;

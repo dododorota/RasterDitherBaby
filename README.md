@@ -95,9 +95,18 @@ ale podgląd przy dużych paletach dociera z opóźnieniem.
 
 ## Presety
 
-Cztery wbudowane na tryb, plus zapis własnych ustawień do pliku JSON
-(„Zapisz ustawienia") i wczytanie z powrotem („Wczytaj plik" albo przeciągnięcie
-`.json` na podgląd).
+Cztery wbudowane na tryb, plus dwa sposoby na własne:
+
+- **„Zapamiętaj"** — preset ląduje w przeglądarce jako przycisk obok
+  wbudowanych (w przerywanej ramce, z × do usuwania). Bez nazwy dostaje
+  kolejny numer, ta sama nazwa nadpisuje. Każdy tryb ma swoje.
+- **„Zapisz do pliku" / „Wczytaj plik"** — JSON, który można przenieść na inny
+  komputer albo komuś wysłać; plik da się też przeciągnąć na podgląd.
+
+Presety w przeglądarce są przypisane do adresu, pod którym otwierasz apkę:
+`localhost:8000` i `localhost:3000` to dla przeglądarki dwa różne miejsca,
+a wyczyszczenie danych stron je kasuje. **Na stałe trzymaj ważne presety
+w plikach.**
 
 Preset jest **pełnym opisem wyglądu**: wszystkie klucze z `LOOK`, czyli korekta,
 algorytm, paleta, kolory i cały raster. Kluczy, których nie podaje, nie
@@ -135,7 +144,6 @@ pikselizację na 3–4×.
 - [ ] obrys konturowy zamiast kwadracików (potrace) jako druga opcja wektora
 - [ ] batch na folderze plików
 - [ ] efekty po rastrze: pixel sort, RGB shift, przesunięcie kanałów
-- [ ] własne presety zapamiętane w przeglądarce, żeby nie trzymać ich w plikach
 - [ ] szybsze szukanie koloru dla palet 128+ — skan kosztuje wtedy 4–7× więcej
       niż 1-bit; odcinanie po luminancji nie działa (patrz CLAUDE.md), trzeba
       by zmierzyć drzewo k-d albo siatkę kubełków

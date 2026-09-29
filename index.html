@@ -39,7 +39,11 @@
       </div>
       <div class="presets" style="margin-top:10px" id="presets"></div>
       <div class="btns" style="margin-top:8px">
-        <button class="btn" id="preset-save">Zapisz ustawienia</button>
+        <input type="text" id="preset-name" maxlength="40" placeholder="Nazwa własnego presetu" aria-label="Nazwa własnego presetu">
+        <button class="btn" id="preset-keep" style="width:auto">Zapamiętaj</button>
+      </div>
+      <div class="btns" style="margin-top:8px">
+        <button class="btn" id="preset-save">Zapisz do pliku</button>
         <button class="btn" id="preset-load">Wczytaj plik</button>
       </div>
       <input type="file" id="preset-file" accept="application/json,.json" class="hidden">

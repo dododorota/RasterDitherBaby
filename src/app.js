@@ -143,6 +143,17 @@ function buildPresets(){
     b.addEventListener("click", ()=>applyPreset(cfg));
     box.appendChild(b);
   }
+  for(const p of czytajMoje().filter(p=>p.tryb===S.mode)){
+    const para=document.createElement("span"); para.className="moj";
+    const b=document.createElement("button");
+    b.className="btn"; b.textContent=p.nazwa; b.title="Własny preset zapamiętany w tej przeglądarce";
+    b.addEventListener("click", ()=>komunikat(zastosujPreset(p, "„"+p.nazwa+"”")));
+    const x=document.createElement("button");
+    x.className="btn usun"; x.textContent="×"; x.setAttribute("aria-label", "Usuń preset "+p.nazwa);
+    x.addEventListener("click", ()=>usunMoj(p.nazwa, p.tryb));
+    para.append(b, x);
+    box.appendChild(para);
+  }
 }
 /* Preset to pełny opis wyglądu: klucze, których nie podaje, wracają do wartości
    domyślnych, zamiast zostawać po poprzednim presecie. Inaczej „Gazeta" po
@@ -152,17 +163,53 @@ function applyPreset(cfg){
   syncUI();
   schedule();
 }
-buildPresets();
-/* ---------- presety w pliku ---------- */
+/* ---------- presety w pliku i w przeglądarce ----------
+   Jeden format na oba miejsca: to, co ląduje w pliku JSON, ląduje też w
+   localStorage (plus nazwa). Dzięki temu oba wczytują się przez tę samą,
+   nieufną zastosujPreset() — dane z localStorage też mogły zostać zmienione. */
 const WERSJA = 1;
 function komunikat(t){ $("#preset-msg").textContent = t; }
 
-$("#preset-save").addEventListener("click", ()=>{
+function biezacyPreset(){
   const look={}; for(const k of LOOK) look[k]=S[k];
   const dane={app:"raster", wersja:WERSJA, zapisano:new Date().toISOString(), tryb:S.mode, look};
   /* bez kolorów preset z paletą własną byłby nieodtwarzalny */
   if(S.pal==="custom" && S.custom) dane.paleta = {nazwa:S.custom.nazwa, kolory:S.custom.kolory};
-  const blob=new Blob([JSON.stringify(dane,null,2)], {type:"application/json"});
+  return dane;
+}
+/* Stosuje preset w formacie pliku i zwraca komunikat dla panelu. */
+function zastosujPreset(dane, skad){
+  if(!dane || typeof dane!=="object" || dane.app!=="raster" || !dane.look || typeof dane.look!=="object")
+    return "To nie wygląda na preset Rastra.";
+  /* bierzemy tylko klucze o typie zgodnym z domyślnym — plik z innej wersji
+     albo ręcznie podłubany nie wsadzi do S czegoś, czego panel nie ogarnie */
+  let odrzucone=0;
+  for(const k of LOOK){
+    const v=dane.look[k];
+    if(v!==undefined && typeof v===typeof DEFAULTS[k]) S[k]=v;
+    else { S[k]=DEFAULTS[k]; if(v!==undefined) odrzucone++; }
+  }
+  let uwagaPalety = "";
+  if(dane.paleta !== undefined){
+    try{ const p = paletaZDanych(dane.paleta); S.custom = {nazwa:p.nazwa, kolory:p.kolory}; }
+    catch{ uwagaPalety = " Zapisana w nim paleta była uszkodzona i została pominięta."; }
+  }
+  opcjaPalety();
+  /* syncUI przycina liczby do zakresu suwaków, odrzuca nieznane opcje list
+     i normalizuje kolory. Porównanie przed i po wyłapuje te poprawki, bo
+     inaczej plik z gęstością 9999 wczytywałby się bez słowa komentarza. */
+  const chciane={}; for(const k of LOOK) chciane[k]=S[k];
+  if(dane.tryb==="dither" || dane.tryb==="half") setMode(dane.tryb);
+  syncUI();
+  const poprawione = LOOK.filter(k => S[k]!==chciane[k]).length;
+  schedule();
+  const n = odrzucone + poprawione;
+  return (n ? "Wczytano "+skad+". Wartości spoza tego, co panel potrafi ustawić: "+n+" — cofnięte do poprawnych."
+            : "Wczytano "+skad+".") + uwagaPalety;
+}
+
+$("#preset-save").addEventListener("click", ()=>{
+  const blob=new Blob([JSON.stringify(biezacyPreset(),null,2)], {type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="raster-"+S.mode+"-"+Date.now()+".json";
@@ -183,37 +230,58 @@ function wczytajPreset(f){
     let dane;
     try{ dane=JSON.parse(fr.result); }
     catch{ komunikat("To nie jest poprawny JSON."); return; }
-    if(!dane || typeof dane!=="object" || dane.app!=="raster" || !dane.look || typeof dane.look!=="object"){
-      komunikat("To nie wygląda na preset Rastra."); return;
-    }
-    /* bierzemy tylko klucze o typie zgodnym z domyślnym — plik z innej wersji
-       albo ręcznie podłubany nie wsadzi do S czegoś, czego panel nie ogarnie */
-    let odrzucone=0;
-    for(const k of LOOK){
-      const v=dane.look[k];
-      if(v!==undefined && typeof v===typeof DEFAULTS[k]) S[k]=v;
-      else { S[k]=DEFAULTS[k]; if(v!==undefined) odrzucone++; }
-    }
-    /* syncUI przycina liczby do zakresu suwaków, odrzuca nieznane opcje list
-       i normalizuje kolory. Porównanie przed i po wyłapuje te poprawki, bo
-       inaczej plik z gęstością 9999 wczytywałby się bez słowa komentarza. */
-    let uwagaPalety = "";
-    if(dane.paleta !== undefined){
-      try{ const p = paletaZDanych(dane.paleta); S.custom = {nazwa:p.nazwa, kolory:p.kolory}; }
-      catch{ uwagaPalety = " Paleta zapisana w pliku była uszkodzona i została pominięta."; }
-    }
-    opcjaPalety();
-    const chciane={}; for(const k of LOOK) chciane[k]=S[k];
-    if(dane.tryb==="dither" || dane.tryb==="half") setMode(dane.tryb);
-    syncUI();
-    const poprawione = LOOK.filter(k => S[k]!==chciane[k]).length;
-    schedule();
-    const n = odrzucone + poprawione;
-    komunikat((n ? "Wczytano. Wartości spoza tego, co panel potrafi ustawić: "+n+" — cofnięte do poprawnych."
-                 : "Wczytano ustawienia z pliku.") + uwagaPalety);
+    komunikat(zastosujPreset(dane, "ustawienia z pliku"));
   };
   fr.readAsText(f);
 }
+
+/* Presety w localStorage. Każdy dostęp w try/catch: w trybie prywatnym, przy
+   zablokowanych danych stron albo pełnym magazynie localStorage rzuca, a apka
+   ma wtedy działać dalej, tylko bez tej funkcji. Pamiętaj, że localStorage jest
+   przypisany do adresu — inny port serwera to inne presety. */
+const KLUCZ_MOICH = "raster.presety";
+function czytajMoje(){
+  try{
+    const a = JSON.parse(localStorage.getItem(KLUCZ_MOICH) || "[]");
+    if(!Array.isArray(a)) return [];
+    return a.filter(p => p && typeof p==="object" && p.app==="raster" && typeof p.nazwa==="string"
+                         && p.nazwa.trim() && (p.tryb==="dither" || p.tryb==="half")
+                         && p.look && typeof p.look==="object");
+  }catch{ return []; }
+}
+function zapiszMoje(a){
+  try{ localStorage.setItem(KLUCZ_MOICH, JSON.stringify(a)); return true; }
+  catch{ return false; }
+}
+function zapamietaj(){
+  const pole=$("#preset-name"), moje=czytajMoje();
+  let nazwa=pole.value.trim().slice(0,40);
+  if(!nazwa){
+    let i=1; while(moje.some(p=>p.tryb===S.mode && p.nazwa==="Własny "+i)) i++;
+    nazwa="Własny "+i;
+  }
+  const nowy=Object.assign(biezacyPreset(), {nazwa});
+  const byl=moje.findIndex(p=>p.tryb===S.mode && p.nazwa===nazwa);
+  if(byl>=0) moje[byl]=nowy; else moje.push(nowy);
+  if(!zapiszMoje(moje)){
+    komunikat("Przeglądarka nie pozwoliła zapamiętać presetu (tryb prywatny albo brak miejsca). Zapisz go do pliku.");
+    return;
+  }
+  pole.value="";
+  buildPresets();
+  komunikat((byl>=0 ? "Nadpisano" : "Zapamiętano")+" „"+nazwa+"” w tej przeglądarce.");
+}
+function usunMoj(nazwa, tryb){
+  if(!confirm("Usunąć preset „"+nazwa+"”?")) return;
+  if(!zapiszMoje(czytajMoje().filter(p=>!(p.tryb===tryb && p.nazwa===nazwa)))){
+    komunikat("Nie udało się usunąć presetu."); return;
+  }
+  buildPresets();
+  komunikat("Usunięto „"+nazwa+"”.");
+}
+$("#preset-keep").addEventListener("click", zapamietaj);
+$("#preset-name").addEventListener("keydown", e=>{ if(e.key==="Enter") zapamietaj(); });
+buildPresets();
 /* ---------- paleta własna ---------- */
 function komunikatPalety(t){ $("#pal-msg").textContent = t; }
 $("#pal-load").addEventListener("click", ()=>$("#pal-file").click());

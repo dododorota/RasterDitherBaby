@@ -31,6 +31,11 @@ nawet jeśli kod jest czystszy.
   Opcja „Własna" istnieje w liście tylko przy wczytanej palecie; wołaj
   `opcjaPalety()` przed `syncUI()` za każdym razem, gdy zmieniasz `S.custom`,
   bo inaczej `syncUI()` odrzuci `pal:"custom"` jako nieznaną opcję.
+- **Presety z pliku i z przeglądarki mają jeden format i jedną ścieżkę**:
+  `biezacyPreset()` buduje obiekt, `zastosujPreset()` go nieufnie wczytuje.
+  Nie pisz drugiej walidacji dla localStorage — dane stamtąd też mogły zostać
+  zmienione. Każdy dostęp do localStorage w try/catch: w trybie prywatnym
+  i przy pełnym magazynie rzuca, a apka ma działać dalej.
 - **`palette-files.js` jest czysty**, bez DOM-u — testuj go w Node, nie w
   przeglądarce. Nowy format dopisuj tam, rozpoznawany po zawartości. Wyjątkiem
   jest paleta z obrazka (`paletaZObrazka()` w app.js), bo potrzebuje canvasu;
