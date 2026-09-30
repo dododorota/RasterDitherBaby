@@ -1,0 +1,5 @@
+# Końce linii LF na każdym systemie — bez tego Git na Windowsie potrafi
+# zamienić je na CRLF i w diffach pojawiają się zmiany w całych plikach.
+* text=auto eol=lf
+*.png binary
+*.zip binary

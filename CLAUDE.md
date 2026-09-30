@@ -1,5 +1,8 @@
 # Notatki dla Claude Code
 
+**Zanim zaczniesz: przeczytaj `PROCES.md`** — stan prac, co jest niescalone,
+czego nie sprawdzono i jakie decyzje czekają na użytkowniczkę.
+
 ## Czym to jest
 
 Przeglądarkowe narzędzie do ditheringu i rastra drukarskiego dla projektantki
@@ -8,7 +11,9 @@ nawet jeśli kod jest czystszy.
 
 ## Zasady
 
-- **Bez buildu i bez zależności.** Czysty JS, moduły ES, `npx serve .`.
+- **Bez buildu i bez zależności.** Czysty JS, moduły ES, `python3 serwer.py`
+  (albo `npx serve .`). Do testów przeglądarkowych używaj `serwer.py` — bez
+  cache, więc nie złapiesz starego modułu.
   Nie dodawaj bundlera, TypeScriptu ani frameworka bez wyraźnej prośby.
 - **Liczenie oddzielone od rysowania.** `ditherData()` i `collectScreen()`
   zwracają dane; canvas i SVG są ich konsumentami. Nowy efekt dodawaj w tej samej
@@ -177,7 +182,12 @@ jeśli nieregularną, zostaw `null`.
 
 ## Jak testować
 
-Nie ma testów automatycznych i na razie nie są potrzebne. Ręcznie:
+Nie ma zestawu testów w sensie frameworka. Są skrypty weryfikacyjne w `testy/`
+(czysty Node, bez zależności, `node testy/<plik>.mjs` z katalogu projektu) —
+puść odpowiedni po zmianie w module, który sprawdza: `palety-pliki` →
+palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
+contours.js, `szukanie-koloru` → palettes.js. Każdy kończy się kodem 0, gdy
+wszystko gra. Do tego ręcznie:
 przycisk „Próbka" wczytuje wygenerowany obraz z gradientami, cieniem i płaską
 powierzchnią — na nim widać banding, odcięcia w cieniach i migotanie rastra.
 Po zmianach przejdź presety w obu trybach.

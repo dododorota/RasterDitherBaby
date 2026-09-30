@@ -8,16 +8,18 @@ nic nie wychodzi na serwer. Eksport do PNG i do SVG.
 Moduły ES nie działają z `file://`, więc potrzebny jest lokalny serwer:
 
 ```bash
-npx serve .
-# albo bez node'a:
-python3 -m http.server 8000
+python3 serwer.py      # Windows: py serwer.py
 ```
 
 Potem `http://localhost:8000`. Zero zależności, zero buildu — edytujesz plik,
-odświeżasz kartę. **Jeśli zmiany nie widać, zrób twarde odświeżenie**
-(Cmd+Shift+R): `python3 -m http.server` nie wysyła nagłówków cache i przeglądarka
-potrafi podać stary moduł obok nowych — na przykład nowy `app.js` ze starym
-`dither-core.js`, co daje błędy, których w kodzie nie ma.
+odświeżasz kartę.
+
+`serwer.py` to zwykły serwer Pythona z dwiema poprawkami: wyłącza cache
+(inaczej przeglądarka potrafi podać stary moduł obok nowych — nowy `app.js`
+ze starym `dither-core.js` — co daje błędy, których w kodzie nie ma) i jawnie
+podaje typ plików `.js` (na Windowsie `python -m http.server` potrafi wziąć go
+z rejestru jako `text/plain` i apka wtedy w ogóle nie startuje). `npx serve .`
+też działa, ale po zmianach rób twarde odświeżenie (Cmd/Ctrl+Shift+R).
 
 ## Co robi
 
@@ -62,6 +64,9 @@ src/batch.js      przetwarzanie całego folderu tymi samymi ustawieniami
 src/zip.js        zapis paczki ZIP bez kompresji, bez zależności
 src/presets.js    wbudowane punkty startowe
 src/app.js        kontrolki, presety, wczytywanie plików, zapis
+serwer.py         serwer do pracy: bez cache, z poprawnym typem .js
+testy/            skrypty weryfikacyjne (node, bez zależności)
+PROCES.md         przebieg prac, stan i otwarte decyzje
 ```
 
 Kluczowa zasada: **liczenie jest oddzielone od rysowania**. `ditherData()`
