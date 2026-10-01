@@ -11,6 +11,15 @@ nawet jeśli kod jest czystszy.
 
 ## Zasady
 
+- **Terminal: Git Bash, nie PowerShell.** Polecenia uruchamiaj w Git Bashu
+  (składnia POSIX, ukośniki `/`).
+- **Git tylko do odczytu.** Wolno sprawdzać (`git status`, `git log`,
+  `git diff`, `git show`, `git branch` bez argumentów itp.). Nie wolno niczego,
+  co zmienia repo albo pliki: commit, push, add, checkout, reset, restore,
+  stash, rm, clean, merge, rebase, tworzenie i usuwanie gałęzi, dodawanie
+  zdalnych repo. To robi użytkowniczka — jeśli trzeba, podaj gotowe polecenie
+  do skopiowania.
+
 - **Bez buildu i bez zależności.** Czysty JS, moduły ES, `python3 serwer.py`
   (albo `npx serve .`). Do testów przeglądarkowych używaj `serwer.py` — bez
   cache, więc nie złapiesz starego modułu.
