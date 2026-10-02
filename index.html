@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Archivo+Expanded:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/styles.css">
+<!-- motyw przed pierwszym malowaniem, żeby jasna strona nie mignęła;
+     domyślnie ciemny, wybór zapamiętany (localStorage może rzucić — wtedy ciemny) -->
+<script>
+  (function(){ var m = null; try{ m = localStorage.getItem("raster.motyw"); }catch(e){}
+    document.documentElement.setAttribute("data-theme", m === "light" ? "light" : "dark"); })();
+</script>
 </head>
 <body>
 <header>
@@ -16,6 +22,7 @@
   <span class="reg" aria-hidden="true">
     <i style="background:var(--cyan)"></i><i style="background:var(--magenta)"></i><i style="background:var(--yellow)"></i>
   </span>
+  <button class="btn motyw" id="motyw" aria-label="Przełącz jasny i ciemny wygląd">Jasny</button>
 </header>
 
 <div class="layout">
@@ -24,21 +31,95 @@
     <div class="group" id="g-obraz">
       <h2>Obraz</h2>
       <div class="btns">
-        <button class="btn solid" id="load">Wczytaj obraz</button>
+        <button class="btn solid" id="load">Otwórz plik</button>
         <button class="btn" id="sample">Próbka</button>
       </div>
+      <button class="btn hidden" id="animuj" style="margin-top:8px">Animuj obraz — klatki kluczowe</button>
+      <button class="btn hidden" id="komp-start" style="margin-top:8px">Kompozycja z warstw</button>
       <button class="btn" id="batch" style="margin-top:8px">Przetwórz cały folder</button>
       <input type="file" id="batch-dir" webkitdirectory multiple class="hidden">
+      <p class="hint" id="load-msg"></p>
       <p class="hint" id="batch-msg"></p>
-      <p class="hint">Możesz też przeciągnąć plik na podgląd albo wkleić ze schowka (Ctrl/Cmd+V).</p>
-      <input type="file" id="file" accept="image/*" class="hidden">
+      <p class="hint">Możesz też przeciągnąć plik na podgląd albo wkleić ze schowka (Ctrl/Cmd+V). Filmy: MP4, WebM, MOV; animacje: GIF, WebP.</p>
+      <input type="file" id="file" accept="image/*,video/*,.mov,.mkv" class="hidden">
+    </div>
+
+    <div class="group hidden" id="g-warstwy">
+      <h2>Warstwy</h2>
+      <div class="row"><label for="komp-format">Płótno</label></div>
+      <select id="komp-format">
+        <option value="">Własny rozmiar</option>
+        <option value="1080x1080">Kwadrat 1:1 — 1080 × 1080</option>
+        <option value="1080x1350">Post 4:5 — 1080 × 1350</option>
+        <option value="1080x1920">Story 9:16 — 1080 × 1920</option>
+        <option value="1920x1080">Poziomo 16:9 — 1920 × 1080</option>
+        <option value="2480x3508">A4 pionowo — 2480 × 3508</option>
+      </select>
+      <div class="btns" style="margin-top:8px">
+        <input type="number" id="komp-szer" min="16" max="4000" aria-label="Szerokość płótna w pikselach">
+        <span class="razy">×</span>
+        <input type="number" id="komp-wys" min="16" max="4000" aria-label="Wysokość płótna w pikselach">
+      </div>
+      <div class="swatches" style="margin-top:8px">
+        <input type="color" id="komp-tlo" value="#000000" aria-label="Kolor tła płótna">
+        <label class="check" style="margin:0"><input type="checkbox" id="komp-przezr"> Przezroczyste tło</label>
+      </div>
+      <button class="btn" id="komp-dodaj" style="margin-top:10px">+ Dodaj obraz</button>
+      <input type="file" id="komp-plik" accept="image/*" multiple class="hidden">
+      <div class="warstwy-lista" id="komp-lista" role="listbox" aria-label="Warstwy, od góry"></div>
+      <div id="komp-wlasciwosci" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="komp-x">Położenie X</label><span class="val" id="komp-x-v">0</span></div>
+        <input type="range" id="komp-x" min="0" max="1080" value="540">
+        <div class="row"><label for="komp-y">Położenie Y</label><span class="val" id="komp-y-v">0</span></div>
+        <input type="range" id="komp-y" min="0" max="1350" value="675">
+        <div class="row"><label for="komp-skala">Skala</label><span class="val" id="komp-skala-v">100%</span></div>
+        <input type="range" id="komp-skala" min="5" max="400" value="100">
+        <div class="row"><label for="komp-obrot">Obrót</label><span class="val" id="komp-obrot-v">0°</span></div>
+        <input type="range" id="komp-obrot" min="-180" max="180" value="0">
+        <div class="row"><label for="komp-krycie">Krycie</label><span class="val" id="komp-krycie-v">100%</span></div>
+        <input type="range" id="komp-krycie" min="0" max="100" value="100">
+        <div class="row"><label for="komp-tryb">Mieszanie</label></div>
+        <select id="komp-tryb"></select>
+        <button class="btn" id="komp-srodek" style="margin-top:8px">Wyśrodkuj i dopasuj</button>
+      </div>
+      <p class="hint">Zaznaczoną warstwę przesuwasz też myszą na podglądzie. Otwarty albo przeciągnięty plik trafia jako nowa warstwa. Efekty działają na całą kompozycję.</p>
+      <button class="btn" id="komp-koniec" style="margin-top:6px">Zakończ kompozycję</button>
+    </div>
+
+    <div class="group hidden" id="g-wideo">
+      <h2 id="wideo-tytul">Wideo</h2>
+      <p class="hint" id="wideo-info" style="margin-top:0"></p>
+      <div id="tempo-opcje">
+        <div class="row"><label for="tempo">Klatki na sekundę</label></div>
+        <select id="tempo">
+          <option value="0" id="tempo-plik">Jak w pliku</option>
+          <option value="8">8 — szarpane</option>
+          <option value="12">12 — jak animacja</option>
+          <option value="15">15</option>
+          <option value="24">24</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
+        </select>
+      </div>
+      <div id="dlugosc-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="dlugosc">Długość</label><span class="val" id="dlugosc-v">4 s</span></div>
+        <input type="range" id="dlugosc" min="1" max="30" value="4">
+      </div>
+      <div class="row" style="margin-top:12px"><label for="od">Początek</label><span class="val" id="od-v">0:00.0</span></div>
+      <input type="range" id="od" min="0" max="0" value="0">
+      <div class="row"><label for="do">Koniec</label><span class="val" id="do-v">0:00.0</span></div>
+      <input type="range" id="do" min="0" max="0" value="0">
+      <p class="hint"><strong>◆ przy suwaku</strong> dodaje klatkę kluczową w bieżącym miejscu osi czasu. Parametr z klatkami zmienia się płynnie między nimi, a ruszenie jego suwaka w innym miejscu osi samo dodaje następną klatkę.</p>
+      <p class="hint">Dyfuzja błędu potrafi migotać między klatkami. Spokojniejszy obraz dają algorytmy uporządkowane (Bayer, siatka punktowa) i raster drukarski.</p>
+      <button class="btn hidden" id="anim-koniec" style="margin-top:10px">Zakończ animację</button>
     </div>
 
     <div class="group">
       <h2>Tryb</h2>
       <div class="tabs" role="tablist">
         <button role="tab" id="tab-dither" aria-selected="true">Dithering</button>
-        <button role="tab" id="tab-half" aria-selected="false">Raster drukarski</button>
+        <button role="tab" id="tab-half" aria-selected="false" title="Raster drukarski">Raster</button>
+        <button role="tab" id="tab-ascii" aria-selected="false">ASCII</button>
       </div>
       <div class="presets" style="margin-top:10px" id="presets"></div>
       <div class="btns" style="margin-top:8px">
@@ -50,6 +131,7 @@
         <button class="btn" id="preset-load">Wczytaj plik</button>
       </div>
       <input type="file" id="preset-file" accept="application/json,.json" class="hidden">
+      <button class="btn" id="look-reset" style="margin-top:8px">Przywróć wszystko do domyślnych</button>
       <p class="hint" id="preset-msg"></p>
     </div>
 
@@ -59,17 +141,34 @@
       <input type="range" id="bri" min="-100" max="100" value="0">
       <div class="row"><label for="con">Kontrast</label><span class="val" id="con-v">0</span></div>
       <input type="range" id="con" min="-100" max="100" value="0">
-      <div class="row"><label for="gam">Gamma</label><span class="val" id="gam-v">1.00</span></div>
+      <div class="row"><label for="cienie">Cienie</label><span class="val" id="cienie-v">0</span></div>
+      <input type="range" id="cienie" min="-100" max="100" value="0">
+      <div class="row"><label for="gam">Półtony (gamma)</label><span class="val" id="gam-v">1.00</span></div>
       <input type="range" id="gam" min="30" max="300" value="100">
+      <div class="row"><label for="swiatla">Światła</label><span class="val" id="swiatla-v">0</span></div>
+      <input type="range" id="swiatla" min="-100" max="100" value="0">
+      <div class="row"><label for="nasycenie">Nasycenie</label><span class="val" id="nasycenie-v">0</span></div>
+      <input type="range" id="nasycenie" min="-100" max="100" value="0">
+      <div class="row"><label for="odcien">Odcień</label><span class="val" id="odcien-v">0°</span></div>
+      <input type="range" id="odcien" min="-180" max="180" value="0">
+      <div class="row"><label for="blur">Rozmycie</label><span class="val" id="blur-v">brak</span></div>
+      <input type="range" id="blur" min="0" max="20" value="0">
+      <div class="row"><label for="ostrosc">Wyostrzanie</label><span class="val" id="ostrosc-v">brak</span></div>
+      <input type="range" id="ostrosc" min="0" max="100" value="0">
+      <div class="row"><label for="odszum">Odszumianie</label><span class="val" id="odszum-v">brak</span></div>
+      <input type="range" id="odszum" min="0" max="100" value="0">
       <div class="row"><label for="pix">Pikselizacja</label><span class="val" id="pix-v">1×</span></div>
       <input type="range" id="pix" min="1" max="16" value="1">
       <label class="check"><input type="checkbox" id="inv"> Negatyw</label>
+      <button class="btn" id="korekta-reset" style="margin-top:6px">Przywróć korektę</button>
     </div>
 
     <!-- DITHER -->
     <div class="group" id="g-dither">
       <h2>Algorytm</h2>
-      <select id="algo">
+      <div class="pal-wybor">
+      <button class="btn" id="algo-prev" aria-label="Poprzedni algorytm" title="Poprzedni algorytm">◀</button>
+      <select id="algo" aria-label="Algorytm">
         <optgroup label="Dyfuzja błędu">
           <option value="floyd" selected>Floyd–Steinberg</option>
           <option value="atkinson">Atkinson</option>
@@ -79,18 +178,37 @@
           <option value="sierra">Sierra</option>
           <option value="sierra2">Sierra 2</option>
           <option value="sierraLite">Sierra Lite</option>
+          <option value="falseFloyd">False Floyd–Steinberg</option>
+          <option value="fan">Fan</option>
+          <option value="shiauFan">Shiau–Fan</option>
+          <option value="shiauFan2">Shiau–Fan 2</option>
+          <option value="stevenson">Stevenson–Arce</option>
+          <option value="ostromoukhov">Ostromukhov — zmienne wagi</option>
+          <option value="riemersma">Riemersma — krzywa Hilberta</option>
         </optgroup>
         <optgroup label="Uporządkowany">
           <option value="bayer2">Bayer 2×2</option>
           <option value="bayer4">Bayer 4×4</option>
           <option value="bayer8">Bayer 8×8</option>
+          <option value="bayer16">Bayer 16×16</option>
           <option value="cluster">Siatka punktowa 4×4</option>
+          <option value="niebieski">Niebieski szum</option>
+          <option value="ign">Szum gradientowy (IGN)</option>
           <option value="noise">Szum losowy</option>
+        </optgroup>
+        <optgroup label="Wzory">
+          <option value="linieH">Linie poziome</option>
+          <option value="linieV">Linie pionowe</option>
+          <option value="ukosne">Linie ukośne</option>
+          <option value="krzyze">Krzyżyki</option>
+          <option value="kropki8">Kropki 8×8</option>
         </optgroup>
         <optgroup label="Bez ditheringu">
           <option value="threshold">Próg</option>
         </optgroup>
       </select>
+      <button class="btn" id="algo-next" aria-label="Następny algorytm" title="Następny algorytm">▶</button>
+      </div>
       <div class="row" style="margin-top:12px"><label for="str">Siła</label><span class="val" id="str-v">100%</span></div>
       <input type="range" id="str" min="0" max="150" value="100">
       <div class="row"><label for="thr">Punkt bieli</label><span class="val" id="thr-v">0</span></div>
@@ -100,27 +218,103 @@
 
     <div class="group" id="g-pal">
       <h2>Paleta</h2>
-      <select id="pal">
-        <option value="bw" selected>1-bit (dwa kolory)</option>
-        <option value="gray4">Szarości — 4 poziomy</option>
-        <option value="gray8">Szarości — 8 poziomów</option>
-        <option value="gameboy">Game Boy</option>
-        <option value="cga">CGA</option>
-        <option value="rgb3">3-bit RGB</option>
-        <option value="quant">Kolor — 4 poziomy na kanał</option>
+      <div class="pal-wybor">
+        <button class="btn" id="pal-prev" aria-label="Poprzednia paleta" title="Poprzednia paleta">◀</button>
+        <select id="pal" aria-label="Paleta"></select>
+        <button class="btn" id="pal-next" aria-label="Następna paleta" title="Następna paleta">▶</button>
+      </div>
+      <div class="row" style="margin-top:12px"><label for="mapa">Kolory przypisane</label></div>
+      <select id="mapa">
+        <option value="kolor" selected>Najbliższy kolor ze zdjęcia</option>
+        <option value="jasnosc">Według jasności — gradient</option>
       </select>
+      <p class="hint" id="mapa-hint">Każdy piksel dostaje kolor palety najbliższy swojemu.</p>
+      <label class="check" id="percept-opcja"><input type="checkbox" id="percept"> Dopasowanie percepcyjne (Oklab)</label>
+      <div id="glebia-opcje" class="hidden">
+        <div class="row"><label for="glebia">Głębia koloru</label><span class="val" id="glebia-v">4 poziomy</span></div>
+        <input type="range" id="glebia" min="2" max="16" value="4">
+      </div>
+
       <div class="swatches" style="margin-top:12px" id="duo">
         <input type="color" id="ink" value="#000000" aria-label="Kolor farby">
         <input type="color" id="paper" value="#ffffff" aria-label="Kolor papieru">
         <button class="btn" id="swap" style="width:auto; padding:6px 10px">Zamień</button>
       </div>
-      <div class="probki hidden" id="pal-probki"></div>
-      <button class="btn" id="pal-load" style="margin-top:10px">Wczytaj paletę</button>
-      <input type="file" id="pal-file" accept=".hex,.gpl,.pal,.ase,.txt,.png,.gif" class="hidden">
-      <p class="hint" id="pal-msg">.hex, .gpl, .pal, .ase, .txt albo pasek próbek PNG — na przykład z lospec.com.</p>
+      <div class="probki" id="pal-probki" role="group" aria-label="Kolory palety"></div>
+      <input type="color" id="pal-kolor" class="kolor-ukryty" tabindex="-1" aria-hidden="true">
+      <div class="btns edycja" style="margin-top:8px">
+        <button class="btn" id="pal-dodaj" title="Dodaj kolor za zaznaczonym">+ Dodaj</button>
+        <button class="btn" id="pal-usun" title="Usuń zaznaczony kolor">− Usuń</button>
+        <button class="btn" id="pal-odwroc" title="Odwróć kolejność kolorów">Odwróć</button>
+        <button class="btn" id="pal-sortuj" title="Ułóż od najciemniejszego do najjaśniejszego">Sortuj</button>
+      </div>
+      <p class="hint" id="edytor-hint">Kliknij próbkę, żeby zmienić kolor. Zmieniona paleta staje się twoją własną — trafia do presetów i plików.</p>
+      <details id="pal-szczegoly" class="pal-szczegoly" open>
+        <summary>Lista kolorów z kodami</summary>
+        <div class="pal-lista" id="pal-lista"></div>
+        <button class="btn" id="pal-kopiuj" style="margin-top:6px">Kopiuj kody</button>
+      </details>
+
+      <div class="btns" style="margin-top:12px">
+        <select id="pal-ile" aria-label="Ile kolorów wyciągnąć ze zdjęcia" style="width:auto">
+          <option value="2">2 kolory</option><option value="3">3 kolory</option><option value="4">4 kolory</option>
+          <option value="5">5 kolorów</option><option value="6" selected>6 kolorów</option><option value="8">8 kolorów</option>
+          <option value="12">12 kolorów</option><option value="16">16 kolorów</option><option value="32">32 kolory</option>
+        </select>
+        <button class="btn" id="pal-zdjecie">Paleta ze zdjęcia</button>
+      </div>
+      <div class="btns" style="margin-top:8px">
+        <button class="btn" id="pal-load">Wczytaj z pliku</button>
+        <button class="btn" id="pal-save">Zapisz .hex</button>
+      </div>
+      <input type="file" id="pal-file" accept=".hex,.gpl,.pal,.ase,.txt,.png,.gif,.jpg,.jpeg,.webp" class="hidden">
+      <p class="hint" id="pal-msg">Z pliku: .hex, .gpl, .pal, .ase, .txt, pasek próbek PNG (np. z lospec.com) albo dowolne zdjęcie — wtedy wyciągnie z niego tyle kolorów, ile wybrano obok.</p>
     </div>
 
     <!-- HALFTONE -->
+    <!-- ASCII -->
+    <div class="group hidden" id="g-ascii">
+      <h2>Znaki</h2>
+      <div class="pal-wybor">
+        <button class="btn" id="ascii-prev" aria-label="Poprzedni zestaw znaków" title="Poprzedni zestaw">◀</button>
+        <select id="asciiZestaw" aria-label="Zestaw znaków">
+          <option value="standard" selected>Standard — .:-=+*#%@</option>
+          <option value="pelny">Pełny ASCII (70 znaków)</option>
+          <option value="bloki">Bloki ░▒▓█</option>
+          <option value="binarny">Binarny — 0 i 1</option>
+          <option value="kropki">Kropki ·•●</option>
+          <option value="kreski">Kreski -=≡</option>
+          <option value="litery">Litery — ilcoaxeOX#</option>
+          <option value="wlasne">Własne znaki</option>
+        </select>
+        <button class="btn" id="ascii-next" aria-label="Następny zestaw znaków" title="Następny zestaw">▶</button>
+      </div>
+      <div class="row" style="margin-top:12px"><label for="asciiTryb">Znaki</label></div>
+      <select id="asciiTryb">
+        <option value="jasnosc" selected>Według jasności — od rzadkich do gęstych</option>
+        <option value="tekst">Powtarzany tekst</option>
+      </select>
+      <div id="ascii-wlasne-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="asciiWlasne" id="ascii-wlasne-etykieta">Własne znaki</label></div>
+        <input type="text" id="asciiWlasne" maxlength="200" placeholder="np. .oO@ albo słowo" spellcheck="false">
+      </div>
+      <div class="row" style="margin-top:12px"><label for="asciiRozmiar">Rozmiar znaku</label><span class="val" id="asciiRozmiar-v">12 px</span></div>
+      <input type="range" id="asciiRozmiar" min="5" max="48" value="12">
+      <div class="row"><label for="asciiKolor">Kolor znaków</label></div>
+      <select id="asciiKolor">
+        <option value="obraz" selected>Z obrazu</option>
+        <option value="paleta">Z palety (niżej)</option>
+        <option value="jeden">Jeden kolor</option>
+      </select>
+      <div class="swatches" style="margin-top:10px">
+        <input type="color" id="ink-a" value="#000000" aria-label="Kolor znaków">
+        <input type="color" id="paper-a" value="#ffffff" aria-label="Kolor tła">
+        <button class="btn" id="swap-a" style="width:auto; padding:6px 10px">Zamień</button>
+      </div>
+      <label class="check"><input type="checkbox" id="asciiDither"> Dithering znaków (gładsze przejścia)</label>
+      <p class="hint">Znaki i tło: pierwszy kolor to znaki (przy „Jeden kolor”), drugi tło. Na ciemnym tle jasne miejsca dostają gęste znaki, na jasnym — ciemne. SVG zapisuje znaki jako tekst, TXT — sam tekst do wklejenia.</p>
+    </div>
+
     <div class="group hidden" id="g-half">
       <h2>Siatka rastra</h2>
       <div class="row"><label for="cell">Gęstość (px)</label><span class="val" id="cell-v">8</span></div>
@@ -129,8 +323,6 @@
       <input type="range" id="ang" min="0" max="90" value="45">
       <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>
       <input type="range" id="dot" min="40" max="180" value="100">
-      <div class="row"><label for="blur">Rozmycie</label><span class="val" id="blur-v">0</span></div>
-      <input type="range" id="blur" min="0" max="20" value="0">
       <div class="row" style="margin-top:12px"><label for="shape">Kształt</label></div>
       <select id="shape">
         <option value="circle" selected>Punkt</option>
@@ -145,6 +337,12 @@
         <option value="duo">Duotone (czarny + akcent)</option>
         <option value="cmyk">CMYK — cztery siatki</option>
       </select>
+      <div class="row" style="margin-top:12px"><label>Farba (czarna) i papier</label></div>
+      <div class="swatches">
+        <input type="color" id="ink-r" value="#000000" aria-label="Kolor farby">
+        <input type="color" id="paper-r" value="#ffffff" aria-label="Kolor papieru">
+        <button class="btn" id="swap-r" style="width:auto; padding:6px 10px">Zamień</button>
+      </div>
       <div class="row"><label for="mis">Pasowanie</label><span class="val" id="mis-v">0.0</span></div>
       <input type="range" id="mis" min="0" max="60" value="0">
       <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
@@ -153,22 +351,139 @@
 
     <div class="group" id="g-fx">
       <h2>Efekty po rastrze</h2>
-      <div class="row"><label for="sort">Sortowanie pikseli</label></div>
-      <select id="sort">
-        <option value="brak" selected>Brak</option>
-        <option value="poziomo">Poziomo</option>
-        <option value="pionowo">Pionowo</option>
-      </select>
-      <div id="sort-opcje" class="hidden">
+      <p class="hint" id="fx-pusto" style="margin-top:0">Brak efektów. Działają w kolejności z listy — od góry do dołu.</p>
+      <div id="fx-lista"></div>
+      <button class="btn" id="fx-dodaj" style="margin-top:8px" aria-expanded="false">+ Dodaj efekt</button>
+      <div id="fx-menu" class="fx-menu hidden" role="menu"></div>
+
+      <!-- ciała kart; nagłówki (nazwa, ↑ ↓, oko, ×) dokłada app.js -->
+      <div class="fx hidden" data-fx="sort"><div class="fx-cialo">
+        <div class="row"><label for="sort">Kierunek</label></div>
+        <select id="sort">
+          <option value="brak" selected>Brak</option>
+          <option value="poziomo">Poziomo</option>
+          <option value="pionowo">Pionowo</option>
+        </select>
         <div class="row" style="margin-top:12px"><label for="sortOd">Od jasności</label><span class="val" id="sortOd-v">25%</span></div>
         <input type="range" id="sortOd" min="0" max="100" value="25">
         <div class="row"><label for="sortDo">Do jasności</label><span class="val" id="sortDo-v">80%</span></div>
         <input type="range" id="sortDo" min="0" max="100" value="80">
-      </div>
-      <div class="row" style="margin-top:12px"><label for="rgb">Przesunięcie RGB</label><span class="val" id="rgb-v">brak</span></div>
-      <input type="range" id="rgb" min="0" max="30" value="0">
-      <div class="row"><label for="rgbKat">Kierunek</label><span class="val" id="rgbKat-v">0°</span></div>
-      <input type="range" id="rgbKat" min="0" max="180" value="0">
+      </div></div>
+
+      <div class="fx hidden" data-fx="rgb"><div class="fx-cialo">
+        <div class="row"><label for="rgb">Przesunięcie</label><span class="val" id="rgb-v">brak</span></div>
+        <input type="range" id="rgb" min="0" max="30" value="0">
+        <div class="row"><label for="rgbKat">Kierunek</label><span class="val" id="rgbKat-v">0°</span></div>
+        <input type="range" id="rgbKat" min="0" max="180" value="0">
+      </div></div>
+
+      <div class="fx hidden" data-fx="chrom"><div class="fx-cialo">
+        <div class="row"><label for="chrom">Siła</label><span class="val" id="chrom-v">brak</span></div>
+        <input type="range" id="chrom" min="0" max="60" value="0">
+        <p class="hint">Czerwień i błękit rozjeżdżają się od środka ku brzegom, jak w tanim obiektywie.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="jpeg"><div class="fx-cialo">
+        <div class="row"><label for="jpegJakosc">Jakość JPEG</label><span class="val" id="jpegJakosc-v">20</span></div>
+        <input type="range" id="jpegJakosc" min="1" max="100" value="20">
+        <div class="row"><label for="jpegGlitch">Uszkodzenia</label><span class="val" id="jpegGlitch-v">brak</span></div>
+        <input type="range" id="jpegGlitch" min="0" max="100" value="0">
+        <div class="row"><label for="jpegZiarno">Wariant</label><span class="val" id="jpegZiarno-v">1</span></div>
+        <input type="range" id="jpegZiarno" min="1" max="99" value="1">
+        <p class="hint">Bloki 8×8 i rozmyty kolor jak w mocno skompresowanym JPEG-u; uszkodzenia przesuwają wiersze bloków. Wariant losuje inne miejsca.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="tint"><div class="fx-cialo">
+        <div class="row"><label for="tint">Siła</label><span class="val" id="tint-v">brak</span></div>
+        <input type="range" id="tint" min="0" max="100" value="0">
+        <div class="swatches" style="margin-top:10px">
+          <input type="color" id="tintKolor" value="#3a7bff" aria-label="Kolor zabarwienia">
+          <select id="tintTryb" aria-label="Sposób zabarwienia">
+            <option value="kolor" selected>Kolor — czerń, kolor, biel</option>
+            <option value="mnoz">Mnożenie</option>
+            <option value="ekran">Rozjaśnienie (screen)</option>
+          </select>
+        </div>
+      </div></div>
+
+      <div class="fx hidden" data-fx="glow"><div class="fx-cialo">
+        <div class="row"><label for="glow">Siła</label><span class="val" id="glow-v">brak</span></div>
+        <input type="range" id="glow" min="0" max="200" value="0">
+        <div class="row"><label for="glowR">Promień</label><span class="val" id="glowR-v">12 px</span></div>
+        <input type="range" id="glowR" min="1" max="80" value="12">
+        <div class="row"><label for="glowProg">Świeci powyżej jasności</label><span class="val" id="glowProg-v">50%</span></div>
+        <input type="range" id="glowProg" min="0" max="95" value="50">
+        <p class="hint">Najlepiej wychodzi na ciemnych zdjęciach i filmach. Na jasnych podnieś próg, bo prześwietli cały obraz.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="gwiazdy"><div class="fx-cialo">
+        <div class="row"><label for="gwiazdy">Siła</label><span class="val" id="gwiazdy-v">brak</span></div>
+        <input type="range" id="gwiazdy" min="0" max="300" value="0">
+        <div class="row"><label for="gwProg">Od jasności</label><span class="val" id="gwProg-v">70%</span></div>
+        <input type="range" id="gwProg" min="0" max="98" value="70">
+        <div class="row"><label for="gwRamiona">Promienie</label><span class="val" id="gwRamiona-v">4</span></div>
+        <input type="range" id="gwRamiona" min="2" max="12" value="4">
+        <div class="row"><label for="gwDlugosc">Długość</label><span class="val" id="gwDlugosc-v">40 px</span></div>
+        <input type="range" id="gwDlugosc" min="4" max="300" value="40">
+        <div class="row"><label for="gwKat">Obrót</label><span class="val" id="gwKat-v">0°</span></div>
+        <input type="range" id="gwKat" min="0" max="180" value="0">
+      </div></div>
+
+      <div class="fx hidden" data-fx="faktura"><div class="fx-cialo">
+        <div class="row"><label for="faktura">Wzór</label></div>
+        <select id="faktura">
+          <option value="brak" selected>Brak</option>
+          <optgroup label="Kineskop">
+            <option value="maskaRGB">Maska RGB (pasy)</option>
+            <option value="rozeta">Rozeta RGB (triady)</option>
+            <option value="skanlinie">Linie skanowania</option>
+          </optgroup>
+          <optgroup label="Szum">
+            <option value="szum">Szum</option>
+            <option value="szumBarwny">Szum barwny</option>
+            <option value="tkanina">Tkanina</option>
+          </optgroup>
+          <optgroup label="Wzór">
+            <option value="kratka">Kratka</option>
+            <option value="romby">Romby</option>
+            <option value="tecza">Tęcza</option>
+          </optgroup>
+        </select>
+        <div class="row" style="margin-top:12px"><label for="faktSkala">Skala</label><span class="val" id="faktSkala-v">2 px</span></div>
+        <input type="range" id="faktSkala" min="1" max="12" value="2">
+        <div class="row"><label for="faktTryb">Mieszanie</label></div>
+        <select id="faktTryb">
+          <option value="mnoz" selected>Mnożenie</option>
+          <option value="ekran">Rozjaśnienie (screen)</option>
+          <option value="nakladka">Nakładka</option>
+          <option value="miekkie">Miękkie światło</option>
+        </select>
+        <div class="row" style="margin-top:12px"><label for="faktKrycie">Krycie</label><span class="val" id="faktKrycie-v">50%</span></div>
+        <input type="range" id="faktKrycie" min="0" max="100" value="50">
+      </div></div>
+
+      <div class="fx hidden" data-fx="post"><div class="fx-cialo">
+        <div class="row"><label for="postJas">Jasność</label><span class="val" id="postJas-v">0</span></div>
+        <input type="range" id="postJas" min="-100" max="100" value="0">
+        <div class="row"><label for="postKon">Kontrast</label><span class="val" id="postKon-v">0</span></div>
+        <input type="range" id="postKon" min="-100" max="100" value="0">
+        <div class="row"><label for="postNas">Nasycenie</label><span class="val" id="postNas-v">0</span></div>
+        <input type="range" id="postNas" min="-100" max="100" value="0">
+        <div class="row"><label for="winieta">Winieta</label><span class="val" id="winieta-v">brak</span></div>
+        <input type="range" id="winieta" min="0" max="100" value="0">
+        <div class="row"><label for="postZiarno">Ziarno</label><span class="val" id="postZiarno-v">brak</span></div>
+        <input type="range" id="postZiarno" min="0" max="100" value="0">
+        <p class="hint">Korekta już po ditheringu — dodaje kolory spoza palety.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="czas"><div class="fx-cialo">
+        <div class="row"><label for="czasSzum">Szum w czasie</label><span class="val" id="czasSzum-v">brak</span></div>
+        <input type="range" id="czasSzum" min="0" max="100" value="0">
+        <div class="row"><label for="czasDrganie">Drgania</label><span class="val" id="czasDrganie-v">brak</span></div>
+        <input type="range" id="czasDrganie" min="0" max="20" value="0">
+        <label class="check"><input type="checkbox" id="czasCykl"> Wędrująca siatka (Bayer, wzory, szum niebieski)</label>
+        <p class="hint">Działa przed ditheringiem i tylko na osi czasu (film albo animowany obraz): wzór układa się w każdej klatce trochę inaczej, więc nawet nieruchomy obraz żyje.</p>
+      </div></div>
     </div>
 
     <div class="group">
@@ -190,7 +505,18 @@
           <input type="range" id="wygl" min="0" max="10" value="3">
         </div>
       </div>
+      <div id="mp4-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="jakosc">Jakość MP4</label></div>
+        <select id="jakosc">
+          <option value="dobra">Dobra — mniejszy plik</option>
+          <option value="wysoka" selected>Wysoka</option>
+          <option value="najwyzsza">Najwyższa</option>
+        </select>
+        <p class="hint">H.264 rozmywa drobny dithering. Najostrzej wychodzi w skali 2× i wyżej, a bez żadnych strat — jako klatki PNG.</p>
+      </div>
+      <label class="check hidden" id="przezr-opcja"><input type="checkbox" id="przezroczyste"> Przezroczyste tło (kolor papieru)</label>
       <button class="btn solid" id="save" style="margin-top:10px">Zapisz PNG</button>
+      <p class="hint" id="save-msg"></p>
       <p class="hint" id="dims">—</p>
     </div>
 
@@ -198,10 +524,16 @@
 
   <section class="stage" id="stage">
     <div class="drop" id="drop">
-      <strong>Przeciągnij tu obraz</strong>
-      albo kliknij „Wczytaj obraz”. Nic nie wychodzi poza tę kartę — wszystko liczy się lokalnie.
+      <strong>Przeciągnij tu obraz albo film</strong>
+      albo kliknij „Otwórz plik”. Nic nie wychodzi poza tę kartę — wszystko liczy się lokalnie.
     </div>
     <canvas id="out" class="hidden pixelated"></canvas>
+    <div class="os hidden" id="os">
+      <button class="btn" id="os-graj" aria-label="Odtwórz">▶</button>
+      <input type="range" id="os-poz" min="0" max="0" value="0" aria-label="Klatka">
+      <span class="val" id="os-czas">0:00.0</span>
+    </div>
+    <div class="os-sciezki hidden" id="os-sciezki" aria-label="Animowane parametry"></div>
   </section>
 </div>
 

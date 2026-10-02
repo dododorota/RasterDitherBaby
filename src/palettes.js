@@ -2,20 +2,104 @@ import { S } from "./state.js";
 
 /* ---------- palety ---------- */
 export const hex2rgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+export const rgb2hex = c => "#" + ((1<<24) | (c[0]<<16) | (c[1]<<8) | c[2]).toString(16).slice(1);
 const ramp = n => { const p=[]; for(let i=0;i<n;i++){ const v=Math.round(i*255/(n-1)); p.push([v,v,v]); } return p; };
+
+/* Biblioteka wbudowanych palet. Kolejność w obrębie palety ma znaczenie
+   w trybie „według jasności": pierwszy kolor dostają najciemniejsze miejsca
+   obrazu, ostatni najjaśniejsze — dlatego gradienty i duotony idą od ciemnego
+   do jasnego. W trybie „najbliższy kolor" kolejność rozstrzyga tylko remisy.
+
+   `mapa` to tryb, na który przełącza wybór palety z listy: gradient ma sens
+   tylko według jasności, a paleta sprzętowa tylko jako najbliższy kolor.
+   Presety i pliki ustawiają tryb same, wtedy nikt nic nie przełącza.
+
+   bw, gray4, gray8, rgb3, quant, gameboy i cga to dawne palety
+   apki — ich identyfikatory, kolory i kolejność muszą zostać, bo siedzą
+   w zapisanych presetach, a kolejność decyduje o remisach. Kolory „null"
+   liczy palette() (1-bit z farby i papieru, rampy, siatki RGB). */
+export const BIBLIOTEKA = [
+  {kat:"Podstawowe", id:"bw",     nazwa:"1-bit (farba i papier)", kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"gray4",  nazwa:"Szarości — 4 poziomy",   kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"gray8",  nazwa:"Szarości — 8 poziomów",  kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"gray16", nazwa:"Szarości — 16 poziomów", kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"rgb3",   nazwa:"3-bit RGB",              kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"quant",  nazwa:"Kolor — 4 poziomy na kanał", kolory:null, mapa:"kolor"},
+  {kat:"Podstawowe", id:"glebia", nazwa:"Kolor — głębia z suwaka",    kolory:null, mapa:"kolor"},
+
+  {kat:"Retro sprzęt", id:"gameboy", nazwa:"Game Boy", mapa:"kolor", kolory:["#0f380f","#306230","#8bac0f","#9bbc0f"]},
+  {kat:"Retro sprzęt", id:"cga",  nazwa:"CGA — cyjan i magenta", mapa:"kolor", kolory:["#000000","#55ffff","#ff55ff","#ffffff"]},
+  {kat:"Retro sprzęt", id:"cga2", nazwa:"CGA — zieleń, czerwień, żółć", mapa:"kolor", kolory:["#000000","#55ff55","#ff5555","#ffff55"]},
+  {kat:"Retro sprzęt", id:"ega",  nazwa:"EGA — 16 kolorów", mapa:"kolor", kolory:["#000000","#0000aa","#00aa00","#00aaaa","#aa0000","#aa00aa","#aa5500","#aaaaaa","#555555","#5555ff","#55ff55","#55ffff","#ff5555","#ff55ff","#ffff55","#ffffff"]},
+  {kat:"Retro sprzęt", id:"c64",  nazwa:"Commodore 64", mapa:"kolor", kolory:["#000000","#ffffff","#68372b","#70a4b2","#6f3d86","#588d43","#352879","#b8c76f","#6f4f25","#433900","#9a6759","#444444","#6c6c6c","#9ad284","#6c5eb5","#959595"]},
+  {kat:"Retro sprzęt", id:"zx",   nazwa:"ZX Spectrum", mapa:"kolor", kolory:["#000000","#0000d7","#d70000","#d700d7","#00d700","#00d7d7","#d7d700","#d7d7d7","#0000ff","#ff0000","#ff00ff","#00ff00","#00ffff","#ffff00","#ffffff"]},
+  {kat:"Retro sprzęt", id:"pico8", nazwa:"PICO-8", mapa:"kolor", kolory:["#000000","#1d2b53","#7e2553","#008751","#ab5236","#5f574f","#c2c3c7","#fff1e8","#ff004d","#ffa300","#ffec27","#00e436","#29adff","#83769c","#ff77a8","#ffccaa"]},
+  {kat:"Retro sprzęt", id:"apple2", nazwa:"Apple II — grafika wysokiej rozdzielczości", mapa:"kolor", kolory:["#000000","#14cffd","#ff44fd","#ff6a3c","#14f53c","#ffffff"]},
+  {kat:"Retro sprzęt", id:"vboy", nazwa:"Virtual Boy", mapa:"jasnosc", kolory:["#000000","#550000","#aa0000","#ff0000"]},
+
+  {kat:"Monitory", id:"m-bursztyn", nazwa:"Bursztynowy monitor", mapa:"jasnosc", kolory:["#0a0500","#4a2600","#a35f00","#ffb000"]},
+  {kat:"Monitory", id:"m-zielony",  nazwa:"Zielony fosfor",      mapa:"jasnosc", kolory:["#000a00","#0b4a12","#1fa83a","#7dff8f"]},
+  {kat:"Monitory", id:"m-niebieski", nazwa:"Niebieski ekran",    mapa:"jasnosc", kolory:["#00061a","#0a2a7a","#2f6fe0","#b8d8ff"]},
+  {kat:"Monitory", id:"m-lcd",      nazwa:"Szary LCD",           mapa:"jasnosc", kolory:["#2b2f2a","#5c6359","#9aa293","#c7cfbd"]},
+
+  {kat:"Gradienty", id:"g-poswiata", nazwa:"Niebieska poświata", mapa:"jasnosc", kolory:["#02030a","#0a1a5c","#1e46d2","#4c8dff","#cfe3ff"]},
+  {kat:"Gradienty", id:"g-ogien",   nazwa:"Ogień",       mapa:"jasnosc", kolory:["#000000","#4a0a00","#b3200a","#f2711c","#ffd35c","#fffbe6"]},
+  {kat:"Gradienty", id:"g-matrix",  nazwa:"Matrix",      mapa:"jasnosc", kolory:["#000000","#002b0a","#00661a","#00c43a","#8cffb0"]},
+  {kat:"Gradienty", id:"g-sepia",   nazwa:"Sepia",       mapa:"jasnosc", kolory:["#1b120b","#4a3424","#8a6a4b","#c8ad86","#f3e7d0"]},
+  {kat:"Gradienty", id:"g-zachod",  nazwa:"Zachód słońca", mapa:"jasnosc", kolory:["#120b2e","#43195e","#a1286a","#f0654a","#ffc37a","#fff1d6"]},
+  {kat:"Gradienty", id:"g-lod",     nazwa:"Lód",         mapa:"jasnosc", kolory:["#04121c","#0e3b5c","#3c86a8","#9ed6e0","#f2fbff"]},
+  {kat:"Gradienty", id:"g-termo",   nazwa:"Termowizja",  mapa:"jasnosc", kolory:["#000000","#20007a","#8a00a8","#e8325a","#ff9a1f","#fff15c","#ffffff"]},
+  {kat:"Gradienty", id:"g-fiolet",  nazwa:"Fiolet",      mapa:"jasnosc", kolory:["#0d0418","#3b1263","#7b3dc2","#c39bf2","#f6eeff"]},
+  {kat:"Gradienty", id:"g-kawa",    nazwa:"Kawa z mlekiem", mapa:"jasnosc", kolory:["#140b07","#4b2e1f","#8f6346","#d7b48a","#fff4e0"]},
+  {kat:"Gradienty", id:"g-mieta",   nazwa:"Morze i mięta", mapa:"jasnosc", kolory:["#03141a","#0b4f5c","#1f9a8a","#7fe0b8","#f0fff4"]},
+
+  {kat:"Duotony", id:"d-granat",  nazwa:"Granat i krem",    mapa:"jasnosc", kolory:["#1c2541","#f4ebd9"]},
+  {kat:"Duotony", id:"d-roz",     nazwa:"Czerń i neonowy róż", mapa:"jasnosc", kolory:["#0d0d0d","#ff3ea5"]},
+  {kat:"Duotony", id:"d-zielen",  nazwa:"Butelkowa zieleń i krem", mapa:"jasnosc", kolory:["#1f3b2d","#efe6cf"]},
+  {kat:"Duotony", id:"d-bordo",   nazwa:"Bordo i pudrowy róż", mapa:"jasnosc", kolory:["#4a0d1e","#f7b7c3"]},
+  {kat:"Duotony", id:"d-kobalt",  nazwa:"Kobalt i żółć",    mapa:"jasnosc", kolory:["#1b2c8c","#ffe14d"]},
+  {kat:"Duotony", id:"d-braz",    nazwa:"Czekolada i beż",  mapa:"jasnosc", kolory:["#3a2618","#eadbc4"]},
+  {kat:"Duotony", id:"d-fiolet",  nazwa:"Fiolet i pomarańcz", mapa:"jasnosc", kolory:["#2e1a6b","#ff9a3c"]},
+
+  {kat:"Riso", id:"r-niebroz", nazwa:"Riso: niebieski i fluo róż", mapa:"kolor", kolory:["#0078bf","#ff48b0","#f5f1e8"]},
+  {kat:"Riso", id:"r-czermieta", nazwa:"Riso: turkus i czerwień", mapa:"kolor", kolory:["#00838a","#ff665e","#f5f1e8"]},
+  {kat:"Riso", id:"r-trzy",    nazwa:"Riso: trzy farby i czerń", mapa:"kolor", kolory:["#1a1a1a","#0078bf","#ff48b0","#ffe800","#f5f1e8"]},
+  {kat:"Riso", id:"r-zielfiol", nazwa:"Riso: zieleń i fiolet", mapa:"kolor", kolory:["#765ba7","#00a95c","#f5f1e8"]},
+
+  {kat:"Neon", id:"n-synthwave", nazwa:"Synthwave", mapa:"kolor", kolory:["#0b0221","#2d0b59","#7a1fa2","#f72585","#4cc9f0","#ffe66d"]},
+  {kat:"Neon", id:"n-vapor",    nazwa:"Vaporwave",  mapa:"kolor", kolory:["#2b1b3f","#b967ff","#ff71ce","#01cdfe","#05ffa1","#fffb96"]},
+  {kat:"Neon", id:"n-cyber",    nazwa:"Cyberpunk",  mapa:"kolor", kolory:["#0a0a12","#3a0ca3","#ff003c","#00f0ff","#fcee09"]}
+];
+const WG_ID = new Map(BIBLIOTEKA.map(p => [p.id, p]));
+export const wpisPalety = id => WG_ID.get(id);
+
+const RGB_LIB = new Map(BIBLIOTEKA.filter(p => p.kolory).map(p => [p.id, p.kolory.map(hex2rgb)]));
 export function palette(){
   switch(S.pal){
     case "bw": return [hex2rgb(S.paper), hex2rgb(S.ink)];
     case "gray4": return ramp(4);
     case "gray8": return ramp(8);
-    case "gameboy": return [[15,56,15],[48,98,48],[139,172,15],[155,188,15]];
-    case "cga": return [[0,0,0],[85,255,255],[255,85,255],[255,255,255]];
+    case "gray16": return ramp(16);
     case "rgb3": { const p=[]; for(let r=0;r<2;r++)for(let g=0;g<2;g++)for(let b=0;b<2;b++)p.push([r*255,g*255,b*255]); return p; }
     case "quant": { const p=[], L=[0,85,170,255]; for(const r of L)for(const g of L)for(const b of L)p.push([r,g,b]); return p; }
+    case "glebia": { const n = poziomyGlebi(), p = []; for(let r=0;r<n;r++)for(let g=0;g<n;g++)for(let b=0;b<n;b++) p.push([r,g,b].map(v => Math.round(v*255/(n-1)))); return p; }
     case "custom": if(S.custom) return S.custom.kolory; break;
+    default: if(RGB_LIB.has(S.pal)) return RGB_LIB.get(S.pal);
   }
   return [[0,0,0],[255,255,255]];
 }
+/* Paleta jako gradient, od koloru dla cieni do koloru dla świateł. Różni się
+   od palette() tylko przy 1-bit: tam od zawsze pierwszy jest papier (remisy
+   w nearest()), a w gradiencie cienie mają dostać farbę. */
+export function paletaGradientu(){
+  if(S.pal === "bw") return [hex2rgb(S.ink), hex2rgb(S.paper)];
+  /* głębia w gradiencie to liczba poziomów szarości, a nie sześcian n³ kolorów
+     ułożony po kanałach, który jako gradient nie ma sensu */
+  if(S.pal === "glebia") return ramp(poziomyGlebi());
+  return palette();
+}
+/* „Głębia koloru": poziomy na kanał, 2–16 (1–4 bity) */
+export const poziomyGlebi = () => Math.max(2, Math.min(16, Math.round(S.glebia || 4)));
 export function nearest(pal,r,g,b){
   let best=0, bd=Infinity;
   for(let i=0;i<pal.length;i++){
@@ -42,11 +126,25 @@ export function nearest(pal,r,g,b){
    Cauchy'ego–Schwarza d ≥ ΔY²): dokładne, ale dwa razy wolniejsze od skanu,
    bo dla kolorowych palet jasność prawie niczego nie odcina. */
 export function quantizer(){
+  if(S.percept) return szukaczOklab(palette());
   if(S.pal === "custom" && S.custom && S.custom.kolory.length >= PROG_SIATKI) return szukaczSiatka(S.custom.kolory);
-  if(S.pal !== "rgb3" && S.pal !== "quant") return null;
+  if(S.pal !== "rgb3" && S.pal !== "quant" && S.pal !== "glebia") return null;
   const pal = palette();
-  const n = (S.pal==="rgb3") ? 2 : 4, stepv = 255/(n-1), last = n-1;
-  const lvl = v => { const i=Math.ceil(v/stepv - 0.5); return i>last ? last : (i>0 ? i : 0); };
+  const n = (S.pal==="rgb3") ? 2 : (S.pal==="quant" ? 4 : poziomyGlebi()), stepv = 255/(n-1), last = n-1;
+  let lvl = v => { const i=Math.ceil(v/stepv - 0.5); return i>last ? last : (i>0 ? i : 0); };
+  if(S.pal === "glebia"){
+    /* przy głębi poziomy są zaokrąglone do całych (3 poziomy: 0, 128, 255),
+       więc granica nie leży w połowie kroku — poprawiamy przybliżenie
+       o sąsiada, remis w dół jak w nearest() */
+    const L = Array.from({length: n}, (_, i) => Math.round(i*255/(n-1)));
+    const zgrubnie = lvl;
+    lvl = v => {
+      let i = zgrubnie(v);
+      if(i > 0 && Math.abs(v - L[i-1]) <= Math.abs(v - L[i])) i--;
+      else if(i < last && Math.abs(v - L[i+1]) < Math.abs(v - L[i])) i++;
+      return i;
+    };
+  }
   return (r,g,b)=> pal[(lvl(r)*n + lvl(g))*n + lvl(b)];
 }
 
@@ -135,4 +233,57 @@ function zbudujSiatke(pal){
     }
     return pal[best];
   };
+}
+
+/* ---------- dopasowanie percepcyjne ----------
+   Najbliższy kolor w Oklab (Björn Ottosson, 2020) zamiast ważonego RGB:
+   odległości odpowiadają temu, jak różnicę widzi oko — przy kolorowych
+   paletach mniej przeskoków w dziwne odcienie, zwłaszcza w ciemnych partiach.
+   Dyfuzja błędu dalej idzie w RGB, zmienia się tylko wybór koloru.
+   Wartość po dyfuzji bywa poza 0–255 — przycinamy przed przeliczeniem, bo
+   Oklab dla ujemnego światła nie ma sensu. Przeliczenie to trzy pierwiastki
+   sześcienne na piksel; dla palet od 33 kolorów wynik wyszukania jest
+   zapamiętywany w kubełkach po 4 poziomy na kanał (64³ wpisów) — kolor
+   przyporządkowany środkowi kubełka. Różnica wobec dokładnego szukania: kolor
+   o pół kroku kubełka dalej, niewidoczna w ditherze, a skan 256 kolorów na
+   każdy piksel trwałby sekundy. */
+const lin = v => { v = v < 0 ? 0 : (v > 255 ? 1 : v/255); return v <= 0.04045 ? v/12.92 : Math.pow((v + 0.055)/1.055, 2.4); };
+export function oklab(r, g, b){
+  const R = lin(r), G = lin(g), B = lin(b);
+  const l = Math.cbrt(0.4122214708*R + 0.5363325363*G + 0.0514459929*B);
+  const m = Math.cbrt(0.2119034982*R + 0.6806995451*G + 0.1073969566*B);
+  const s = Math.cbrt(0.0883024619*R + 0.2817188376*G + 0.6299787005*B);
+  return [0.2104542553*l + 0.7936177850*m - 0.0040720468*s,
+          1.9779984951*l - 2.4285922050*m + 0.4505937099*s,
+          0.0259040371*l + 0.7827717662*m - 0.8086757660*s];
+}
+const szukaczeOklab = new Map();
+function szukaczOklab(pal){
+  const klucz = pal.length + ":" + pal.map(c => c.join(",")).join(";");
+  let f = szukaczeOklab.get(klucz);
+  if(f) return f;
+  if(szukaczeOklab.size >= 8) szukaczeOklab.clear();
+  const L = pal.map(c => oklab(c[0], c[1], c[2]));
+  const najblizszy = (r, g, b) => {
+    const [a0, a1, a2] = oklab(r, g, b);
+    let best = 0, bd = Infinity;
+    for(let i=0; i<L.length; i++){
+      const d0 = a0 - L[i][0], d1 = a1 - L[i][1], d2 = a2 - L[i][2], d = d0*d0 + d1*d1 + d2*d2;
+      if(d < bd){ bd = d; best = i; }
+    }
+    return best;
+  };
+  if(pal.length <= 32) f = (r, g, b) => pal[najblizszy(r, g, b)];
+  else {
+    const pamiec = new Int16Array(64*64*64).fill(-1);
+    const kub = v => v < 0 ? 0 : (v > 255 ? 63 : (v >> 2));
+    f = (r, g, b) => {
+      const k = (kub(r) << 12) | (kub(g) << 6) | kub(b);
+      let i = pamiec[k];
+      if(i < 0) i = pamiec[k] = najblizszy((k >> 12)*4 + 1.5, ((k >> 6) & 63)*4 + 1.5, (k & 63)*4 + 1.5);
+      return pal[i];
+    };
+  }
+  szukaczeOklab.set(klucz, f);
+  return f;
 }

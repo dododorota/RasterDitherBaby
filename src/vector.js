@@ -4,6 +4,8 @@ import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
 import { sampler, collectScreen, inkList } from "./halftone.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
+import { czynne, wpisEfektu } from "./stos.js";
+import { svgAscii } from "./ascii.js";
 
 /* ---------- eksport wektorowy ---------- */
 const n2 = v => Math.round(v*100)/100;
@@ -75,7 +77,7 @@ function svgKontury(p, w, h){
   return {svg:parts.join("\n"), count, kolorow: kolejnosc.length, bezWygladzania: S.wygl > 0 && !gladko};
 }
 export async function svgDither(){
-  const {d,w,h} = await ditherData({keep:true});
+  const {d,w,h} = await ditherData({keep:true, wektor:true});
   if(S.wektor === "kontury") return svgKontury(d.data, w, h);
   const groups = mergeRects(d.data, w, h);
   let bg=null, bgArea=-1, count=0;
@@ -126,26 +128,32 @@ function odmianaKolor(n){
   const j = n % 10, d = n % 100;
   return (j >= 2 && j <= 4 && !(d >= 12 && d <= 14)) ? "kolory" : "kolorów";
 }
+/* SVG bieżącego trybu: dithering — piksele jako prostokąty albo kontury,
+   raster — geometria punktów, ASCII — znaki jako tekst */
+export async function svgTrybu(){
+  if(S.mode === "dither") return svgDither();
+  if(S.mode === "ascii") return svgAscii();
+  return svgHalftone();
+}
 export async function saveSVG(){
-  const {svg,count,kolorow,bezWygladzania} = (S.mode==="dither") ? await svgDither() : svgHalftone();
+  const {svg,count,kolorow,bezWygladzania} = await svgTrybu();
   const blob=new Blob([svg],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=(S.mode==="dither"?"dither":"raster")+"-"+Date.now()+".svg";
+  a.download=({dither:"dither", half:"raster", ascii:"ascii"}[S.mode])+"-"+Date.now()+".svg";
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   /* W ditheringu SVG to piksele zamienione na prostokąty, więc efekty są w nim
-     z definicji. W rastrze SVG to geometria punktów — ziarna ani efektów
+     z definicji — poza poświatą, z której wyszłyby setki tysięcy prostokątów
+     w osobnych kolorach. W rastrze SVG to geometria punktów — ziarna ani efektów
      pikselowych nie da się w niej oddać, więc mówimy wprost, czego brakuje. */
-  const brak = [];
-  if(S.mode==="half"){
-    if(S.grain) brak.push("ziarna papieru");
-    if(S.sort!=="brak") brak.push("sortowania pikseli");
-    if(S.rgb>0) brak.push("przesunięcia RGB");
-  }
+  /* w ditheringu SVG oddaje tylko sortowanie i przesunięcie RGB, w rastrze —
+     żadnego efektu ani ziarna */
+  const brak = czynne().filter(id => S.mode !== "dither" || !wpisEfektu(id).wektor).map(id => wpisEfektu(id).nazwa.toLowerCase());
+  if(S.mode==="half" && S.grain) brak.push("ziarno papieru");
   $("#dims").textContent = "Zapisano SVG · " + count.toLocaleString("pl-PL") + " obiektów · " +
     Math.round(blob.size/1024).toLocaleString("pl-PL") + " kB" +
-    (brak.length ? " · Wektor nie zawiera " + brak.join(", ") + " — to efekty na pikselach, są tylko w PNG." : "") +
+    (brak.length ? " · Wektor nie zawiera efektów: " + brak.join(", ") + " — są tylko w PNG." : "") +
     (bezWygladzania ? " · Bez wygładzania: obraz ma " + kolorow + " " + odmianaKolor(kolorow) + ", a wygładzanie działa do " +
        KOLOROW_DO_WYGLADZANIA + " — przy większej liczbie plik puchnie kilkukrotnie. Zapisano kontury dokładne." : "") +
     (count>80000 ? " — przy tylu obiektach Illustrator będzie mulił, podnieś pikselizację albo gęstość." : "");

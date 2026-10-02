@@ -1,6 +1,7 @@
 import { S } from "./state.js";
+import { rozmyj } from "./rozmycie.js";
 
-/* Efekty po rastrze: sortowanie pikseli i przesunięcie RGB. Czyste funkcje na
+/* Efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata. Czyste funkcje na
    buforze RGBA, bez DOM-u — w ditheringu biegają w workerze razem z dyfuzją.
 
    Wszystko jest deterministyczne. Sortowanie jest stabilne (piksele o tej samej
@@ -10,9 +11,10 @@ import { S } from "./state.js";
    Skala zapisu: permutację sortowania liczymy na siatce podglądu, a do bufora
    wyjściowego przenosimy ją blokami z×z. Przesunięcie liczymy w pikselach
    podglądu i mnożymy przez z. Dzięki temu zapis w skali pozostaje dokładnym
-   powiększeniem podglądu, zamiast przesortowania od nowa w innej rozdzielczości. */
+   powiększeniem podglądu, zamiast przesortowania od nowa w innej rozdzielczości.
+   Poświatę też liczymy tylko na siatce podglądu i dopiero gotową powiększamy. */
 
-export const efektyWlaczone = () => S.sort !== "brak" || S.rgb > 0;
+/* które efekty działają i w jakiej kolejności — decyduje stos (stos.js) */
 
 /* Jasność w liczbach całkowitych 0..255 — ten sam wynik w każdej przeglądarce
    i w workerze, bez zależności od zaokrągleń zmiennoprzecinkowych. */
@@ -135,4 +137,60 @@ export function przesunRGB(P, w, h, dx, dy){
       }
     }
   }
+}
+
+/* ---------- poświata ----------
+   Jasne miejsca świecą miękkim halo we własnym kolorze, jak w nagraniu Dither
+   Boya: z obrazu wycinamy to, co jaśniejsze od progu (płynnie, bez twardej
+   krawędzi), rozmywamy i nakładamy trybem „screen" — rozjaśnia, nigdy nie
+   przyciemnia, a biel zostaje bielą. Siła ponad 100% przepala halo do bieli.
+
+   Tworzy kolory spoza palety (to całe przejście od koloru do tła), więc GIF
+   z poświatą idzie przez kwantyzację, a SVG z ditheringu poświaty nie zawiera.
+
+   `jednostka` to liczba pikseli bufora na piksel obrazu (1/pix w ditheringu),
+   żeby ten sam promień znaczył to samo przy każdej pikselizacji. */
+/* Halo z dwóch warstw, jak bloom w grach: bliska (σ/4) daje jasny rdzeń wokół
+   świecącego miejsca, daleka (σ) szeroką mgiełkę. Jedna warstwa była albo
+   rozmyta do niewidoczności (kropka ditheringu to jeden piksel, rozmycie
+   rozsmarowuje go na setki), albo ostra bez mgiełki. Wagi warstw dobrane na
+   oko na próbce i zdjęciach: 100% ma być wyraźne, 200% przepalone. */
+const ZBOCZE = 0.3, BLISKA = 1.0, DALEKA = 1.6;
+export function warstwaPoswiaty(p, w, h, jednostka){
+  const prog = S.glowProg*2.55, sila = S.glow/100, n = w*h;
+  if(!(sila > 0) || prog >= 255) return null;
+  /* od progu do pełnej siły na 30% pozostałej skali — płynnie, bez twardej krawędzi */
+  const L = new Float32Array(n*4), zbocze = Math.max(1, (255 - prog)*ZBOCZE);
+  for(let o=0; o<n*4; o+=4){
+    const j = (p[o]*299 + p[o+1]*587 + p[o+2]*114)/1000;
+    if(j <= prog) continue;
+    const f = Math.min(1, (j - prog)/zbocze)*sila;
+    L[o] = p[o]*f; L[o+1] = p[o+1]*f; L[o+2] = p[o+2]*f;
+  }
+  /* promień na suwaku to mniej więcej zasięg halo, czyli ~2σ */
+  const sigma = Math.max(0.5, S.glowR/2*jednostka);
+  const B = new Float32Array(L);
+  rozmyj(B, w, h, Math.max(0.5, sigma/4));
+  rozmyj(L, w, h, sigma);
+  /* szeroka warstwa rozkłada to samo światło na pole rosnące z σ², więc bez
+     wzmocnienia rosnącego z promieniem duży promień znaczył po prostu słabiej;
+     pierwiastek, a nie σ wprost, bo duże jasne plamy i tak by się przepaliły.
+     Liczone w pikselach obrazu (σ/jednostka), żeby pikselizacja nie zmieniała siły. */
+  const daleka = DALEKA*Math.sqrt(Math.max(1, sigma/jednostka/2));
+  for(let o=0; o<n*4; o+=4){
+    L[o]   = B[o]*BLISKA   + L[o]*daleka;
+    L[o+1] = B[o+1]*BLISKA + L[o+1]*daleka;
+    L[o+2] = B[o+2]*BLISKA + L[o+2]*daleka;
+  }
+  return L;
+}
+/* screen: a + g·(1 − a/255); bufor Uint8Clamped przycina, co wyjdzie ponad 255 */
+export function nalozPoswiate(P, L){
+  for(let o=0; o<P.length; o+=4){
+    for(let c=0; c<3; c++){ const a = P[o+c]; P[o+c] = a + L[o+c]*(1 - a/255); }
+  }
+}
+export function poswiata(P, w, h, jednostka){
+  const L = warstwaPoswiaty(P, w, h, jednostka);
+  if(L) nalozPoswiate(P, L);
 }

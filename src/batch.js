@@ -1,8 +1,7 @@
 import { S, LOOK } from "./state.js";
 import { out } from "./dom.js";
-import { renderDither } from "./dither.js";
-import { renderHalftone } from "./halftone.js";
-import { svgDither, svgHalftone } from "./vector.js";
+import { svgTrybu } from "./vector.js";
+import { renderuj } from "./render.js";
 import { Zip } from "./zip.js";
 
 /* Przetwarzanie całego folderu tymi samymi ustawieniami co podgląd.
@@ -52,10 +51,10 @@ export async function przetworzFolder(pliki, {postep = ()=>{}, przerwano = ()=>f
         S.img = obraz;
         const baza = sciezka.replace(/\.[^./]+$/, "");
         if(S.fmt === "svg"){
-          const {svg} = S.mode === "dither" ? await svgDither() : svgHalftone();
+          const {svg} = await svgTrybu();
           zip.dodaj(baza + ".svg", new TextEncoder().encode(svg));
         } else {
-          if(S.mode === "dither") await renderDither(S.scl, {keep:true}); else renderHalftone(S.scl);
+          await renderuj(S.scl, {keep:true});
           zip.dodaj(baza + ".png", new Uint8Array(await (await toBlob(out)).arrayBuffer()));
         }
         zrobione++;

@@ -136,6 +136,122 @@ każdym plikiem; nowe pole w S, które wpływa na wynik, musi być w `LOOK` albo
 w `KLUCZE` w batch.js. Panel na czas pracy dostaje `inert`, nie samo
 `pointer-events`, bo klawiatura dalej ruszałaby suwaki.
 
+**Palety wbudowane** to `BIBLIOTEKA` w palettes.js — lista w panelu powstaje
+z niej, więc nowa paleta to jeden wpis. Kolejność kolorów w palecie ma
+znaczenie w trybie „według jasności" (pierwszy = cienie), dlatego gradienty
+idą od ciemnego do jasnego (pilnuje tego `testy/kolory.mjs`). Dawnych palet
+(`bw`, `gray4`, `gray8`, `rgb3`, `quant`, `gameboy`, `cga`) nie ruszaj: ich
+identyfikatory siedzą w zapisanych presetach, a kolejność kolorów rozstrzyga
+remisy w `nearest()`. 1-bit ma od zawsze kolejność [papier, farba], a gradient
+potrzebuje [farba, papier] — dlatego tryb jasności bierze `paletaGradientu()`,
+nie `palette()`.
+
+**Tryb „według jasności"** (`S.mapa === "jasnosc"`, `ditherJasnosci()`
+w dither-core.js) liczy dithering na jednej liczbie zamiast trzech: N równo
+rozłożonych poziomów, poziom k → k-ty kolor palety. Po zmianach w dither-core
+porównuj stare tryby co do bajtu z poprzednią wersją (wyciągniętą z gita do
+pliku obok) — tak sprawdzony był refaktor przy dodawaniu tego trybu.
+
+**Edytor palety** zamienia każdą zmienioną paletę wbudowaną w `S.custom`
+(`doEdycji()`), zamiast wprowadzać trzeci rodzaj palety — dzięki temu presety,
+plik presetu i zapis .hex działają bez zmian. Uwaga: `paletaZDanych()` przy
+wczytywaniu usuwa powtórzone kolory, więc gradient z celowo zdublowanym
+kolorem wraca z pliku krótszy.
+
+**Poświata** (effects.js) liczy się na siatce podglądu jak pozostałe efekty:
+w ditheringu w workerze na buforze po pikselizacji (promień × 1/pix), w rastrze
+z obrazu podglądu (przy zapisie w skali — z pomocniczego renderu 1×), a gotowa
+warstwa jest powiększana płynnie i nakładana trybem screen. SVG z ditheringu
+dostaje `{bezPoswiaty:true}` — opcja idzie przez `ditherData()` do workera.
+Siłę warstw (`BLISKA`, `DALEKA`) dobierano na oko na ciemnej scenie i próbce —
+zmieniając je, oglądaj zrzuty (`ZRZUT=` w teście przeglądarki), test w Node
+sprawdza tylko kierunek, nie wygląd.
+
+**Algorytmy specjalne** (`ditherSpecjalny()` w dither-core.js): Ostromukhov
+zmienia wagi z piksela na piksel, Riemersma idzie po krzywej Hilberta — oba
+nie pasują do zwykłej pętli z `K[algo]`, więc mają własne, a wspólną
+kwantyzację dla obu trybów kolorów daje `przygotuj()`. Bufor w Float64, bo
+tylko tak Ostromukhov zgadza się co do piksela z programem autora
+(`testy/algorytmy.mjs`, dane w `testy/dane/`). Tabela wag w kernels.js jest
+wygenerowana programem z oryginalnego varcoeffED.c — nie przepisuj jej
+ręcznie. Wiersz tabeli wybiera jasność WEJŚCIOWA, nie skorygowana o błąd,
+a czysta czerń wejścia zostaje czarna — oba szczegóły z oryginału. Niebieski
+szum (void-and-cluster) liczy się raz, deterministycznie, w workerze
+i na głównym wątku tak samo. Wzory (`WZORY`) to nasze macierze, nie z literatury.
+
+**Animacja parametrów** (`animacja.js`): klatki kluczowe w jednostkach suwaka,
+nie S — wynik interpolacji zaokrąglany do kroku suwaka. `KONW` (suwak → S,
+zakres) ustawia app.js z tabeli `SUWAKI`, bo animacja.js nic nie wie
+o kontrolkach. Zapis filmu woła `zastosuj(S, t)` przed renderem każdej klatki,
+podgląd — w `przyKlatce`. Animowana pikselizacja zmienia wymiar `out`, więc
+`wyrownaj()` w video.js rozciąga klatkę do rozmiaru pierwszej (MP4 i GIF mają
+jeden rozmiar). Zwykły obraz jako film to `Stopklatka` w video.js — trzecie
+źródło obok `Film` i `Animacja`, z tym samym interfejsem. Uwaga na wyścig:
+„Próbka" i wczytany obraz ładują się asynchronicznie, a `setImage()` zamyka
+animację — w testach czekaj na zmianę `S.img`, nie na widoczność przycisków.
+
+**Przewijanie a zamykanie źródła**: `idzDo()` porzuca wyniki ze źródła, które
+w międzyczasie zamknięto, a `zdarzenie()` przerywa czekanie na „seeked" po
+„emptied". Bez tego przewijanie zamkniętego filmu wisiało do 20 s i gubiło
+następne żądania.
+
+**Stos efektów** (`stos.js`): kolejność to tekst `S.efekty` („jpeg,!rgb,glow",
+„!" = ukryty) — tekst, bo przechodzi przez presety i ich walidację bez zmian.
+Pusty = „po staremu" (sortowanie, RGB, poświata, jeśli niezerowe) — tak stare
+presety dają ten sam obraz co do bajtu. Nowy efekt: funkcja w `fx.js` (czysta,
+deterministyczna — losowość przez `skrot()`, nigdy Math.random), wpis w
+`EFEKTY` i `DZIALA`, gałąź w `uruchomNaBuforze` i `uruchomWSkali` (w skali:
+mały i duży bufor idą razem, każdy efekt po swojemu, test w `testy/stos.mjs`
+sprawdza dokładne powiększenie), karta w markupie, klucze w `DEFAULTS`
+i `SUWAKI`. Zmienność w czasie działa PRZED ditheringiem i czyta
+`S.klatkaNr` — ustawia go podgląd filmu (`przyKlatce`) i zapis (video.js).
+
+**Korekta** (image.js): krzywa (LUT) → barwa (macierz) → przestrzenna
+(odszumianie, rozmycie, wyostrzanie, `korektaPrzestrzenna`). Każdy krok przy
+wartości neutralnej pominięty w całości — inaczej stare obrazy zmieniłyby się
+o pojedyncze bajty. Rozmycie (`S.blur`) przeniesione z rastra do korekty; w
+rastrze liczy się dokładnie jak wcześniej.
+
+**Trzy tryby**: dithering, raster, ASCII. Render bieżącego trybu tylko przez
+`renderuj()` (render.js) i `svgTrybu()` (vector.js) — nie dopisuj trzeciej
+gałęzi w kolejnym miejscu. Wybór znaków ASCII jest czysty w `ascii-znaki.js`.
+
+**Kompozycja z warstw** (`warstwy.js`): materiał jak film — stan w `K`,
+nie w S, nie w presetach. Złożone płótno to stale ten sam obiekt w `S.img`.
+W kompozycji `setImage()` dokłada warstwę zamiast podmieniać obraz.
+
+**Wartości domyślne a `syncUI()`**: stałe używane w funkcjach wołanych przy
+starcie (np. `NAPISY` w `eksportUI`) muszą być zdefiniowane wyżej w pliku niż
+pierwsze `syncUI()` — inaczej TDZ wysypuje cały panel, a test w Node tego nie
+złapie (łapie go `testy/przegladarka.mjs`).
+
+**Rozmycie** jest w `rozmycie.js` (czyste), bo potrzebuje go i halftone.js,
+i effects.js w workerze — a halftone.js importuje dom.js, którego worker nie
+może załadować.
+
+**Wideo** (`video.js`) też nie ma własnej ścieżki renderu: bieżąca klatka
+ląduje w zwykłym płótnie, które staje się `S.img`, i liczy się jak zdjęcie.
+Stan filmu (źródło, zakres, bieżąca klatka) mieszka w `W`, nie w `S` — to
+materiał jak obraz, a `<video>` i `ImageDecoder` nie przeszłyby przez
+`postMessage` do workera. Klatkę wybiera przewinięcie do **środka** klatki
+(`(i+0.5)/fps`), bo przeglądarka nie podaje tempa ani numerów klatek; tempo
+wykrywamy z `requestVideoFrameCallback` przy otwarciu (najbliższe z typowych,
+nie pierwsze pasujące — 29,97 i 30 dzieli 0,1%). Przewijanie to „wygrywa
+ostatnie żądanie" (`idzDo()`), bo suwak osi jest szybszy niż dekoder.
+W czasie zapisu filmu `render()` w app.js nic nie rysuje (`wTrakcie`) —
+płótno należy do eksportu, inaczej podgląd w skali 1× wpadałby między render
+klatki a jej pobranie. Klatkę z `out` bierzemy synchronicznie zaraz po
+renderze (`getImageData`, `new VideoFrame`, `toBlob` robi migawkę od razu).
+
+**`gif.js` i `mp4.js` są czyste**, testowane w Node niezależnym dekoderem
+i parserem pudełek. Ale „plik jest poprawny wg mojego parsera" to za mało —
+`testy/przegladarka.mjs` sprawdza w Chrome, że przeglądarka je odtwarza,
+że GIF jest co do piksela renderem klatki i że numery klatek (zapisane
+kwadratami w filmie testowym) wychodzą po kolei. Ruszając wideo, puść go.
+GIF: rozmiar kodu LZW rośnie, gdy `nast === 1<<rozmiar` **przed** dodaniem
+wpisu — tak, jak spodziewa się dekoder; przesunięcie o jeden rozjeżdża koder
+z dekoderem.
+
 **Cache przeglądarki przy testach.** `python3 -m http.server` nie wysyła
 nagłówków cache i przeglądarka potrafi podać stary moduł obok nowych — objawia
 się to błędami typu „X is not a function" dla funkcji, która na dysku istnieje.
@@ -195,8 +311,18 @@ Nie ma zestawu testów w sensie frameworka. Są skrypty weryfikacyjne w `testy/`
 (czysty Node, bez zależności, `node testy/<plik>.mjs` z katalogu projektu) —
 puść odpowiedni po zmianie w module, który sprawdza: `palety-pliki` →
 palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
-contours.js, `szukanie-koloru` → palettes.js. Każdy kończy się kodem 0, gdy
-wszystko gra. Do tego ręcznie:
+contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.js,
+`kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `algorytmy` →
+wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
+`korekta` → image.js, głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
+ascii-znaki.js.
+Każdy kończy się kodem 0, gdy wszystko gra.
+
+`testy/przegladarka.mjs` to test całej ścieżki wideo w Chrome bez okna
+(protokół DevTools przez wbudowany WebSocket Node'a). Wymaga działającego
+`serwer.py`. Zmienne: `POMIAR=1` dokłada pomiar czasu na Full HD,
+`ZRZUT=plik.png` zapisuje zrzut ekranu apki z wczytanym filmem — tak da się
+obejrzeć układ bez ręcznego klikania. Do tego ręcznie:
 przycisk „Próbka" wczytuje wygenerowany obraz z gradientami, cieniem i płaską
 powierzchnią — na nim widać banding, odcięcia w cieniach i migotanie rastra.
 Po zmianach przejdź presety w obu trybach.

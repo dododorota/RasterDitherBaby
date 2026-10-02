@@ -1,7 +1,8 @@
-/* Efekty po rastrze: sortowanie kontra naiwna referencja, skala z×z co do bajtu, przesunięcie RGB.
+/* Efekty po rastrze: sortowanie kontra naiwna referencja, skala z×z co do bajtu, przesunięcie RGB, poświata.
    Uruchom z katalogu projektu: node testy/efekty.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB } from "../src/effects.js";
+import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, poswiata } from "../src/effects.js";
+import { efektyPo } from "../src/stos.js";
 
 let ziarno = 42;
 const los = () => (ziarno = (ziarno*1664525 + 1013904223) >>> 0) / 4294967296;
@@ -102,5 +103,48 @@ console.log("--- sortowanie obrazu z palety: kolorów spoza palety po sortowaniu
 // wyłączone efekty nic nie robią
 Object.assign(S, DEFAULTS);
 console.log("--- wyłączone: permutacja", permutacjaSortu(obraz(10,10,"szum"),10,10), "· przesunięcie", przesuniecieRGB(1));
-console.log("\nBŁĘDÓW RAZEM:", bledy+b2+b3+obce);
-process.exitCode = (bledy+b2+b3+obce) ? 1 : 0;
+
+console.log("--- poświata ---");
+let b4 = 0;
+const spr = (ok, opis) => { console.log((ok ? "  ok    " : "  ŹLE   ") + opis); if(!ok) b4++; };
+/* czarne tło z jedną jasną niebieską kropką 3×3 */
+function kropka(w, h){
+  const p = new Uint8ClampedArray(w*h*4);
+  for(let i=3;i<p.length;i+=4) p[i]=255;
+  for(let y=29;y<32;y++) for(let x=29;x<32;x++){ const o=(y*w+x)*4; p[o]=80; p[o+1]=160; p[o+2]=255; }
+  return p;
+}
+Object.assign(S, DEFAULTS);
+spr(!efektyPo(), "siła 0 = efekty wyłączone");
+{
+  const p = obraz(40, 30, "szum"), q = new Uint8ClampedArray(p);
+  Object.assign(S, DEFAULTS, {glow: 100, glowProg: 95});
+  const ciemny = new Uint8ClampedArray(p.length); for(let i=0;i<p.length;i+=4){ ciemny[i]=p[i]>>2; ciemny[i+1]=p[i+1]>>2; ciemny[i+2]=p[i+2]>>2; ciemny[i+3]=255; }
+  const c2 = new Uint8ClampedArray(ciemny); poswiata(c2, 40, 30, 1);
+  spr(rowne(c2, ciemny), "obraz ciemniejszy od progu zostaje nietknięty");
+  Object.assign(S, DEFAULTS, {glow: 150, glowR: 10, glowProg: 30});
+  poswiata(q, 40, 30, 1);
+  let ciemniej = 0; for(let i=0;i<p.length;i++) if(q[i] < p[i]) ciemniej++;
+  spr(ciemniej === 0, "screen tylko rozjaśnia — żaden kanał nie ciemnieje");
+}
+{
+  Object.assign(S, DEFAULTS, {glow: 100, glowR: 12, glowProg: 50});
+  const w = 61, h = 61, p = kropka(w, h);
+  poswiata(p, w, h, 1);
+  const px = (x, y) => [p[(y*w+x)*4], p[(y*w+x)*4+1], p[(y*w+x)*4+2]];
+  const obok = px(36, 30), daleko = px(58, 58);
+  spr(obok[2] > 0 && obok[2] > obok[0] && daleko[2] < obok[2], `halo w kolorze kropki: obok ${obok}, daleko ${daleko}`);
+  const p2 = kropka(w, h); poswiata(p2, w, h, 1);
+  spr(rowne(p, p2), "powtarzalność co do bajtu");
+  Object.assign(S, {glow: 200});
+  const p3 = kropka(w, h); poswiata(p3, w, h, 1);
+  spr(p3[(30*w+36)*4+2] > obok[2], "siła 200% świeci mocniej niż 100%");
+  /* jednostka: ten sam promień w pikselach obrazu przy pikselizacji 2× to połowa
+     pikseli bufora — halo na buforze 2× mniejszym sięga o połowę bliżej */
+  Object.assign(S, {glow: 100, glowR: 12});
+  const duzy = kropka(w, h); poswiata(duzy, w, h, 1);
+  const maly = kropka(w, h); poswiata(maly, w, h, 0.5);
+  spr(maly[(30*w+40)*4+2] < duzy[(30*w+40)*4+2], "jednostka 1/pix zmniejsza zasięg na buforze po pikselizacji");
+}
+console.log("\nBŁĘDÓW RAZEM:", bledy+b2+b3+obce+b4);
+process.exitCode = (bledy+b2+b3+obce+b4) ? 1 : 0;

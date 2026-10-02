@@ -28,7 +28,7 @@ function snapshot(){
 function pump(){
   if(!worker || inflight || !queue.length) return;
   const j = inflight = queue.shift();
-  worker.postMessage({id:j.id, snap:j.snap, buf:j.buf, w:j.w, h:j.h}, [j.buf]);
+  worker.postMessage({id:j.id, snap:j.snap, buf:j.buf, w:j.w, h:j.h, opcje:j.opcje}, [j.buf]);
 }
 if(worker){
   worker.onmessage = e => {
@@ -45,11 +45,11 @@ if(worker){
 }
 /* Oddaje bufor workerowi (transfer, bez kopiowania) i obiecuje wynik.
    Zwraca null, jeśli zadanie zostało wyparte świeższym. */
-export function compute(buf, w, h, drop){
+export function compute(buf, w, h, drop, opcje){
   return new Promise((resolve, reject) => {
     if(!worker) { reject(new Error("brak workera")); return; }
     if(drop) queue = queue.filter(j => { if(j.drop){ j.resolve(null); return false; } return true; });
-    queue.push({id:++seq, snap:snapshot(), buf, w, h, drop, resolve, reject});
+    queue.push({id:++seq, snap:snapshot(), buf, w, h, drop, opcje, resolve, reject});
     pump();
   });
 }

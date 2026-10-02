@@ -1,49 +1,39 @@
 # Proces — stan prac i przekazanie
 
-Zapis sesji z 22–30 września 2026, zrobiony przed przeniesieniem pracy na
-Windowsa. Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
+Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
+Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
-## Stan na 30 września 2026
+## Stan na 1 października 2026
 
-- Cała praca siedzi na gałęzi **`rozbudowa`** — 9 commitów nad `master`.
-  **Nic nie jest scalone.** `master` to dalej „Raster 0.1".
-- Drzewo robocze czyste, wszystko zacommitowane.
-- Brak zdalnego repozytorium (GitHub itp.) — kopia istnieje tylko na dysku
-  i w paczce ZIP zrobionej do przeniesienia.
-- Commity mają zastępczego autora `raster <raster@local>` (tak jak pierwszy
-  commit w repo). Na Windowsie ustaw własnego — patrz niżej.
+- Praca na Windowsie. Repozytorium na GitHubie:
+  `github.com/dododorota/RasterDitherBaby`, gałąź główna **`master`**
+  (ma już całą dawną `rozbudowa`; `rozbudowa` zostaje na GitHubie jako
+  identyczna kopia — użytkowniczka nie chce jej usuwać).
+- **Gita obsługuje użytkowniczka** — patrz zasady w `CLAUDE.md`.
+- Dodane i niezacommitowane: wideo i animacje (punkt 13 niżej), kolory
+  i poświata (14), algorytmy, lista kodów i animacja parametrów (15),
+  korekta, stos efektów, ASCII i warstwy (16).
 
 ## Uruchomienie na Windowsie
 
-1. Rozpakuj paczkę (zawiera też historię gita, folder `.git`).
-2. Zainstaluj Pythona z python.org, jeśli go nie ma — instalator dodaje
-   polecenie `py`.
-3. W folderze projektu:
-
-   ```
-   py serwer.py
-   ```
-
-   i otwórz `http://localhost:8000`.
-
-**Używaj `serwer.py`, a nie `py -m http.server`.** Zwykły serwer na Windowsie
-potrafi odczytać typ plików `.js` z rejestru jako `text/plain` — przeglądarka
-odmawia wtedy wczytania modułów i apka w ogóle nie startuje (w konsoli: „Failed
-to load module script… MIME type"). `serwer.py` ustawia typ jawnie i do tego
-wyłącza cache, więc zwykłe odświeżenie zawsze bierze świeże pliki.
-
-Do skryptów testowych potrzebny jest Node.js (wersja LTS z nodejs.org).
-Do commitów — Git for Windows. Po instalacji jednorazowo:
+Python 3.12 (winget) i Node.js są zainstalowane. W Git Bashu, w folderze
+projektu:
 
 ```
-git config --global user.name "Imię Nazwisko"
-git config --global user.email "adres@example.com"
+python serwer.py
 ```
 
-Claude Code: otwórz **folder `raster-app`** jako projekt, wtedy `CLAUDE.md`
-i ten plik wczytają się same. (W tej sesji projektem był folder `figma2ae`,
-więc `CLAUDE.md` raster-app trzeba było czytać ręcznie.)
+i `http://localhost:8000`. Terminal otwarty przed instalacją Pythona albo
+Node'a nie widzi ich w ścieżce — wtedy restart VS Code.
+
+**Używaj `serwer.py`, a nie `python -m http.server`.** Zwykły serwer na
+Windowsie potrafi odczytać typ plików `.js` z rejestru jako `text/plain` —
+przeglądarka odmawia wtedy wczytania modułów i apka w ogóle nie startuje
+(w konsoli: „Failed to load module script… MIME type"). `serwer.py` ustawia
+typ jawnie i do tego wyłącza cache.
+
+Chrome jest zainstalowany — `testy/przegladarka.mjs` go używa.
 
 ## Co zostało zrobione, po kolei
 
@@ -69,6 +59,32 @@ to przegląd bez zmian w kodzie.
     ×1,2 przy 32 kolorach do ×4 przy 256.
 11. **Cały folder naraz** — paczka ZIP, własny zapis ZIP bez zależności.
 12. **Kontury zamiast prostokątów w SVG** — dokładne i wygładzone.
+13. **Wideo i animacje** (1.10, Windows) — wzorowane na Dither Boyu
+    (studioaaa.com/product/dither-boy). Film MP4/WebM/MOV i animowany
+    GIF/WebP na wejściu, oś czasu z odtwarzaniem, wybór tempa i zakresu,
+    zapis do MP4 (WebCodecs + własny kontener), GIF-a (własny koder LZW)
+    i klatek PNG w ZIP-ie. Bez dźwięku — decyzja użytkowniczki, na razie.
+14. **Kolory w ditheringu i poświata** (2.10) — po uwadze, że apka ma mało
+    opcji kolorystycznych w porównaniu z Dither Boyem (nagranie interfejsu:
+    style, paleta z kategoriami, kolory, świecące kule). Biblioteka 43 palet
+    w kategoriach ze strzałkami, tryb „według jasności" (mapa gradientu),
+    edytor palety, paleta ze zdjęcia (najdalsze kolory + k-średnie), zapis
+    .hex, poświata w obu trybach, farba i papier w rastrze, trzy nowe presety.
+15. **Algorytmy, lista kodów, animacja parametrów** (2.10) — po drugim
+    nagraniu Dither Boya (kot „can do it all": styl Ostromukhov, paleta jako
+    lista kodów, oś czasu ze ścieżkami Brightness/Scale/Contrast).
+    Ostromukhov z tabeli autora (wynik co do piksela jak jego program),
+    Riemersma, Stevenson–Arce, niebieski szum, pięć wzorów; lista kodów hex
+    w palecie; klatki kluczowe jak w After Effects i animacja zwykłego obrazu.
+    Przy okazji naprawione przewijanie po zamknięciu filmu.
+16. **Druga fala z Dither Boya** (2.10) — po zrzutach z filmu
+    youtube.com/watch?v=qbZBiNevByI. Bez średniowiecznego wyglądu z filmu
+    (decyzja użytkowniczki): ciemny motyw domyślnie z przełącznikiem.
+    Korekta (cienie, światła, nasycenie, odcień, wyostrzanie, odszumianie),
+    głębia koloru, dopasowanie Oklab; algorytmy False Floyd, Fan, Shiau–Fan 1/2
+    (wagi z patentu), Bayer 16, IGN; stos efektów z kartami (aberracja, JPEG,
+    zabarwienie, gwiazdki, faktura, obróbka, zmienność w czasie); tryb ASCII
+    z zapisem TXT; kompozycja z warstw; przezroczyste tło; zwijane grupy.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -104,9 +120,28 @@ Testy szły na obrazach generowanych w kodzie i w wbudowanej przeglądarce
 - **prawdziwe zdjęcia i prawdziwe palety z Lospec** — ocena na oko, czy to
   wszystko dobrze wygląda w pracy.
 
+Wideo testowane na filmach generowanych w Chrome (bez okna, `testy/przegladarka.mjs`).
+Nie sprawdzone:
+
+- **prawdziwe filmy z telefonu** — zmienne tempo klatek, obrót (MOV
+  z iPhone'a), HEVC, który Chrome otwiera tylko ze sprzętowym dekoderem;
+- **MP4 w Premiere, After Effects, Instagramie** — przeglądarka go odtwarza,
+  ale innych odtwarzaczy nikt nie próbował;
+- **długie filmy** — pamięć przy kilku minutach GIF-a albo klatek PNG
+  (wszystko składa się w pamięci przeglądarki);
+- **wideo w Firefoxie i Safari** — WebCodecs, `requestVideoFrameCallback`.
+
 ## Otwarte decyzje
 
-- **Scalenie `rozbudowa` z `master`** — po sprawdzeniu powyższego.
+- **Stabilizacja ditheringu w filmie** — dyfuzja błędu migocze między
+  klatkami. Następny krok przy wideo, jeśli przeszkadza w pracy.
+- **Reszta różnic z Dither Boyem** — lista w README, „Co dalej".
+- **Efekty tylko na warstwy pod nimi** — w Dither Boyu efekt w stosie warstw
+  działa na to, co pod nim; u nas stos efektów działa na całą kompozycję.
+- **Klatki kluczowe w presetach i plikach** — dziś giną po zamknięciu karty.
+  Trzeba by dopisać je do formatu presetu z tą samą nieufną walidacją.
+- **Siła poświaty** dobrana na scenach generowanych w kodzie — do sprawdzenia
+  na prawdziwych zdjęciach i filmach, czy 100% to dobry środek skali.
 - **Skrypty testowe** — `CLAUDE.md` mówiło, że testy „na razie nie są
   potrzebne", ale skrypty weryfikacyjne z tej sesji trafiły do `testy/`,
   bo część ginęła z katalogu tymczasowego, a to jedyny zapis tego, jak
@@ -122,10 +157,19 @@ node testy/zip.mjs
 node testy/efekty.mjs
 node testy/kontury.mjs
 node testy/szukanie-koloru.mjs
+node testy/gif.mjs
+node testy/mp4.mjs
+node testy/kolory.mjs
+node testy/algorytmy.mjs
+node testy/animacja.mjs
+node testy/korekta.mjs
+node testy/stos.mjs
+node testy/ascii.mjs
+node testy/przegladarka.mjs     # wymaga serwer.py i Chrome
 ```
 
 Każdy kończy się liczbą błędów i kodem wyjścia 0, gdy wszystko gra. Ostatni
 porównuje ~1,3 mln wyszukań i trwa kilkadziesiąt sekund.
 `node testy/wydajnosc-siatki.mjs` to pomiar, nie test — trwa kilka minut.
 
-Ostatnie uruchomienie (30.09): wszystkie pięć bez błędów.
+Ostatnie uruchomienie (2.10, Windows, Node 24): wszystkie czternaście bez błędów.

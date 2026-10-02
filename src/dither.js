@@ -17,14 +17,16 @@ function drawSource(){
   return {c, ctx, w, h};
 }
 /* Zwraca {c,w,h,d} albo null, gdy zadanie zostało wyparte świeższym.
-   Z {keep:true} nigdy nie zwróci null — tego używa zapis do pliku. */
+   Z {keep:true} nigdy nie zwróci null — tego używa zapis do pliku.
+   {wektor:true} zostawia tylko efekty, które da się oddać w SVG. */
 export async function ditherData(opts){
   const {c, ctx, w, h} = drawSource();
+  const opcje = {wektor: !!(opts && opts.wektor)};
 
   if(hasWorker()){
     try{
       const src = ctx.getImageData(0,0,w,h);
-      const r = await compute(src.data.buffer, w, h, !(opts && opts.keep));
+      const r = await compute(src.data.buffer, w, h, !(opts && opts.keep), opcje);
       if(!r) return null;
       const d = new ImageData(new Uint8ClampedArray(r.buf), w, h);
       ctx.putImageData(d,0,0);
@@ -34,7 +36,7 @@ export async function ditherData(opts){
     }
   }
   const d = ctx.getImageData(0,0,w,h);
-  ditherIEfekty(d.data, w, h);
+  ditherIEfekty(d.data, w, h, opcje);
   ctx.putImageData(d,0,0);
   return {c, w, h, d};
 }

@@ -43,10 +43,15 @@ h1{
 }
 .reg{display:flex; gap:5px; align-items:center; margin-left:auto}
 .reg i{width:9px;height:9px;border-radius:50%;display:block;mix-blend-mode:multiply}
+:root[data-theme="dark"] .reg i{mix-blend-mode:normal}
+header .motyw{width:auto; padding:3px 10px; font-size:12px; align-self:center}
 .tagline{color:var(--soft); font-size:13px}
 
-.layout{display:grid; grid-template-columns:320px 1fr; height:calc(100% - 52px)}
-@media (max-width:820px){ .layout{grid-template-columns:1fr; height:auto} }
+/* kolumna: nagłówek tyle, ile zajmie, reszta ekranu dla panelu i podglądu —
+   bez liczenia wysokości nagłówka na sztywno */
+body{display:flex; flex-direction:column}
+.layout{display:grid; grid-template-columns:320px 1fr; flex:1 1 auto; min-height:0}
+@media (max-width:820px){ body{display:block} .layout{grid-template-columns:1fr} }
 
 .panel{border-right:1px solid var(--rule); overflow-y:auto; padding-bottom:40px}
 @media (max-width:820px){ .panel{border-right:0; border-bottom:1px solid var(--rule)} }
@@ -88,8 +93,20 @@ select:focus-visible,.btn:focus-visible{outline:2px solid var(--magenta); outlin
 .check input{accent-color:var(--magenta); width:15px; height:15px}
 
 .swatches{display:flex; gap:8px; align-items:center}
-.probki{display:flex; flex-wrap:wrap; gap:2px; margin-top:12px}
-.probki i{display:block; width:14px; height:14px; box-shadow:inset 0 0 0 1px var(--rule)}
+.probki{display:flex; flex-wrap:wrap; gap:3px; margin-top:12px}
+.probki button{
+  display:block; width:22px; height:22px; padding:0; cursor:pointer;
+  border:0; box-shadow:inset 0 0 0 1px var(--rule);
+}
+.probki button[aria-pressed=true]{outline:2px solid var(--ink); outline-offset:1px}
+.probki button:focus-visible{outline:2px solid var(--magenta); outline-offset:1px}
+.probki.gesto button{width:14px; height:14px}
+.pal-wybor{display:flex; gap:6px}
+.pal-wybor .btn{width:34px; flex:0 0 auto; padding:6px 0}
+.pal-wybor select{flex:1 1 auto; min-width:0}
+.edycja .btn{padding:5px 4px; font-size:12px}
+/* wybierak koloru dla próbek: musi być w układzie, bo przy nim otwiera się okno */
+.kolor-ukryty{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:0; padding:0}
 input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rule); background:none; cursor:pointer}
 
 .presets{display:flex; flex-wrap:wrap; gap:6px}
@@ -101,7 +118,7 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 .btns input[type=text]{flex:1 1 auto; min-width:0}
 
 .stage{
-  background:var(--stage); display:flex; align-items:center; justify-content:center;
+  background:var(--stage); display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center;
   padding:22px; overflow:auto; min-height:60vh; position:relative;
 }
 #out{max-width:100%; max-height:calc(100vh - 140px); display:block; box-shadow:0 1px 0 var(--rule)}
@@ -115,5 +132,87 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 .hint{color:var(--soft); font-size:12px; margin:8px 0 0}
 .hidden{display:none !important}
 
-/* przetwarzanie folderu: reszta panelu przygaszona i wyłączona (inert) */
-.panel.zajete .group[inert], .panel.zajete #g-obraz .btn:disabled{opacity:.4}
+/* przetwarzanie folderu i zapis filmu: reszta panelu przygaszona i wyłączona (inert) */
+.panel.zajete .group[inert], .panel.zajete .group :disabled{opacity:.4}
+
+/* oś czasu filmu pod podglądem */
+.stage.z-osia #out{max-height:calc(100vh - 196px)}
+.os{display:flex; align-items:center; gap:12px; width:min(100%, 720px)}
+.os .btn{width:38px; flex:0 0 auto; padding:5px 0; font-size:13px}
+.os input[type=range]{flex:1 1 auto}
+.os .val{flex:0 0 auto; min-width:118px}
+.os[inert]{opacity:.4}
+/* źródło filmu: w dokumencie, bo inaczej nie zawsze dostaje klatki, ale niewidoczne */
+.wideo-zrodlo{position:fixed; left:0; bottom:0; width:2px; height:2px; opacity:0; pointer-events:none}
+#g-pal{position:relative}
+
+/* lista kolorów palety z kodami */
+.pal-szczegoly{margin-top:10px}
+.pal-szczegoly summary{cursor:pointer; color:var(--soft); font-size:13px}
+.pal-lista{max-height:240px; overflow-y:auto; margin-top:6px; display:flex; flex-direction:column; gap:3px}
+.pal-lista .wiersz{display:flex; align-items:center; gap:4px}
+.pal-lista .wiersz > button.probka{width:22px; height:22px; flex:0 0 auto; padding:0; border:0; cursor:pointer; box-shadow:inset 0 0 0 1px var(--rule)}
+.pal-lista input[type=text]{flex:1 1 auto; min-width:0; padding:3px 6px; font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace; font-size:12px}
+.pal-lista input[type=text][aria-invalid=true]{outline:2px solid var(--magenta)}
+.pal-lista .btn{width:24px; flex:0 0 auto; padding:2px 0; font-size:12px}
+.pal-lista .btn:disabled{opacity:.3; cursor:default}
+
+/* klatki kluczowe: ◆ przy suwakach i ścieżki pod osią czasu */
+.klucz{display:none; flex:0 0 auto; width:20px; height:20px; padding:0; margin-left:auto; margin-right:-4px;
+  border:0; background:transparent; color:var(--rule); cursor:pointer; font-size:13px; line-height:20px}
+.panel.animacja .klucz{display:inline-block}
+.klucz.animowany{color:var(--soft)}
+.klucz[aria-pressed=true]{color:var(--magenta)}
+.klucz:hover{color:var(--ink)}
+.klucz:focus-visible{outline:2px solid var(--magenta)}
+/* ścieżki mają ten sam układ co oś nad nimi (przycisk 38 px, suwak, licznik
+   118 px), żeby znaczniki i głowica stały dokładnie pod suwakiem osi; tor jest
+   węższy o pół uchwytu suwaka z każdej strony, bo tyle suwak traci na brzegach */
+.os-sciezki{width:min(100%, 720px); display:flex; flex-direction:column; gap:4px; margin-top:-6px}
+.sciezka{display:flex; align-items:center; gap:12px; font-size:12px; color:var(--soft)}
+.sciezka::before{content:""; flex:0 0 38px}
+.sciezka .nazwa{flex:0 0 92px; order:3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sciezka .usun{order:4}
+.sciezka .tor{position:relative; flex:1 1 auto; height:16px; margin:0 6px; border-bottom:1px solid var(--rule)}
+.sciezka .tor .kl{position:absolute; top:1px; width:14px; height:14px; margin-left:-7px; padding:0; border:0;
+  background:transparent; color:var(--ink); cursor:pointer; font-size:12px; line-height:14px}
+.sciezka .tor .glowica{position:absolute; top:0; bottom:-1px; width:1px; background:var(--magenta); pointer-events:none}
+.sciezka .usun{width:20px; flex:0 0 auto; padding:0; font-size:12px; margin-left:-8px}
+
+/* stos efektów: karty z nagłówkiem */
+.fx{border:1px solid var(--rule); margin-top:8px}
+.fx-glowa{display:flex; align-items:center; gap:2px; padding:4px 4px 4px 0; border-bottom:1px solid var(--rule)}
+.fx.zwiniety .fx-glowa{border-bottom:0}
+.fx.zwiniety .fx-cialo{display:none}
+.fx-cialo{padding:4px 10px 10px}
+.fx-nazwa{flex:1 1 auto; text-align:left; font:inherit; font-weight:500; color:var(--ink); background:none; border:0; padding:4px 10px; cursor:pointer}
+.fx-nazwa::before{content:"▾ "; color:var(--soft)}
+.fx.zwiniety .fx-nazwa::before{content:"▸ "}
+.fx-b{width:26px; height:26px; padding:0; font:inherit; font-size:13px; color:var(--soft); background:none; border:0; cursor:pointer}
+.fx-b:hover{color:var(--ink)}
+.fx-b:disabled{opacity:.3; cursor:default}
+.fx-b:focus-visible,.fx-nazwa:focus-visible{outline:2px solid var(--magenta)}
+.fx.ukryty .fx-cialo, .fx.ukryty .fx-nazwa{opacity:.45}
+.fx-menu{display:flex; flex-direction:column; gap:4px; margin-top:6px}
+.fx-menu .btn{text-align:left}
+/* zwijane grupy panelu */
+.panel .group > h2{cursor:pointer; user-select:none}
+.panel .group > h2::after{content:" ▾"; color:var(--soft); font-weight:400}
+.panel .group.zwinieta > h2{margin-bottom:0}
+.panel .group.zwinieta > h2::after{content:" ▸"}
+.panel .group.zwinieta > :not(h2){display:none !important}
+.panel .group > h2:focus-visible{outline:2px solid var(--magenta); outline-offset:2px}
+/* paski przewijania i kontrolki formularzy w kolorze motywu */
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+
+/* warstwy kompozycji */
+.razy{align-self:center; color:var(--soft)}
+#g-warstwy input[type=number]{font:inherit; color:var(--ink); background:var(--field); border:1px solid var(--rule); padding:6px 8px; width:100%; min-width:0}
+.warstwy-lista{display:flex; flex-direction:column; gap:3px; margin-top:8px}
+.warstwy-lista .warstwa{display:flex; align-items:center; gap:2px; border:1px solid var(--rule)}
+.warstwy-lista .warstwa[aria-selected=true]{border-color:var(--ink)}
+.warstwy-lista .warstwa .nazwa{flex:1 1 auto; min-width:0; text-align:left; font:inherit; font-size:13px; color:var(--ink); background:none; border:0; padding:6px 8px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.warstwy-lista .warstwa.ukryta .nazwa{opacity:.45}
+.warstwy-lista .fx-b{flex:0 0 auto}
+#out.przeciaganie{cursor:move}
