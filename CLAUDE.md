@@ -24,6 +24,9 @@ nawet jeśli kod jest czystszy.
   (albo `npx serve .`). Do testów przeglądarkowych używaj `serwer.py` — bez
   cache, więc nie złapiesz starego modułu.
   Nie dodawaj bundlera, TypeScriptu ani frameworka bez wyraźnej prośby.
+  Wyjątek na prośbę użytkowniczki: **Electron** jako opakowanie na pulpit
+  (`electron/`, devDependencies) — apka nic o nim nie wie i dalej działa
+  w przeglądarce z `serwer.py`. Nie importuj niczego z Electrona w `src/`.
 - **Liczenie oddzielone od rysowania.** `ditherData()` i `collectScreen()`
   zwracają dane; canvas i SVG są ich konsumentami. Nowy efekt dodawaj w tej samej
   konwencji, bo inaczej eksport wektorowy się rozjedzie z podglądem.
@@ -225,6 +228,73 @@ starcie (np. `NAPISY` w `eksportUI`) muszą być zdefiniowane wyżej w pliku ni�
 pierwsze `syncUI()` — inaczej TDZ wysypuje cały panel, a test w Node tego nie
 złapie (łapie go `testy/przegladarka.mjs`).
 
+**Stabilizacja dyfuzji** (`stabilizacja()` w dither-core.js) to jedyny stan,
+który przechodzi między renderami: pamięć wyniku poprzedniej klatki w module
+(w workerze). Działa tylko z opcjami `{pamietaj, zPamieci}` od wołającego —
+zapis filmu daje `zPamieci: k > 0`, odtwarzanie `true`, zatrzymany kadr nic —
+i tylko dla klatki o 1–5 dalej niż zapamiętana. Próg względny (ułamek
+odległości między dwoma kandydatami), nie w stałych jednostkach — w stałych
+dla czerni i bieli prawie nie działał. Przy `stabil = 0` kod jest omijany
+w całości (test: co do bajtu jak bez stabilizacji).
+
+**Dźwięk w MP4** (`dzwiekFilmu()` w video.js): decodeAudioData na pliku filmu
+(OfflineAudioContext 48 kHz, więc od razu przeliczony), AudioEncoder AAC
+z zapasem Opus, druga ścieżka w `mp4.js` (esds albo dOps). Ścieżka wideo
+w MP4 bez dźwięku jest bajt w bajt jak przed dodaniem dźwięku.
+
+**Zapisane palety** (`raster.palety` w localStorage) czytane przez
+`paletaZDanych()` — tę samą walidację co plik; użycie wkłada kopię do
+`S.custom`. **Klatki kluczowe w presecie**: pole `animacja`, zapis
+`zrzut()`, nieufne wczytanie `wczytaj()` w animacja.js (tylko parametry z
+`KONW`, przycięte do suwaka). Preset bez pola animacji jej nie rusza.
+
+**Geometria rastra** (`siatki.js`, czysty): `geometria(smp, W, H, ink, z)`
+zwraca kropki `[x, y, r, kąt]` albo linie (łamane `[x, y, półgrubość]`) —
+konsumentami są `drawScreen()` i `svgHalftone()`, nie dopisuj trzeciego
+liczenia. Siatka kwadratowa to dokładnie dawny `collectScreen()` (test
+porównuje co do bitu), więc stare presety dają ten sam raster. Obrót płyty
+i przesunięcie riso liczone w pikselach podglądu, przez `z` mnożona gotowa
+geometria — jak wszędzie. Okręgi nachodzą na początek o jeden krok, inaczej
+została szczelina. Dawne kształty rysuje stary kod (kąt na punkt), nowe
+(`NOWE_KSZTALTY`) idą jako wielokąty z `kontury()`. Linie: każda siatka
+buduje bazową linię `[x, y, nx, ny, t, s]` i oddaje ją `przetworz()` —
+tam pokrycie, gładkość (średnia odkształcenia w oknie wzdłuż t, na okręgach
+dookoła) i grubość min/max; przy domyślnych suwakach wynik co do bitu jak
+przed ich dodaniem (sprawdzone na 48 przypadkach). „Wzdłuż kształtu"
+(`warstwice()`) to warstwice pola „rampa pod kątem + odkształcenie ×
+rozmyte pokrycie" — jedno przejście marching squares dla wszystkich
+poziomów naraz; osobne przejście na poziom przy gęstości 3 było za wolne.
+Czyste warstwice samego obrazu próbowane i porzucone: płaskie miejsca
+zostawały puste, a linie zbijały się w czarne pasy na krawędziach.
+Losowe pasowanie riso ze `skrot()` numeru farby i wariantu, nie z Math.random.
+
+**Risograf** (`inkmode:"riso"`): farby w kluczach `risoK/Z/A/C/S/O/X/Y/R{i}`,
+panel czterech warstw generuje `panelRiso()` w app.js z `DEFAULTS` i sam
+dopisuje wpisy do `SUWAKI`/`LISTY`/`KOLORY` — musi stać po tych tabelach,
+a przed pierwszym `syncUI()`. Źródło „farba" rzutuje ciemność piksela na
+ciemność farby. **Faktura farby** (`faktura-farby.js`) działa na kanale alfa
+gotowej warstwy farby przed mnożeniem; szum na siatce podglądu, więc skala
+zapisu daje ten sam wzór. Szorstkość = rozmycie alfy i próg z szumem —
+alfa ≤ 0,002 zostaje zerem, inaczej farba pojawiała się na czystym papierze.
+SVG faktury nie dostaje.
+
+**Usuwanie tła** (`wycinanie.js`, czysty): maska z odległości w Oklab,
+wypełnianie od brzegów kolejką (bez rekurencji). W warstwach maska liczy
+się raz przy zmianie ustawień na kopii roboczej (≤ 1400 px) i trafia do
+`w.wyciety`, który `zloz()` rysuje zamiast oryginału — nie licz maski
+w `zloz()`, ten woła się przy każdym przesunięciu warstwy.
+
+**Electron** (`electron/main.js`): pliki przez własny protokół `app://`
+(standardowy i bezpieczny), nie `file://` — z `file://` moduły ES i worker
+jako moduł się nie ładują, a WebCodecs chce bezpiecznego kontekstu. Typy MIME
+podaje tabela `TYPY` — nowy rodzaj pliku w apce (np. `.webp` jako zasób)
+trzeba tam dopisać. Nowy katalog z plikami apki dopisz też do `build.files`
+w package.json, inaczej zabraknie go w .exe. Terminal VS Code ustawia
+`ELECTRON_RUN_AS_NODE=1` — stąd `npm start` przez `electron/start.mjs`,
+a ręcznie `env -u ELECTRON_RUN_AS_NODE …`. Test bez klikania:
+`RASTER_ZRZUT=plik.png` — wczytuje „Próbkę", zapisuje zrzut okna i błędy
+konsoli, zamyka się (działa też na `dist/win-unpacked/Raster.exe`).
+
 **Rozmycie** jest w `rozmycie.js` (czyste), bo potrzebuje go i halftone.js,
 i effects.js w workerze — a halftone.js importuje dom.js, którego worker nie
 może załadować.
@@ -312,10 +382,11 @@ Nie ma zestawu testów w sensie frameworka. Są skrypty weryfikacyjne w `testy/`
 puść odpowiedni po zmianie w module, który sprawdza: `palety-pliki` →
 palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
 contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.js,
-`kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `algorytmy` →
+`kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `siatki` →
+siatki.js i faktura-farby.js, `wycinanie` → wycinanie.js, `algorytmy` →
 wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
 `korekta` → image.js, głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
-ascii-znaki.js.
+ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js.
 Każdy kończy się kodem 0, gdy wszystko gra.
 
 `testy/przegladarka.mjs` to test całej ścieżki wideo w Chrome bez okna

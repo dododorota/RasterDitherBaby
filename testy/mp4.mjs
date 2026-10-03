@@ -116,6 +116,36 @@ console.log("--- zmienne długości klatek (GIF) ---");
   sprawdz(!znajdz(drzewo, "moov/trak/mdia/minf/stbl/stss"), "same klatki kluczowe: bez stss");
 }
 
+console.log("--- z dźwiękiem (AAC i Opus) ---");
+for(const kodek of ["aac", "opus"]){
+  const pr = probki(60, 30, 30);
+  /* 2 s dźwięku 48 kHz w ramkach po 1024 próbki (AAC) albo 960 (Opus, 20 ms) */
+  const ramka = kodek === "aac" ? 1024 : 960, ile = Math.ceil(2*48000/ramka);
+  const dz = Array.from({length: ile}, (_, i) => ({dane: new Uint8Array(50 + i % 7).fill(200 + (i & 31)), pts: Math.round(i*ramka*1e6/48000), dur: Math.round(ramka*1e6/48000)}));
+  const opis = kodek === "aac" ? Uint8Array.of(0x11, 0x90) : null;
+  const {b, drzewo} = await rozbierz(zlozMp4({szer: 320, wys: 240, avcC, probki: pr, dzwiek: {kodek, opis, czestotliwosc: 48000, kanaly: 2, bitrate: 128000, probki: dz}}));
+  const traki = drzewo[1].dzieci.filter(p => p.typ === "trak");
+  const soun = traki[1];
+  const sciezka = s => { let p = {dzieci: [soun]}; for(const t of ("trak/" + s).split("/")) p = p.dzieci.find(x => x.typ === t); return p; };
+  const hdlr = sciezka("mdia/hdlr").tresc, mdhd = sciezka("mdia/mdhd").tresc;
+  const stsd = sciezka("mdia/minf/stbl/stsd").tresc, wpis = String.fromCharCode(...stsd.subarray(12, 16));
+  const stco = sciezka("mdia/minf/stbl/stco").tresc, stts = sciezka("mdia/minf/stbl/stts").tresc;
+  const start = u32(stco, 8), daneWideo = pr.reduce((s, p) => s + p.dane.length, 0);
+  const mvhd = znajdz(drzewo, "moov/mvhd").tresc;
+  sprawdz(traki.length === 2 && String.fromCharCode(...hdlr.subarray(8, 12)) === "soun" && u32(mdhd, 12) === 48000,
+          `${kodek}: druga ścieżka „soun”, skala czasu 48 000`);
+  sprawdz(wpis === (kodek === "aac" ? "mp4a" : "Opus"), `${kodek}: wpis próbki „${wpis}”`);
+  sprawdz(start === drzewo[2].o + 8 + daneWideo && b[start] === dz[0].dane[0] && b[start + dz[0].dane.length] === dz[1].dane[0],
+          `${kodek}: dane dźwięku zaraz za obrazem, w kolejności`);
+  sprawdz(u32(stts, 4) === 1 && u32(stts, 12) === ramka, `${kodek}: stts ${u32(stts, 8)} × ${u32(stts, 12)} próbek`);
+  sprawdz(u32(mvhd, 20 - 4) >= 2*90000 && u32(mvhd, 96) === 3, `${kodek}: czas filmu ≥ 2 s, następny identyfikator ścieżki 3`);
+  if(kodek === "aac"){
+    const esds = sciezka("mdia/minf/stbl/stsd").tresc;
+    const asc = [...esds].findIndex((v, j) => v === 0x05 && esds[j+4] === 2 && esds[j+5] === 0x11 && esds[j+6] === 0x90);
+    sprawdz(asc > 0, "aac: AudioSpecificConfig z kodera w deskryptorze esds");
+  }
+}
+
 console.log("--- błędy ---");
 let rzucil = false;
 try{ zlozMp4({szer: 10, wys: 10, avcC, probki: []}); } catch{ rzucil = true; }

@@ -21,7 +21,7 @@ function drawSource(){
    {wektor:true} zostawia tylko efekty, które da się oddać w SVG. */
 export async function ditherData(opts){
   const {c, ctx, w, h} = drawSource();
-  const opcje = {wektor: !!(opts && opts.wektor)};
+  const opcje = {wektor: !!(opts && opts.wektor), pamietaj: !!(opts && opts.pamietaj), zPamieci: !!(opts && opts.zPamieci)};
 
   if(hasWorker()){
     try{

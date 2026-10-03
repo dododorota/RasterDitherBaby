@@ -111,7 +111,9 @@ class Film {
         await p;
       }
       const fps = await wykryjTempo(el);
-      return new Film(el, url, porzuc, f.name, fps);
+      const film = new Film(el, url, porzuc, f.name, fps);
+      film.plik = f;                         /* do dźwięku przy zapisie MP4 */
+      return film;
     } catch(err){
       porzuc();
       throw new Error(/obrazu/.test(err.message) ? err.message :
@@ -431,12 +433,12 @@ async function koderMp4(w, h, fps){
       /* nie zasypujemy kodera — każda klatka w kolejce to pełna bitmapa w pamięci */
       while(enc.encodeQueueSize > 3 && !blad) await new Promise(r => setTimeout(r, 4));
     },
-    async zakoncz(){
+    async zakoncz(dzwiek){
       await enc.flush();
       enc.close();
       if(blad) throw new Error("Koder wideo: " + blad.message);
       for(const p of probki) if(!p.dur) p.dur = Math.round(1e6/fps);
-      return new Blob(zlozMp4({szer: ew, wys: eh, avcC, probki}), {type: "video/mp4"});
+      return new Blob(zlozMp4({szer: ew, wys: eh, avcC, probki, dzwiek}), {type: "video/mp4"});
     },
     porzuc(){ try{ if(enc.state !== "closed") enc.close(); } catch{} },
     uwaga: ew !== w || eh !== h ? "wymiar przycięty do parzystego (" + ew + "×" + eh + ")" : ""
@@ -485,6 +487,54 @@ function wyrownaj([w, h]){
   x.drawImage(c, 0, 0, w, h);
 }
 
+/* ---------- dźwięk ----------
+   Ścieżkę dźwiękową z pliku filmu dekoduje przeglądarka (decodeAudioData,
+   od razu przeliczona na 48 kHz), kroimy ją do zakresu zapisu i kodujemy
+   AudioEncoderem: AAC, a gdy go nie ma — Opus (MP4 z Opusem odtworzy
+   przeglądarka i VLC, QuickTime nie). Zwraca null, gdy film nie ma dźwięku. */
+const CZESTOTLIWOSC = 48000;
+async function dzwiekFilmu(plik, od, doo){
+  if(!plik || typeof AudioEncoder === "undefined") throw new Error("przeglądarka nie ma kodera dźwięku");
+  let buf;
+  try{ buf = await new OfflineAudioContext(1, 1, CZESTOTLIWOSC).decodeAudioData(await plik.arrayBuffer()); }
+  catch{ return null; }
+  const kanaly = Math.min(2, buf.numberOfChannels);
+  const s0 = Math.max(0, Math.round(od*CZESTOTLIWOSC)), s1 = Math.min(buf.length, Math.round(doo*CZESTOTLIWOSC));
+  if(s1 - s0 < 1024) return null;
+  let cfg = null, kodek = "aac";
+  for(const [k, c] of [["aac", {codec: "mp4a.40.2", aac: {format: "aac"}}], ["opus", {codec: "opus"}]]){
+    const pelny = {...c, sampleRate: CZESTOTLIWOSC, numberOfChannels: kanaly, bitrate: 192000};
+    try{ if((await AudioEncoder.isConfigSupported(pelny)).supported){ cfg = pelny; kodek = k; break; } } catch{}
+  }
+  if(!cfg) throw new Error("koder dźwięku nie przyjmuje ani AAC, ani Opusa");
+  const probki = [];
+  let opis = null, blad = null;
+  const enc = new AudioEncoder({
+    output: (ch, meta) => {
+      const d = meta && meta.decoderConfig && meta.decoderConfig.description;
+      if(d && !opis) opis = new Uint8Array(ArrayBuffer.isView(d) ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : d.slice(0));
+      const dane = new Uint8Array(ch.byteLength); ch.copyTo(dane);
+      probki.push({dane, pts: ch.timestamp, dur: ch.duration || 0});
+    },
+    error: e => { blad = e; }
+  });
+  enc.configure(cfg);
+  const KAWALEK = 4800;                         /* 0,1 s */
+  for(let s = s0; s < s1; s += KAWALEK){
+    const ile = Math.min(KAWALEK, s1 - s), dane = new Float32Array(ile*kanaly);
+    for(let c=0; c<kanaly; c++) dane.set(buf.getChannelData(c).subarray(s, s + ile), c*ile);
+    const ad = new AudioData({format: "f32-planar", sampleRate: CZESTOTLIWOSC, numberOfFrames: ile, numberOfChannels: kanaly,
+                              timestamp: Math.round((s - s0)*1e6/CZESTOTLIWOSC), data: dane});
+    enc.encode(ad); ad.close();
+    if(blad) break;
+  }
+  await enc.flush(); enc.close();
+  if(blad) throw new Error("koder dźwięku: " + blad.message);
+  for(const p of probki) if(!p.dur) p.dur = Math.round((kodek === "aac" ? 1024 : 960)*1e6/CZESTOTLIWOSC);
+  if(kodek === "aac" && !opis) throw new Error("koder AAC nie oddał opisu strumienia");
+  return {kodek, opis, czestotliwosc: CZESTOTLIWOSC, kanaly, bitrate: 192000, probki};
+}
+
 /* Liczy cały zakres klatka po klatce w bieżących ustawieniach i oddaje plik.
    Przerwanie kończy po bieżącej klatce i zapisuje to, co gotowe. */
 export async function zapiszWideo({postep = () => {}, przerwano = () => false} = {}){
@@ -508,7 +558,8 @@ export async function zapiszWideo({postep = () => {}, przerwano = () => false} =
       await z.pokaz(i);
       zastosujAnimacje(S, z.klatki[i].t);
       S.klatkaNr = i;
-      await renderuj(S.scl, {keep: true});
+      /* stabilizacja: klatki po kolei, pierwsza bez pamięci z podglądu */
+      await renderuj(S.scl, {keep: true, pamietaj: true, zPamieci: k > 0});
       if(!koder){
         rozmiar = [out.width, out.height];
         koder = fmt === "mp4" ? await koderMp4(out.width, out.height, z.fps)
@@ -521,10 +572,18 @@ export async function zapiszWideo({postep = () => {}, przerwano = () => false} =
       zrobione++;
     }
     if(!zrobione) return {blob: null, zrobione, wszystkich: n, przerwane};
-    const blob = await koder.zakoncz();
+    /* dźwięk z oryginału, przycięty do tego, co faktycznie się zapisało */
+    let dz = null, uwagaDzwieku = "";
+    if(fmt === "mp4" && S.dzwiek && z.rodzaj === "film"){
+      const ost = z.klatki[od + zrobione - 1];
+      postep(zrobione, n, null, "Koduję dźwięk…");
+      try{ dz = await dzwiekFilmu(z.plik, t0, ost.t + ost.dur); uwagaDzwieku = dz ? "z dźwiękiem (" + (dz.kodek === "aac" ? "AAC" : "Opus") + ")" : "film nie ma dźwięku"; }
+      catch(err){ uwagaDzwieku = "bez dźwięku — " + err.message; }
+    }
+    const blob = await koder.zakoncz(dz);
     const roz = fmt === "mp4" ? ".mp4" : fmt === "gif" ? ".gif" : "-klatki.zip";
     return {blob, nazwa: baza + "-" + NAZWA_TRYBU[S.mode] + roz,
-            zrobione, wszystkich: n, przerwane, uwaga: koder.uwaga};
+            zrobione, wszystkich: n, przerwane, uwaga: [koder.uwaga, uwagaDzwieku].filter(Boolean).join(" · ")};
   } catch(err){
     if(koder) koder.porzuc();
     throw err;

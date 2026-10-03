@@ -10,6 +10,8 @@
    względem „dopasowania" (obraz wpisany w płótno), obrót w stopniach wokół
    środka. Kolejność: pierwsza w tablicy leży na samym dole. */
 
+import { maska, kolorZBrzegow } from "./wycinanie.js";
+
 export const K = {
   aktywna: false,
   szer: 1080, wys: 1350, tlo: "#000000", przezroczyste: false,
@@ -33,7 +35,8 @@ export function utworz(obraz, nazwa){
 }
 export function dodaj(obraz, nazwa){
   K.warstwy.push({id: ++licznik, nazwa: nazwa || "warstwa " + licznik, obraz,
-    x: K.szer/2, y: K.wys/2, skala: 100, obrot: 0, krycie: 100, tryb: "source-over", widoczna: true});
+    x: K.szer/2, y: K.wys/2, skala: 100, obrot: 0, krycie: 100, tryb: "source-over", widoczna: true,
+    tlo: {wl: false, kolor: null, tolerancja: 30, miekkosc: 10, spojne: true}, wyciety: null, robocza: null});
   K.wybrana = K.warstwy.length - 1;
 }
 export function usun(i){
@@ -72,7 +75,7 @@ export function zloz(){
     x.globalCompositeOperation = w.tryb;
     x.translate(w.x, w.y);
     x.rotate(w.obrot*Math.PI/180);
-    x.drawImage(w.obraz, -ow/2, -oh/2, ow, oh);
+    x.drawImage(w.wyciety || w.obraz, -ow/2, -oh/2, ow, oh);
     x.restore();
   }
   x.restore();
@@ -89,4 +92,41 @@ export function trafiona(px, py){
     if(Math.abs(lx) <= w.obraz.width*s/2 && Math.abs(ly) <= w.obraz.height*s/2) return i;
   }
   return -1;
+}
+
+/* ---------- usuwanie tła warstwy ----------
+   Maska liczona na kopii roboczej (najwyżej 1400 px boku — tyle i tak idzie
+   dalej do rastra), potem rysowana w miejsce oryginału. Kolor tła: wskazany
+   kroplomierzem albo zgadnięty z brzegów zdjęcia. */
+const ROBOCZA = 1400;
+function robocza(w){
+  if(w.robocza) return w.robocza;
+  const s = Math.min(1, ROBOCZA/Math.max(w.obraz.width, w.obraz.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w.obraz.width*s)); c.height = Math.max(1, Math.round(w.obraz.height*s));
+  c.getContext("2d").drawImage(w.obraz, 0, 0, c.width, c.height);
+  w.robocza = c;
+  return c;
+}
+export function wytnij(w){
+  if(!w.tlo.wl){ w.wyciety = null; return; }
+  const c = robocza(w), x = c.getContext("2d"), d = x.getImageData(0, 0, c.width, c.height);
+  if(!w.tlo.kolor) w.tlo.kolor = kolorZBrzegow(d.data, c.width, c.height);
+  const a = maska(d.data, c.width, c.height, w.tlo);
+  for(let i=0; i<a.length; i++) d.data[i*4 + 3] = Math.min(d.data[i*4 + 3], a[i]);
+  const wyn = document.createElement("canvas"); wyn.width = c.width; wyn.height = c.height;
+  wyn.getContext("2d").putImageData(d, 0, 0);
+  w.wyciety = wyn;
+}
+/* kolor zdjęcia warstwy pod punktem płótna (kroplomierz); null poza warstwą */
+export function kolorPod(i, px, py){
+  const w = K.warstwy[i];
+  if(!w) return null;
+  const s = dopasowanie(w)*w.skala/100, a = -w.obrot*Math.PI/180;
+  const dx = px - w.x, dy = py - w.y, lx = dx*Math.cos(a) - dy*Math.sin(a), ly = dx*Math.sin(a) + dy*Math.cos(a);
+  const u = lx/s + w.obraz.width/2, v = ly/s + w.obraz.height/2;
+  if(u < 0 || v < 0 || u >= w.obraz.width || v >= w.obraz.height) return null;
+  const c = robocza(w), k = c.width/w.obraz.width;
+  const d = c.getContext("2d").getImageData(Math.min(c.width - 1, Math.floor(u*k)), Math.min(c.height - 1, Math.floor(v*k)), 1, 1).data;
+  return [d[0], d[1], d[2]];
 }

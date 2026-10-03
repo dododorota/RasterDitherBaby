@@ -7,16 +7,17 @@ import { czytajPalete, paletaZDanych, domyslnaNazwa, MAX_KOLOROW } from "./palet
 import { przetworzFolder } from "./batch.js";
 import { renderuj, NAZWA_TRYBU } from "./render.js";
 import { K, TRYBY, utworz as utworzKomp, dodaj as dodajWarstwe, usun as usunWarstwe, przesun as przesunWarstwe,
-         zakoncz as zakonczKomp, zloz, trafiona } from "./warstwy.js";
+         zakoncz as zakonczKomp, zloz, trafiona, wytnij, kolorPod } from "./warstwy.js";
 import { tekstAscii, ZESTAWY } from "./ascii.js";
 import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, przelacz as przelaczEfekt, przesun as przesunEfekt } from "./stos.js";
-import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb } from "./palettes.js";
+import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
 import { fit } from "./image.js";
 import { W, otworz as otworzWideo, zamknij as zamknijWideo, idzDo, graj, pauza, ustawTempo,
          czasOd, dlugosc, przyKlatce, zapiszWideo, czyFilm, czyMozeAnimacja, FORMATY_WIDEO, mozeMp4,
          animujObraz, ustawDlugosc, DLUGOSC_STOPKLATKI } from "./video.js";
-import { SCIEZKI, KONW, animowane, czyAnimowany, kluczW, ustawKlucz, usunKlucz, usunSciezke, zastosuj as zastosujAnimacje } from "./animacja.js";
+import { SCIEZKI, KONW, animowane, czyAnimowany, kluczW, ustawKlucz, usunKlucz, usunSciezke, zastosuj as zastosujAnimacje,
+         zrzut as zrzutAnimacji, wczytaj as wczytajAnimacje, KRZYWE, RODZAJE_KRZYWYCH, ustawKrzywa } from "./animacja.js";
 
 /* ---------- pętla ---------- */
 let queued=false;
@@ -35,7 +36,8 @@ async function render(){
   /* w trakcie zapisu filmu płótno należy do eksportu — podgląd wraca po nim */
   if(!S.img || wTrakcie) return;
   const slow = setTimeout(()=>{ $("#dims").textContent = "Liczę…"; }, 200);
-  const r = await renderuj(1);
+  /* przy odtwarzaniu klatki idą po kolei — stabilizacja może z nich korzystać */
+  const r = await renderuj(1, W.gra ? {pamietaj: true, zPamieci: true} : undefined);
   clearTimeout(slow);
   if(!r) return;
   dims();
@@ -97,13 +99,88 @@ const SUWAKI = [
   {id:"postZiarno", key:"postZiarno", opis:v=>v?v+"%":"brak"},
   {id:"czasSzum",   key:"czasSzum",   opis:v=>v?v+"%":"brak"},
   {id:"czasDrganie",key:"czasDrganie",opis:v=>v?v+" px":"brak"},
-  {id:"asciiRozmiar",key:"asciiRozmiar",opis:v=>v+" px"}
+  {id:"asciiRozmiar",key:"asciiRozmiar",opis:v=>v+" px"},
+  {id:"stabil",     key:"stabil",     opis:v=>v?v+"%":"brak"}
 ];
 const PTASZKI = ["inv","serp","percept","czasCykl","asciiDither"];
-const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor"];
+const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor","glowZrodlo"];
 /* jeden klucz może mieć kilka pól: farba i papier są i w palecie ditheringu,
    i w siatce rastra */
-const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key:"ink"}, {id:"paper-r",key:"paper"}, {id:"tintKolor",key:"tintKolor"}, {id:"ink-a",key:"ink"}, {id:"paper-a",key:"paper"}];
+const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key:"ink"}, {id:"paper-r",key:"paper"}, {id:"tintKolor",key:"tintKolor"}, {id:"ink-a",key:"ink"}, {id:"paper-a",key:"paper"}, {id:"glowKolor",key:"glowKolor"}];
+
+/* ---------- risograf: panel czterech farb ----------
+   Markup farb powstaje tu z DEFAULTS (cztery razy to samo różniłoby się
+   tylko numerem), a kontrolki trafiają do tych samych tabel co reszta panelu
+   — przed podpięciem zdarzeń i pierwszym syncUI(). Zakładka wybiera, którą
+   farbę widać; to stan panelu, nie wygląd. */
+const ZRODLA_RISO = [["farba","Swój kolor"], ["jasnosc","Jasność"], ["r","Kanał R"], ["g","Kanał G"], ["b","Kanał B"],
+                     ["c","CMYK — C"], ["m","CMYK — M"], ["y","CMYK — Y"], ["k","CMYK — K"]];
+let farbaRiso = 1;
+(function panelRiso(){
+  const box = document.querySelector("#riso-warstwy"), zak = document.querySelector("#riso-zakladki");
+  const ksztalty = document.querySelector("#shape").innerHTML;
+  for(let i=1; i<=4; i++){
+    const b = document.createElement("button"); b.setAttribute("role", "tab"); b.id = "riso-z" + i;
+    b.innerHTML = "<i></i>" + i; b.setAttribute("aria-label", "Farba " + i);
+    zak.appendChild(b);
+    const suwak = (k, et, min, max) => `<div class="row"><label for="${k}${i}">${et}</label><span class="val" id="${k}${i}-v"></span></div>
+      <input type="range" id="${k}${i}" min="${min}" max="${max}" value="${DEFAULTS[k + i]}">`;
+    const d = document.createElement("div"); d.className = "riso-warstwa hidden"; d.id = "riso-w" + i;
+    d.innerHTML = `<div class="swatches"><input type="color" id="risoK${i}" value="${DEFAULTS["risoK" + i]}" aria-label="Kolor farby ${i}">
+        <select id="risoT${i}" class="tusz" aria-label="Tusz riso dla farby ${i}"><option value="">Tusz riso…</option>${TUSZE_RISO.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</select></div>
+      <div class="row"><label for="risoZ${i}">Skąd ilość farby</label></div>
+      <select id="risoZ${i}">${ZRODLA_RISO.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select>
+      ${suwak("risoA", "Kąt", 0, 180)}${suwak("risoC", "Gęstość (px)", 3, 40)}
+      <div class="row"><label for="risoS${i}">Kształt</label></div><select id="risoS${i}">${ksztalty}</select>
+      ${suwak("risoO", "Krycie", 0, 100)}${suwak("risoX", "Pasowanie — poziomo", -30, 30)}${suwak("risoY", "Pasowanie — pionowo", -30, 30)}${suwak("risoR", "Pasowanie — obrót", -50, 50)}`;
+    box.appendChild(d);
+    for(const [k, opis] of [["risoA", v => v + "°"], ["risoC", v => String(v)], ["risoO", v => v + "%"],
+                            ["risoX", v => v + " px"], ["risoY", v => v + " px"], ["risoR", v => (v/10).toFixed(1).replace(".", ",") + "°"]])
+      SUWAKI.push({id: k + i, key: k + i, opis});
+    LISTY.push("risoZ" + i, "risoS" + i);
+    KOLORY.push({id: "risoK" + i, key: "risoK" + i});
+    b.addEventListener("click", () => { farbaRiso = i; risoUI(); });
+    /* tusz z biblioteki tylko ustawia kolor — sama lista nie jest stanem */
+    d.querySelector("#risoT" + i).addEventListener("change", e => {
+      if(!e.target.value) return;
+      const k = d.querySelector("#risoK" + i);
+      k.value = e.target.value; k.dispatchEvent(new Event("input", {bubbles: true}));
+    });
+  }
+  SUWAKI.push({id: "risoIle", key: "risoIle", opis: v => String(v)},
+    {id: "srodekX", key: "srodekX", opis: v => v + "%"}, {id: "srodekY", key: "srodekY", opis: v => v + "%"},
+    {id: "fala", key: "fala", opis: v => v ? v + "%" : "brak"},
+    {id: "gladkosc", key: "gladkosc", opis: v => v ? v + "%" : "brak"},
+    {id: "liniaMin", key: "liniaMin", opis: v => v + "%"}, {id: "liniaMax", key: "liniaMax", opis: v => v + "%"},
+    {id: "walek", key: "walek", opis: v => v ? v + "%" : "brak"},
+    {id: "risoLos", key: "risoLos", opis: v => v ? v + "%" : "brak"}, {id: "risoWariant", key: "risoWariant", opis: v => String(v)},
+    {id: "szorstkosc", key: "szorstkosc", opis: v => v ? v + "%" : "brak"}, {id: "rozlanie", key: "rozlanie", opis: v => v ? v + "%" : "brak"},
+    {id: "plamy", key: "plamy", opis: v => v ? v + "%" : "brak"}, {id: "dziury", key: "dziury", opis: v => v ? v + "%" : "brak"});
+  LISTY.push("siatka");
+})();
+/* widoczność: farby riso, zakładki tylko do liczby farb, środek przy okręgach
+   i spirali, odkształcenie przy liniach (także na którejkolwiek farbie riso) */
+function risoUI(){
+  const riso = S.inkmode === "riso", ile = Math.max(1, Math.min(4, S.risoIle | 0));
+  if(farbaRiso > ile) farbaRiso = ile;
+  document.querySelector("#riso-opcje").classList.toggle("hidden", !riso);
+  for(let i=1; i<=4; i++){
+    const z = document.querySelector("#riso-z" + i);
+    z.classList.toggle("hidden", i > ile);
+    z.setAttribute("aria-selected", i === farbaRiso);
+    z.querySelector("i").style.background = S["risoK" + i];
+    document.querySelector("#riso-w" + i).classList.toggle("hidden", i !== farbaRiso);
+  }
+  const linie = S.shape === "pasy" || (riso && [1, 2, 3, 4].slice(0, ile).some(i => S["risoS" + i] === "pasy"));
+  document.querySelector("#fala-opcje").classList.toggle("hidden", !linie);
+  document.querySelector("#srodek-opcje").classList.toggle("hidden", !(S.siatka === "okregi" || S.siatka === "spirala" || S.siatka === "promienie"));
+  document.querySelector("#riso-wariant-opcje").classList.toggle("hidden", !(S.risoLos > 0));
+  /* tusz: pokaż nazwę, jeśli kolor farby jest z biblioteki */
+  for(let i=1; i<=4; i++){
+    const t = document.querySelector("#risoT" + i), k = String(S["risoK" + i]).toLowerCase();
+    t.value = TUSZE_RISO.some(([, h]) => h === k) ? k : "";
+  }
+}
 
 /* Lista palet budowana z biblioteki, w grupach według kategorii. Musi powstać
    przed pierwszym syncUI() — inaczej odrzuciłby pal z DEFAULTS jako nieznaną. */
@@ -442,6 +519,9 @@ function eksportUI(){
   $("#wygl-opcje").classList.toggle("hidden", S.wektor!=="kontury");
   $("#wektor").value = S.wektor;
   $("#mp4-opcje").classList.toggle("hidden", S.fmt!=="mp4");
+  /* dźwięk tylko z prawdziwego filmu — animowany GIF i animacja obrazu go nie mają */
+  $("#dzwiek-opcja").classList.toggle("hidden", !(W.z && W.z.rodzaj === "film"));
+  $("#dzwiek").checked = S.dzwiek;
   $("#jakosc").value = S.jakosc;
 }
 /* Opcja „Własna" istnieje w liście tylko wtedy, gdy jest wczytana paleta — dzięki
@@ -484,6 +564,7 @@ function syncUI(){
   probkiUI();
   mapaUI();
   asciiUI();
+  risoUI();
   efektyUI();
   eksportUI();
 }
@@ -493,6 +574,7 @@ for(const c of SUWAKI){
     S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
     if(c.key==="glebia") probkiUI();
+    if(c.key==="risoIle" || c.key==="risoLos") risoUI();
     /* parametr już animowany: ruszenie suwaka ustawia klatkę w bieżącym miejscu osi */
     if(W.z && czyAnimowany(c.key)){ ustawKlucz(c.key, czasOd(W.biezaca), +el.value); kluczeUI(); }
     schedule();
@@ -538,12 +620,14 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="mapa") mapaUI();
   if(k==="sort") efektyUI();
   if(k==="asciiZestaw" || k==="asciiTryb" || k==="asciiKolor") asciiUI();
+  if(k==="inkmode" || k==="shape" || k==="siatka" || /^risoS/.test(k)) risoUI();
   schedule();
 });
 function koloryUI(){ for(const {id, key} of KOLORY) $("#"+id).value = S[key]; }
 for(const {id, key} of KOLORY) $("#"+id).addEventListener("input", e=>{
   S[key]=e.target.value;
   koloryUI();
+  if(/^risoK/.test(key)) risoUI();
   schedule();
 });
 for(const id of ["#swap", "#swap-r", "#swap-a"]) $(id).addEventListener("click", ()=>{
@@ -610,6 +694,9 @@ function biezacyPreset(){
   const dane={app:"raster", wersja:WERSJA, zapisano:new Date().toISOString(), tryb:S.mode, look};
   /* bez kolorów preset z paletą własną byłby nieodtwarzalny */
   if(S.pal==="custom" && S.custom) dane.paleta = {nazwa:S.custom.nazwa, kolory:S.custom.kolory};
+  /* klatki kluczowe — tylko gdy są, żeby zwykły preset nie kasował cudzej animacji */
+  const anim = zrzutAnimacji();
+  if(Object.keys(anim).length) dane.animacja = anim;
   return dane;
 }
 /* Stosuje preset w formacie pliku i zwraca komunikat dla panelu. */
@@ -629,6 +716,13 @@ function zastosujPreset(dane, skad){
     try{ const p = paletaZDanych(dane.paleta); S.custom = {nazwa:p.nazwa, kolory:p.kolory}; }
     catch{ uwagaPalety = " Zapisana w nim paleta była uszkodzona i została pominięta."; }
   }
+  /* animacja: preset z polem „animacja" zastępuje klatki kluczowe, bez pola —
+     zostawia bieżące (wbudowane presety i pliki sprzed animacji jej nie ruszają) */
+  if(dane.animacja !== undefined){
+    const zle = wczytajAnimacje(dane.animacja);
+    if(zle) uwagaPalety += " Pominięte klatki kluczowe (uszkodzone albo nieznane): " + zle + ".";
+    else { const n = Object.keys(zrzutAnimacji()).length; if(n) uwagaPalety += " Z animacją — klatki kluczowe dla " + n + (n === 1 ? " parametru." : " parametrów."); }
+  }
   opcjaPalety();
   /* syncUI przycina liczby do zakresu suwaków, odrzuca nieznane opcje list
      i normalizuje kolory. Porównanie przed i po wyłapuje te poprawki, bo
@@ -637,6 +731,8 @@ function zastosujPreset(dane, skad){
   if(dane.tryb==="dither" || dane.tryb==="half" || dane.tryb==="ascii") setMode(dane.tryb);
   syncUI();
   const poprawione = LOOK.filter(k => S[k]!==chciane[k]).length;
+  if(W.z) zastosujAnimacje(S, czasOd(W.biezaca));
+  kluczeUI();
   schedule();
   const n = odrzucone + poprawione;
   return (n ? "Wczytano "+skad+". Wartości spoza tego, co panel potrafi ustawić: "+n+" — cofnięte do poprawnych."
@@ -780,7 +876,7 @@ function ustawWlasna(nazwa, kolory){
   S.custom = {nazwa, kolory};
   S.pal = "custom";
   opcjaPalety();
-  if(S.mode !== "dither") setMode("dither");   /* paleta działa tylko w ditheringu */
+  if(S.mode === "half") setMode("dither");     /* raster nie używa palety; ASCII może */
   syncUI();
   schedule();
 }
@@ -994,7 +1090,19 @@ function kluczeUI(){
     const x = document.createElement("button"); x.className = "btn usun"; x.textContent = "×";
     x.title = "Usuń animację: " + nazwa.textContent; x.setAttribute("aria-label", x.title);
     x.addEventListener("click", () => { usunSciezke(k); kluczeUI(); schedule(); });
-    w.append(nazwa, tor, x);
+    /* krzywa przejścia całej ścieżki — przycisk przełączający, bo prawa kolumna
+       ścieżek musi mieć szerokość licznika czasu (wyrównanie z suwakiem osi) */
+    const kr = document.createElement("button"); kr.className = "fx-b krzywa";
+    const teraz = KRZYWE[k] || "plynnie", nr = RODZAJE_KRZYWYCH.findIndex(([v]) => v === teraz);
+    kr.textContent = {plynnie: "∿", liniowo: "⟋", skokowo: "⊓"}[teraz];
+    kr.title = "Przejście: " + RODZAJE_KRZYWYCH[nr][1].toLowerCase() + " — kliknij, żeby zmienić";
+    kr.setAttribute("aria-label", "Przejście między klatkami (" + nazwa.textContent + "): " + RODZAJE_KRZYWYCH[nr][1].toLowerCase());
+    kr.addEventListener("click", () => {
+      ustawKrzywa(k, RODZAJE_KRZYWYCH[(nr + 1) % RODZAJE_KRZYWYCH.length][0]);
+      if(W.z) zastosujAnimacje(S, czasOd(W.biezaca));
+      suwakiAnimowane(); kluczeUI(); schedule();
+    });
+    w.append(nazwa, tor, kr, x);
     box.appendChild(w);
   }
 }
@@ -1167,6 +1275,7 @@ function ustawFormat(){
 $("#wektor").addEventListener("change", e=>{ S.wektor=e.target.value; eksportUI(); });
 $("#jakosc").addEventListener("change", e=>{ S.jakosc=e.target.value; });
 $("#przezroczyste").addEventListener("change", e=>{ S.przezroczyste=e.target.checked; });
+$("#dzwiek").addEventListener("change", e=>{ S.dzwiek=e.target.checked; });
 $("#fmt").addEventListener("change", e=>{ S.fmt=e.target.value; ustawFormat(); });
 
 const czasTrwania = s => s < 60 ? Math.max(1, Math.round(s)) + " s" : Math.floor(s/60) + " min " + Math.round(s%60) + " s";
@@ -1177,8 +1286,8 @@ async function zapiszFilm(){
   $("#save").textContent = "Przerwij";
   try{
     const w = await zapiszWideo({
-      postep: (k, n, zostalo) => komunikatZapisu("Klatka " + (k+1) + " z " + n +
-        (zostalo !== null && k >= 3 ? " · zostało ok. " + czasTrwania(zostalo) : "")),
+      postep: (k, n, zostalo, tekst) => komunikatZapisu(tekst || ("Klatka " + (k+1) + " z " + n +
+        (zostalo !== null && k >= 3 ? " · zostało ok. " + czasTrwania(zostalo) : ""))),
       przerwano: () => przerwij
     });
     if(w.blob) pobierz(w.blob, w.nazwa, 60000);
@@ -1267,6 +1376,7 @@ const WL = [["komp-x", "x", v => Math.round(v) + " px"], ["komp-y", "y", v => Ma
 function kompUI(){
   const film = W.z && W.z.rodzaj !== "stopklatka";
   $("#komp-start").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
+  $("#usun-tlo").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
   $("#g-warstwy").classList.toggle("hidden", !K.aktywna || film);
   if(!K.aktywna) return;
   $("#komp-szer").value = K.szer; $("#komp-wys").value = K.wys;
@@ -1296,6 +1406,12 @@ function kompUI(){
   $("#komp-x").max = K.szer; $("#komp-y").max = K.wys;
   for(const [id, k, opis] of WL){ $("#" + id).value = w[k]; $("#" + id + "-v").textContent = opis(w[k]); }
   $("#komp-tryb").value = w.tryb;
+  $("#komp-wytnij").checked = w.tlo.wl;
+  $("#komp-wytnij-opcje").classList.toggle("hidden", !w.tlo.wl);
+  $("#komp-kolor-tla").style.background = w.tlo.kolor ? "rgb(" + w.tlo.kolor.join(",") + ")" : "transparent";
+  $("#komp-tol").value = w.tlo.tolerancja; $("#komp-tol-v").textContent = w.tlo.tolerancja;
+  $("#komp-miek").value = w.tlo.miekkosc; $("#komp-miek-v").textContent = w.tlo.miekkosc;
+  $("#komp-spojne").checked = w.tlo.spojne;
 }
 $("#komp-start").addEventListener("click", ()=>{
   if(!S.img || W.z || wTrakcie) return;
@@ -1365,12 +1481,47 @@ $("#komp-koniec").addEventListener("click", ()=>{
   pokazObraz(plaski);
   wideoUI();
 });
+/* ---------- usuwanie tła warstwy ----------
+   Maska liczy się raz przy zmianie ustawień (warstwy.js), nie przy każdym
+   przerysowaniu. Kroplomierz: następne kliknięcie w podgląd bierze kolor
+   zdjęcia zaznaczonej warstwy spod kursora. */
+let kroplomierz = false;
+function przetnij(){ const w = K.warstwy[K.wybrana]; if(!w) return; wytnij(w); kompUI(); odswiezKomp(); }
+$("#komp-wytnij").addEventListener("change", e=>{ const w = K.warstwy[K.wybrana]; if(!w) return; w.tlo.wl = e.target.checked; przetnij(); });
+$("#komp-tol").addEventListener("input", e=>{ const w = K.warstwy[K.wybrana]; if(!w) return; w.tlo.tolerancja = +e.target.value; przetnij(); });
+$("#komp-miek").addEventListener("input", e=>{ const w = K.warstwy[K.wybrana]; if(!w) return; w.tlo.miekkosc = +e.target.value; przetnij(); });
+$("#komp-spojne").addEventListener("change", e=>{ const w = K.warstwy[K.wybrana]; if(!w) return; w.tlo.spojne = e.target.checked; przetnij(); });
+$("#komp-z-brzegow").addEventListener("click", ()=>{ const w = K.warstwy[K.wybrana]; if(!w) return; w.tlo.kolor = null; przetnij(); });
+$("#komp-kroplomierz").addEventListener("click", ()=>{
+  kroplomierz = !kroplomierz;
+  out.classList.toggle("kroplomierz", kroplomierz);
+  $("#komp-kroplomierz").textContent = kroplomierz ? "Kliknij tło na podglądzie…" : "Wskaż kolor";
+});
+/* skrót: zwykły obraz → kompozycja o jego rozmiarze, z wyciętym tłem i płótnem
+   w kolorze papieru — od razu „wycięty obiekt na jednolitym kolorze" */
+$("#usun-tlo").addEventListener("click", ()=>{
+  if(!S.img || W.z || wTrakcie) return;
+  utworzKomp(S.img, nazwaObrazu);
+  K.tlo = S.paper;
+  K.warstwy[0].tlo.wl = true;
+  wytnij(K.warstwy[0]);
+  odswiezKomp();
+  kompUI();
+});
+
 /* przeciąganie warstwy po podglądzie: współrzędne ekranu → płótno kompozycji
    (podgląd to płótno pomniejszone z zachowaniem proporcji) */
 let ciagnieta = null;
 out.addEventListener("pointerdown", e=>{
   if(!K.aktywna || wTrakcie || (W.z && W.z.rodzaj !== "stopklatka")) return;
   const r = out.getBoundingClientRect(), px = (e.clientX - r.left)/r.width*K.szer, py = (e.clientY - r.top)/r.height*K.wys;
+  if(kroplomierz){
+    const w = K.warstwy[K.wybrana], c = w && kolorPod(K.wybrana, px, py);
+    kroplomierz = false; out.classList.remove("kroplomierz");
+    $("#komp-kroplomierz").textContent = "Wskaż kolor";
+    if(c){ w.tlo.kolor = c; w.tlo.wl = true; przetnij(); }
+    return;
+  }
   const i = trafiona(px, py);
   if(i < 0) return;
   K.wybrana = i;
@@ -1389,3 +1540,71 @@ out.addEventListener("pointermove", e=>{
   odswiezKomp();
 });
 for(const ev of ["pointerup", "pointercancel"]) out.addEventListener(ev, ()=>{ ciagnieta = null; out.classList.remove("przeciaganie"); });
+
+/* ---------- zapisane palety (presety kolorów) ----------
+   W localStorage, jak własne presety: [{nazwa, kolory, mapa}]. Odczyt nieufny
+   (paletaZDanych — ta sama walidacja co plik), każdy dostęp w try/catch. Użycie
+   palety wkłada kopię do palety własnej (S.custom) — dalej działa jak paleta
+   z pliku: w presetach, w edytorze, w zapisie .hex. */
+const KLUCZ_PALET = "raster.palety";
+function czytajPalety(){
+  try{
+    const a = JSON.parse(localStorage.getItem(KLUCZ_PALET) || "[]");
+    if(!Array.isArray(a)) return [];
+    const wyn = [];
+    for(const d of a){
+      try{ const p = paletaZDanych(d); wyn.push({nazwa: p.nazwa, kolory: p.kolory, mapa: d.mapa === "jasnosc" ? "jasnosc" : "kolor"}); }
+      catch{ /* uszkodzony wpis pomijamy, reszta zostaje */ }
+    }
+    return wyn;
+  }catch{ return []; }
+}
+function zapiszPalety(a){
+  try{ localStorage.setItem(KLUCZ_PALET, JSON.stringify(a)); return true; }catch{ return false; }
+}
+function zapisanePaletyUI(){
+  const lista = czytajPalety(), box = $("#pal-zap-lista");
+  $("#pal-zap-ile").textContent = lista.length;
+  box.innerHTML = "";
+  lista.forEach((p, i) => {
+    const w = document.createElement("div"); w.className = "wiersz";
+    const u = document.createElement("button"); u.className = "uzyj"; u.title = "Użyj palety „" + p.nazwa + "”";
+    const pasek = document.createElement("span"); pasek.className = "pasek";
+    for(const c of p.kolory.slice(0, 16)){ const k = document.createElement("i"); k.style.background = rgb2hex(c); pasek.appendChild(k); }
+    const n = document.createElement("span"); n.textContent = p.nazwa + " (" + p.kolory.length + ")";
+    u.append(pasek, n);
+    u.addEventListener("click", () => {
+      S.mapa = p.mapa;
+      ustawWlasna(p.nazwa, p.kolory.map(c => c.slice()));
+      komunikatPalety("Paleta „" + p.nazwa + "”.");
+    });
+    const x = document.createElement("button"); x.className = "fx-b"; x.textContent = "×";
+    x.title = "Usuń zapisaną paletę"; x.setAttribute("aria-label", "Usuń zapisaną paletę " + p.nazwa);
+    x.addEventListener("click", () => {
+      if(!confirm("Usunąć zapisaną paletę „" + p.nazwa + "”?")) return;
+      if(!zapiszPalety(czytajPalety().filter((_, j) => j !== i))){ komunikatPalety("Nie udało się usunąć palety."); return; }
+      zapisanePaletyUI();
+    });
+    w.append(u, x);
+    box.appendChild(w);
+  });
+}
+function zapamietajPalete(){
+  const kolory = (S.mapa === "jasnosc" ? paletaGradientu() : palette()).map(c => c.slice());
+  if(kolory.length > MAX_KOLOROW){ komunikatPalety("Ta paleta ma " + kolory.length + " kolorów — zapamiętać można najwyżej " + MAX_KOLOROW + "."); return; }
+  const lista = czytajPalety(), pole = $("#pal-zap-nazwa");
+  let nazwa = pole.value.trim().slice(0, 40);
+  if(!nazwa){
+    const baza = S.pal === "custom" && S.custom ? S.custom.nazwa : (wpisPalety(S.pal) || {nazwa: "Paleta"}).nazwa;
+    nazwa = baza; let i = 2; while(lista.some(p => p.nazwa === nazwa)) nazwa = baza + " " + i++;
+  }
+  const byla = lista.findIndex(p => p.nazwa === nazwa), nowa = {nazwa, kolory, mapa: S.mapa};
+  if(byla >= 0) lista[byla] = nowa; else lista.push(nowa);
+  if(!zapiszPalety(lista)){ komunikatPalety("Przeglądarka nie pozwoliła zapamiętać palety (tryb prywatny albo brak miejsca). Zapisz ją do .hex."); return; }
+  pole.value = "";
+  zapisanePaletyUI();
+  komunikatPalety((byla >= 0 ? "Nadpisano" : "Zapamiętano") + " paletę „" + nazwa + "”.");
+}
+$("#pal-zap").addEventListener("click", zapamietajPalete);
+$("#pal-zap-nazwa").addEventListener("keydown", e=>{ if(e.key === "Enter") zapamietajPalete(); });
+zapisanePaletyUI();

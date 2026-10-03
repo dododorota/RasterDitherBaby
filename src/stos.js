@@ -22,7 +22,7 @@ export const EFEKTY = [
   {id:"chrom",   nazwa:"Aberracja chromatyczna", klucze:["chrom"], start:{chrom:12}},
   {id:"jpeg",    nazwa:"JPEG glitch",        klucze:["jpegJakosc","jpegGlitch","jpegZiarno"], start:{jpegJakosc:12, jpegGlitch:30}},
   {id:"tint",    nazwa:"Zabarwienie",        klucze:["tint","tintKolor","tintTryb"], start:{tint:70}},
-  {id:"glow",    nazwa:"Poświata",           klucze:["glow","glowR","glowProg"], start:{glow:90}},
+  {id:"glow",    nazwa:"Poświata",           klucze:["glow","glowR","glowProg","glowZrodlo","glowKolor"], start:{glow:90}},
   {id:"gwiazdy", nazwa:"Gwiazdki",           klucze:["gwiazdy","gwProg","gwRamiona","gwDlugosc","gwKat"], start:{gwiazdy:120}},
   {id:"faktura", nazwa:"Faktura",            klucze:["faktura","faktSkala","faktTryb","faktKrycie"], start:{faktura:"skanlinie"}},
   {id:"post",    nazwa:"Obróbka końcowa",    klucze:["postJas","postKon","postNas","winieta","postZiarno"], start:{winieta:45}},

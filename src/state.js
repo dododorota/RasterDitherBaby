@@ -16,18 +16,25 @@ export const DEFAULTS = {
   algo:"floyd", str:1, thr:0, serp:true,
   pal:"bw", mapa:"kolor", percept:false, glebia:4, ink:"#000000", paper:"#ffffff",
   cell:8, ang:45, dot:1, blur:0, shape:"circle", inkmode:"mono", mis:0, grain:0,
+  siatka:"kwadrat", srodekX:0, srodekY:0, fala:0, gladkosc:0, liniaMin:0, liniaMax:100,
+  szorstkosc:0, rozlanie:0, plamy:0, dziury:0, walek:0,
+  risoIle:2, risoLos:0, risoWariant:1,
+  risoK1:"#ff48b0", risoZ1:"farba", risoA1:15, risoC1:8, risoS1:"circle", risoO1:100, risoX1:0, risoY1:0, risoR1:0,
+  risoK2:"#0078bf", risoZ2:"farba", risoA2:75, risoC2:8, risoS2:"circle", risoO2:100, risoX2:0, risoY2:0, risoR2:0,
+  risoK3:"#ffe800", risoZ3:"farba", risoA3:0,  risoC3:8, risoS3:"circle", risoO3:100, risoX3:0, risoY3:0, risoR3:0,
+  risoK4:"#00838a", risoZ4:"farba", risoA4:45, risoC4:8, risoS4:"circle", risoO4:100, risoX4:0, risoY4:0, risoR4:0,
   sort:"brak", sortOd:25, sortDo:80, rgb:0, rgbKat:0,
-  glow:0, glowR:12, glowProg:50,
+  glow:0, glowR:12, glowProg:50, glowZrodlo:"obraz", glowKolor:"#4c8dff",
   efekty:"", chrom:0, jpegJakosc:20, jpegGlitch:0, jpegZiarno:1,
   tint:0, tintKolor:"#3a7bff", tintTryb:"kolor",
   gwiazdy:0, gwProg:70, gwRamiona:4, gwDlugosc:40, gwKat:0,
   faktura:"brak", faktSkala:2, faktTryb:"mnoz", faktKrycie:50,
   postJas:0, postKon:0, postNas:0, winieta:0, postZiarno:0,
-  czasSzum:0, czasDrganie:0, czasCykl:false,
+  czasSzum:0, czasDrganie:0, czasCykl:false, stabil:0,
   asciiZestaw:"standard", asciiWlasne:"", asciiTryb:"jasnosc", asciiRozmiar:12, asciiKolor:"obraz", asciiDither:false
 };
 export const LOOK = Object.keys(DEFAULTS);
 
 /* klatkaNr: numer bieżącej klatki osi czasu (0 bez filmu) — od niego zależą
    efekty zmienne w czasie; ustawia go podgląd filmu i zapis, nie panel */
-export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png", wektor:"piksele", wygl:3, jakosc:"wysoka", przezroczyste:false, klatkaNr:0 }, DEFAULTS);
+export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png", wektor:"piksele", wygl:3, jakosc:"wysoka", przezroczyste:false, dzwiek:true, klatkaNr:0 }, DEFAULTS);

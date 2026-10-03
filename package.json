@@ -1,10 +1,50 @@
 {
   "name": "raster",
   "version": "0.1.0",
-  "description": "Dithering i raster drukarski w przeglądarce, z eksportem do PNG i SVG",
+  "description": "Dithering i raster drukarski — w przeglądarce i jako aplikacja na pulpit",
+  "author": "Dorota Dodo",
   "private": true,
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
-    "dev": "npx --yes serve ."
+    "dev": "npx --yes serve .",
+    "start": "node electron/start.mjs",
+    "ikona": "node electron/ikona.mjs",
+    "paczka": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "pl.dodo.raster",
+    "productName": "Raster",
+    "directories": {
+      "output": "dist",
+      "buildResources": "electron"
+    },
+    "files": [
+      "index.html",
+      "src/**/*",
+      "fonty/**/*",
+      "electron/main.js",
+      "electron/ikona.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "electron/ikona.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Raster"
+    },
+    "portable": {
+      "artifactName": "Raster-${version}-przenosny.exe"
+    }
   }
 }

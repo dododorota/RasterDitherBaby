@@ -4,9 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Raster — dithering i raster drukarski</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Archivo+Expanded:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/styles.css">
 <!-- motyw przed pierwszym malowaniem, żeby jasna strona nie mignęła;
      domyślnie ciemny, wybór zapamiętany (localStorage może rzucić — wtedy ciemny) -->
@@ -36,6 +33,7 @@
       </div>
       <button class="btn hidden" id="animuj" style="margin-top:8px">Animuj obraz — klatki kluczowe</button>
       <button class="btn hidden" id="komp-start" style="margin-top:8px">Kompozycja z warstw</button>
+      <button class="btn hidden" id="usun-tlo" style="margin-top:8px">Usuń tło i podłóż kolor</button>
       <button class="btn" id="batch" style="margin-top:8px">Przetwórz cały folder</button>
       <input type="file" id="batch-dir" webkitdirectory multiple class="hidden">
       <p class="hint" id="load-msg"></p>
@@ -81,6 +79,20 @@
         <div class="row"><label for="komp-tryb">Mieszanie</label></div>
         <select id="komp-tryb"></select>
         <button class="btn" id="komp-srodek" style="margin-top:8px">Wyśrodkuj i dopasuj</button>
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="komp-wytnij"> Usuń tło tej warstwy</label>
+        <div id="komp-wytnij-opcje" class="hidden">
+          <div class="swatches">
+            <span class="kolor-tla" id="komp-kolor-tla" title="Kolor uznany za tło"></span>
+            <button class="btn" id="komp-kroplomierz" style="width:auto; padding:6px 10px">Wskaż kolor</button>
+            <button class="btn" id="komp-z-brzegow" style="width:auto; padding:6px 10px">Z brzegów</button>
+          </div>
+          <div class="row" style="margin-top:10px"><label for="komp-tol">Tolerancja</label><span class="val" id="komp-tol-v">30</span></div>
+          <input type="range" id="komp-tol" min="0" max="100" value="30">
+          <div class="row"><label for="komp-miek">Miękka krawędź</label><span class="val" id="komp-miek-v">10</span></div>
+          <input type="range" id="komp-miek" min="0" max="100" value="10">
+          <label class="check"><input type="checkbox" id="komp-spojne" checked> Tylko tło połączone z brzegami</label>
+          <p class="hint" id="komp-kroplomierz-hint">Dobre do zdjęć na jednolitym tle. „Wskaż kolor” — potem kliknij tło na podglądzie.</p>
+        </div>
       </div>
       <p class="hint">Zaznaczoną warstwę przesuwasz też myszą na podglądzie. Otwarty albo przeciągnięty plik trafia jako nowa warstwa. Efekty działają na całą kompozycję.</p>
       <button class="btn" id="komp-koniec" style="margin-top:6px">Zakończ kompozycję</button>
@@ -110,7 +122,9 @@
       <div class="row"><label for="do">Koniec</label><span class="val" id="do-v">0:00.0</span></div>
       <input type="range" id="do" min="0" max="0" value="0">
       <p class="hint"><strong>◆ przy suwaku</strong> dodaje klatkę kluczową w bieżącym miejscu osi czasu. Parametr z klatkami zmienia się płynnie między nimi, a ruszenie jego suwaka w innym miejscu osi samo dodaje następną klatkę.</p>
-      <p class="hint">Dyfuzja błędu potrafi migotać między klatkami. Spokojniejszy obraz dają algorytmy uporządkowane (Bayer, siatka punktowa) i raster drukarski.</p>
+      <div class="row" style="margin-top:12px"><label for="stabil">Stabilizacja dyfuzji</label><span class="val" id="stabil-v">brak</span></div>
+      <input type="range" id="stabil" min="0" max="100" value="0">
+      <p class="hint">Dyfuzja błędu potrafi migotać między klatkami. Stabilizacja zostawia piksele w kolorze z poprzedniej klatki, jeśli jest prawie tak dobry — działa przy odtwarzaniu i w zapisie (na zatrzymanym kadrze widać obraz bez niej). Spokojny obraz dają też algorytmy uporządkowane i raster.</p>
       <button class="btn hidden" id="anim-koniec" style="margin-top:10px">Zakończ animację</button>
     </div>
 
@@ -267,6 +281,15 @@
         <button class="btn" id="pal-load">Wczytaj z pliku</button>
         <button class="btn" id="pal-save">Zapisz .hex</button>
       </div>
+      <details id="pal-zapisane" class="pal-szczegoly">
+        <summary>Zapisane palety (<span id="pal-zap-ile">0</span>)</summary>
+        <div class="btns" style="margin-top:6px">
+          <input type="text" id="pal-zap-nazwa" maxlength="40" placeholder="Nazwa palety" aria-label="Nazwa zapamiętywanej palety">
+          <button class="btn" id="pal-zap" style="width:auto">Zapamiętaj</button>
+        </div>
+        <div class="pal-zap-lista" id="pal-zap-lista"></div>
+        <p class="hint">Bieżąca paleta z kolejnością i sposobem przypisania kolorów — w tej przeglądarce. Na inny komputer: „Zapisz .hex”.</p>
+      </details>
       <input type="file" id="pal-file" accept=".hex,.gpl,.pal,.ase,.txt,.png,.gif,.jpg,.jpeg,.webp" class="hidden">
       <p class="hint" id="pal-msg">Z pliku: .hex, .gpl, .pal, .ase, .txt, pasek próbek PNG (np. z lospec.com) albo dowolne zdjęcie — wtedy wyciągnie z niego tyle kolorów, ile wybrano obok.</p>
     </div>
@@ -330,13 +353,59 @@
         <option value="diamond">Romb</option>
         <option value="line">Linia</option>
         <option value="cross">Krzyż</option>
+        <option value="gwiazda">Gwiazdka</option>
+        <option value="krzyzUkos">Krzyżyk ukośny</option>
+        <option value="pierscien">Pierścień</option>
+        <option value="szesciokat">Sześciokąt</option>
+        <option value="elipsa">Elipsa</option>
+        <option value="pasy">Linie — raster liniowy</option>
       </select>
+      <div class="row" style="margin-top:12px"><label for="siatka">Siatka</label></div>
+      <select id="siatka">
+        <option value="kwadrat" selected>Kwadratowa</option>
+        <option value="heks">Heksagonalna</option>
+        <option value="okregi">Okręgi — obręcze</option>
+        <option value="spirala">Spirala</option>
+        <option value="promienie">Promienie</option>
+        <option value="warstwice">Wzdłuż kształtu — warstwice</option>
+      </select>
+      <div id="srodek-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="srodekX">Środek — poziomo</label><span class="val" id="srodekX-v">0%</span></div>
+        <input type="range" id="srodekX" min="-100" max="100" value="0">
+        <div class="row"><label for="srodekY">Środek — pionowo</label><span class="val" id="srodekY-v">0%</span></div>
+        <input type="range" id="srodekY" min="-100" max="100" value="0">
+      </div>
+      <div id="fala-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="fala">Odkształcenie linii</label><span class="val" id="fala-v">brak</span></div>
+        <input type="range" id="fala" min="0" max="100" value="0">
+        <div class="row"><label for="gladkosc">Gładkość</label><span class="val" id="gladkosc-v">brak</span></div>
+        <input type="range" id="gladkosc" min="0" max="100" value="0">
+        <div class="row"><label for="liniaMin">Grubość najmniejsza</label><span class="val" id="liniaMin-v">0%</span></div>
+        <input type="range" id="liniaMin" min="0" max="100" value="0">
+        <div class="row"><label for="liniaMax">Grubość największa</label><span class="val" id="liniaMax-v">100%</span></div>
+        <input type="range" id="liniaMax" min="0" max="150" value="100">
+        <p class="hint">Linie grubieją w ciemnych miejscach i wyginają się według obrazu. Gładkość uśrednia wygięcie (przy warstwicach — upraszcza ich kształt). Najmniejsza grubość większa od zera zostawia linię także w światłach.</p>
+      </div>
       <div class="row" style="margin-top:12px"><label for="inkmode">Farby</label></div>
       <select id="inkmode">
         <option value="mono" selected>Jedna farba</option>
         <option value="duo">Duotone (czarny + akcent)</option>
         <option value="cmyk">CMYK — cztery siatki</option>
+        <option value="riso">Risograf — własne farby</option>
       </select>
+      <div id="riso-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="risoIle">Liczba farb</label><span class="val" id="risoIle-v">2</span></div>
+        <input type="range" id="risoIle" min="1" max="4" value="2">
+        <div class="row"><label for="risoLos">Losowe pasowanie</label><span class="val" id="risoLos-v">brak</span></div>
+        <input type="range" id="risoLos" min="0" max="100" value="0">
+        <div id="riso-wariant-opcje" class="hidden">
+          <div class="row"><label for="risoWariant">Wariant losowania</label><span class="val" id="risoWariant-v">1</span></div>
+          <input type="range" id="risoWariant" min="1" max="50" value="1">
+        </div>
+        <div class="tabs riso-zakladki" role="tablist" id="riso-zakladki"></div>
+        <div id="riso-warstwy"></div>
+        <p class="hint">Każda farba to osobny raster nakładany mnożeniem — z różu i niebieskiego robi się fiolet. „Swój kolor” bierze z obrazu to, co ma kolor tej farby.</p>
+      </div>
       <div class="row" style="margin-top:12px"><label>Farba (czarna) i papier</label></div>
       <div class="swatches">
         <input type="color" id="ink-r" value="#000000" aria-label="Kolor farby">
@@ -347,6 +416,18 @@
       <input type="range" id="mis" min="0" max="60" value="0">
       <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
       <input type="range" id="grain" min="0" max="60" value="0">
+      <div class="row" style="margin-top:14px"><label><strong>Faktura farby</strong></label></div>
+      <div class="row"><label for="szorstkosc">Szorstkie krawędzie</label><span class="val" id="szorstkosc-v">brak</span></div>
+      <input type="range" id="szorstkosc" min="0" max="100" value="0">
+      <div class="row"><label for="rozlanie">Rozlanie farby</label><span class="val" id="rozlanie-v">brak</span></div>
+      <input type="range" id="rozlanie" min="0" max="100" value="0">
+      <div class="row"><label for="plamy">Nierówne krycie</label><span class="val" id="plamy-v">brak</span></div>
+      <input type="range" id="plamy" min="0" max="100" value="0">
+      <div class="row"><label for="dziury">Dziury w farbie</label><span class="val" id="dziury-v">brak</span></div>
+      <input type="range" id="dziury" min="0" max="100" value="0">
+      <div class="row"><label for="walek">Ślady wałka</label><span class="val" id="walek-v">brak</span></div>
+      <input type="range" id="walek" min="0" max="100" value="0">
+      <p class="hint">Jak druk riso i sitodruk — tylko w PNG (SVG to czysta geometria).</p>
     </div>
 
     <div class="group" id="g-fx">
@@ -413,6 +494,13 @@
         <input type="range" id="glowR" min="1" max="80" value="12">
         <div class="row"><label for="glowProg">Świeci powyżej jasności</label><span class="val" id="glowProg-v">50%</span></div>
         <input type="range" id="glowProg" min="0" max="95" value="50">
+        <div class="swatches" style="margin-top:10px">
+          <select id="glowZrodlo" aria-label="Kolor poświaty">
+            <option value="obraz" selected>Kolor z obrazu</option>
+            <option value="kolor">Własny kolor →</option>
+          </select>
+          <input type="color" id="glowKolor" value="#4c8dff" aria-label="Własny kolor poświaty">
+        </div>
         <p class="hint">Najlepiej wychodzi na ciemnych zdjęciach i filmach. Na jasnych podnieś próg, bo prześwietli cały obraz.</p>
       </div></div>
 
@@ -512,6 +600,7 @@
           <option value="wysoka" selected>Wysoka</option>
           <option value="najwyzsza">Najwyższa</option>
         </select>
+        <label class="check" id="dzwiek-opcja"><input type="checkbox" id="dzwiek" checked> Dźwięk z filmu</label>
         <p class="hint">H.264 rozmywa drobny dithering. Najostrzej wychodzi w skali 2× i wyżej, a bez żadnych strat — jako klatki PNG.</p>
       </div>
       <label class="check hidden" id="przezr-opcja"><input type="checkbox" id="przezroczyste"> Przezroczyste tło (kolor papieru)</label>

@@ -8,17 +8,50 @@ import { zmiennoscPrzed, cyklMacierzy } from "./fx.js";
 /* Samo liczenie ditheringu: korekta tonalna i algorytm, w miejscu na buforze
    RGBA. Ani jednego odwołania do DOM-u, bo ten moduł biega też w workerze
    (src/worker.js) — canvas i ImageData zostają po stronie dither.js. */
-export function ditherPixels(p, w, h){
+/* ---------- stabilizacja w czasie ----------
+   Dyfuzja błędu przestawia wzór w całym kadrze przy najmniejszej zmianie
+   obrazu, więc film „gotuje się". Stabilizacja pamięta wynik poprzedniej
+   klatki i zostawia piksel w tamtym kolorze, jeśli jest prawie tak samo dobry
+   jak najbliższy: dalej od piksela najwyżej o ułamek (½ × suwak) odległości
+   między tymi dwoma kolorami. Próg względny, nie w stałych jednostkach — inaczej
+   przy dalekich kolorach (czerń i biel) pas „prawie tak samo dobrych" kurczył
+   się prawie do zera. To ta sama reguła co pół kroku w trybie jasności. Błąd liczy się
+   od koloru, który naprawdę wybrano, więc jasność się zgadza — zmieniają się
+   tylko piksele, które naprawdę muszą.
+   Pamięć to stan modułu (w workerze — tam liczą się klatki po kolei).
+   Opcje od wołającego: {pamietaj} — zapisz wynik tej klatki, {zPamieci} —
+   użyj poprzedniej. Zapis filmu pierwszą klatkę liczy bez pamięci, więc wynik
+   nie zależy od tego, co wcześniej oglądano w podglądzie. Pamięć z klatki
+   sprzed najwyżej 5 klatek (podgląd przy wolnym liczeniu gubi klatki). */
+let pamiec = null;
+function stabilizacja(w, h, opcje){
+  if(!(S.stabil > 0) || !opcje || !opcje.zPamieci || !pamiec) return null;
+  const d = (S.klatkaNr | 0) - pamiec.klatka;
+  if(pamiec.w !== w || pamiec.h !== h || d <= 0 || d > 5) return null;
+  return {prev: pamiec.rgb, s: S.stabil/100};
+}
+function zapamietaj(p, w, h, opcje){
+  if(!(S.stabil > 0) || !opcje || !opcje.pamietaj){ return; }
+  const rgb = new Uint8Array(w*h*3);
+  for(let i=0, o=0; i<w*h; i++, o+=4){ rgb[i*3] = p[o]; rgb[i*3+1] = p[o+1]; rgb[i*3+2] = p[o+2]; }
+  pamiec = {rgb, w, h, klatka: S.klatkaNr | 0};
+}
+const odl = (r, g, b, c0, c1, c2) => (r-c0)*(r-c0)*0.299 + (g-c1)*(g-c1)*0.587 + (b-c2)*(b-c2)*0.114;
+
+export function ditherPixels(p, w, h, opcje){
   adjustPixels(p);
   korektaPrzestrzenna(p, w, h, 1/S.pix);
   if(zmiennoscCzynna()) zmiennoscPrzed(p, w, h, 1/S.pix);
   if(S.algo === "ostromoukhov" || S.algo === "riemersma"){ ditherSpecjalny(p, w, h); return; }
-  if(S.mapa === "jasnosc"){ ditherJasnosci(p, w, h); return; }
+  if(S.mapa === "jasnosc"){ ditherJasnosci(p, w, h, opcje); zapamietaj(p, w, h, opcje); return; }
 
   const pal = palette(), q = quantizer(), bias = S.thr*2.55;
   const diff = K[S.algo];
 
   if(diff){
+    const st = stabilizacja(w, h, opcje);
+    /* kolor z poprzedniej klatki tylko, jeśli jest w bieżącej palecie */
+    const wPalecie = st ? new Set(pal.map(c => (c[0] << 16) | (c[1] << 8) | c[2])) : null;
     const buf = new Float32Array(w*h*3);
     for(let i=0,j=0;i<p.length;i+=4,j+=3){ buf[j]=p[i]+bias; buf[j+1]=p[i+1]+bias; buf[j+2]=p[i+2]+bias; }
     for(let y=0;y<h;y++){
@@ -27,7 +60,12 @@ export function ditherPixels(p, w, h){
         const x = rev ? w-1-k : k;
         const idx=(y*w+x)*3;
         const or=buf[idx], og=buf[idx+1], ob=buf[idx+2];
-        const n = q ? q(or,og,ob) : nearest(pal, or,og,ob);
+        let n = q ? q(or,og,ob) : nearest(pal, or,og,ob);
+        if(st){
+          const pr = st.prev, a = pr[idx], b = pr[idx+1], c = pr[idx+2];
+          if((a !== n[0] || b !== n[1] || c !== n[2]) && wPalecie.has((a << 16) | (b << 8) | c)
+             && Math.sqrt(odl(or,og,ob, a,b,c)) - Math.sqrt(odl(or,og,ob, n[0],n[1],n[2])) <= 0.5*st.s*Math.sqrt(odl(a,b,c, n[0],n[1],n[2]))) n = [a, b, c];
+        }
         buf[idx]=n[0]; buf[idx+1]=n[1]; buf[idx+2]=n[2];
         const er=(or-n[0])*S.str, eg=(og-n[1])*S.str, eb=(ob-n[2])*S.str;
         for(const [dx,dy,wt] of diff.m){
@@ -39,6 +77,7 @@ export function ditherPixels(p, w, h){
       }
     }
     for(let i=0,j=0;i<p.length;i+=4,j+=3){ p[i]=buf[j]; p[i+1]=buf[j+1]; p[i+2]=buf[j+2]; }
+    zapamietaj(p, w, h, opcje);
   } else {
     const {mat, size, div, fn} = macierz();
     const [cx, cy] = cyklMacierzy();
@@ -76,7 +115,7 @@ function macierz(){
    jakiego koloru było zdjęcie. Tak działają duotony i gradienty z biblioteki.
    Ten sam kod dla dyfuzji i dla macierzy co tryb kolorowy, tylko na jednej
    liczbie zamiast trzech — błąd się rozchodzi tak samo. */
-function ditherJasnosci(p, w, h){
+function ditherJasnosci(p, w, h, opcje){
   const pal = paletaGradientu(), N = pal.length, ost = N-1;
   const krok = 255/Math.max(1, ost), bias = S.thr*2.55, n = w*h;
   const poziom = v => { const k = Math.round(v/krok); return k < 0 ? 0 : (k > ost ? ost : k); };
@@ -84,13 +123,25 @@ function ditherJasnosci(p, w, h){
   const diff = K[S.algo];
 
   if(diff){
+    /* stabilizacja: poprzedni poziom z koloru poprzedniej klatki (−1, gdy go
+       w palecie nie ma), próg w jasności — pół kroku między poziomami na 100% */
+    const st = stabilizacja(w, h, opcje);
+    let poprz = null, prog = 0;
+    if(st){
+      const nr = new Map(pal.map((c, i) => [(c[0] << 16) | (c[1] << 8) | c[2], i]));
+      poprz = new Int16Array(n);
+      for(let i=0; i<n; i++){ const k = nr.get((st.prev[i*3] << 16) | (st.prev[i*3+1] << 8) | st.prev[i*3+2]); poprz[i] = k === undefined ? -1 : k; }
+      prog = S.stabil/100*krok*0.5;
+    }
     const buf = new Float32Array(n);
     for(let i=0, o=0; i<n; i++, o+=4) buf[i] = 0.299*p[o] + 0.587*p[o+1] + 0.114*p[o+2] + bias;
     for(let y=0;y<h;y++){
       const rev = S.serp && (y&1);
       for(let k=0;k<w;k++){
         const x = rev ? w-1-k : k, i = y*w+x;
-        const v = buf[i], l = poziom(v);
+        const v = buf[i];
+        let l = poziom(v);
+        if(poprz){ const pl = poprz[i]; if(pl >= 0 && pl !== l && Math.abs(v - pl*krok) <= Math.abs(v - l*krok) + prog) l = pl; }
         ind[i] = l;
         const e = (v - l*krok)*S.str;
         for(const [dx,dy,wt] of diff.m){
@@ -126,7 +177,7 @@ function ditherJasnosci(p, w, h){
    1/pix. {wektor:true} zostawia tylko efekty, które SVG potrafi oddać
    prostokątami — z poświaty czy JPEG-a wyszłyby setki tysięcy kolorów. */
 export function ditherIEfekty(p, w, h, opcje){
-  ditherPixels(p, w, h);
+  ditherPixels(p, w, h, opcje);
   if(efektyPo()) uruchomNaBuforze(p, w, h, 1/S.pix, opcje);
 }
 

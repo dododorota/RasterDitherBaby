@@ -13,7 +13,8 @@ w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 - **Gita obsługuje użytkowniczka** — patrz zasady w `CLAUDE.md`.
 - Dodane i niezacommitowane: wideo i animacje (punkt 13 niżej), kolory
   i poświata (14), algorytmy, lista kodów i animacja parametrów (15),
-  korekta, stos efektów, ASCII i warstwy (16).
+  korekta, stos efektów, ASCII i warstwy (16), presety i reszta listy (17),
+  raster, risograf i usuwanie tła (18).
 
 ## Uruchomienie na Windowsie
 
@@ -85,6 +86,24 @@ to przegląd bez zmian w kodzie.
     (wagi z patentu), Bayer 16, IGN; stos efektów z kartami (aberracja, JPEG,
     zabarwienie, gwiazdki, faktura, obróbka, zmienność w czasie); tryb ASCII
     z zapisem TXT; kompozycja z warstw; przezroczyste tło; zwijane grupy.
+17. **Presety i reszta listy „Co dalej"** (3.10) — zapisane palety (presety
+    kolorów), klatki kluczowe w presetach ustawień, krzywe przejścia
+    (płynnie / liniowo / skokowo), własny kolor poświaty, dźwięk w MP4
+    (AAC, zapas Opus), stabilizacja dyfuzji w czasie.
+18. **Raster, risograf, usuwanie tła** (3.10) — po zrzutach nadruków riso
+    i grafik z linii: siatki heksagonalna, z okręgów i spirala; pięć nowych
+    kształtów punktu; raster liniowy z odkształceniem (fale, obręcze); tryb
+    risografu z 1–4 farbami (źródło, kąt, gęstość, przesunięcie i obrót
+    płyty na farbę); faktura farby (szorstkość, rozlanie, plamy, dziury);
+    usuwanie tła warstwy po kolorze i skrót „Usuń tło i podłóż kolor".
+    Dalej: siatki „promienie" i „wzdłuż kształtu", gładkość i grubość
+    min/max linii, biblioteka tuszy riso, losowe pasowanie, ślady wałka.
+19. **Aplikacja na pulpit** (3.10) — Electron jako opakowanie (wybór
+    użytkowniczki zamiast PWA), instalator i wersja przenośna przez
+    electron-builder, ikona generowana skryptem, krój Archivo lokalnie
+    zamiast z Google Fonts. Przy okazji: niewidoczne opcje list
+    w ciemnym motywie na Windowsie, faktura farby bez „cyfrowego moro"
+    (plamy jako ziarno, obrócona siatka szumu).
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -117,6 +136,9 @@ Testy szły na obrazach generowanych w kodzie i w wbudowanej przeglądarce
   zignoruje, 7-Zip powinien sobie poradzić);
 - **Firefox i Safari** — przetwarzanie folderu (`webkitdirectory`), paleta z PNG
   (`createImageBitmap` z opcjami), blokada panelu (`inert`), worker jako moduł;
+- **zapis pliku w aplikacji na pulpit** — okno „Zapisz jako" i zapamiętany
+  folder sprawdzone tylko z kodu (test bez okna nie kliknie w dialog);
+  instalator NSIS nie był uruchamiany, tylko zbudowany; .exe niepodpisane;
 - **prawdziwe zdjęcia i prawdziwe palety z Lospec** — ocena na oko, czy to
   wszystko dobrze wygląda w pracy.
 
@@ -136,10 +158,14 @@ Nie sprawdzone:
 - **Stabilizacja ditheringu w filmie** — dyfuzja błędu migocze między
   klatkami. Następny krok przy wideo, jeśli przeszkadza w pracy.
 - **Reszta różnic z Dither Boyem** — lista w README, „Co dalej".
+- **Automatyczne usuwanie tła (sieć neuronowa)** — wymaga pobrania modelu
+  z sieci, czyli łamie zasadę „bez zależności". Do decyzji użytkowniczki.
+- **Faktura farby i risograf** dobrane na próbce — do sprawdzenia na
+  prawdziwych zdjęciach, czy skala plam (34 i 13 px podglądu) pasuje.
 - **Efekty tylko na warstwy pod nimi** — w Dither Boyu efekt w stosie warstw
   działa na to, co pod nim; u nas stos efektów działa na całą kompozycję.
-- **Klatki kluczowe w presetach i plikach** — dziś giną po zamknięciu karty.
-  Trzeba by dopisać je do formatu presetu z tą samą nieufną walidacją.
+- **MP4 z dźwiękiem w Premiere i na Instagramie** — sprawdzone tylko
+  w Chrome (decodeAudioData na wyniku).
 - **Siła poświaty** dobrana na scenach generowanych w kodzie — do sprawdzenia
   na prawdziwych zdjęciach i filmach, czy 100% to dobry środek skali.
 - **Skrypty testowe** — `CLAUDE.md` mówiło, że testy „na razie nie są
@@ -165,6 +191,9 @@ node testy/animacja.mjs
 node testy/korekta.mjs
 node testy/stos.mjs
 node testy/ascii.mjs
+node testy/stabilizacja.mjs
+node testy/siatki.mjs
+node testy/wycinanie.mjs
 node testy/przegladarka.mjs     # wymaga serwer.py i Chrome
 ```
 
@@ -172,4 +201,4 @@ Każdy kończy się liczbą błędów i kodem wyjścia 0, gdy wszystko gra. Osta
 porównuje ~1,3 mln wyszukań i trwa kilkadziesiąt sekund.
 `node testy/wydajnosc-siatki.mjs` to pomiar, nie test — trwa kilka minut.
 
-Ostatnie uruchomienie (2.10, Windows, Node 24): wszystkie czternaście bez błędów.
+Ostatnie uruchomienie (3.10, Windows, Node 24): wszystkie siedemnaście bez błędów.

@@ -1,5 +1,6 @@
 import { S } from "./state.js";
 import { rozmyj } from "./rozmycie.js";
+import { hex2rgb } from "./palettes.js";
 
 /* Efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata. Czyste funkcje na
    buforze RGBA, bez DOM-u — w ditheringu biegają w workerze razem z dyfuzją.
@@ -161,11 +162,14 @@ export function warstwaPoswiaty(p, w, h, jednostka){
   if(!(sila > 0) || prog >= 255) return null;
   /* od progu do pełnej siły na 30% pozostałej skali — płynnie, bez twardej krawędzi */
   const L = new Float32Array(n*4), zbocze = Math.max(1, (255 - prog)*ZBOCZE);
+  /* kolor halo: z piksela albo jeden wybrany (jasność piksela mówi tylko, jak mocno) */
+  const kolor = S.glowZrodlo === "kolor" ? hex2rgb(S.glowKolor) : null;
   for(let o=0; o<n*4; o+=4){
     const j = (p[o]*299 + p[o+1]*587 + p[o+2]*114)/1000;
     if(j <= prog) continue;
     const f = Math.min(1, (j - prog)/zbocze)*sila;
-    L[o] = p[o]*f; L[o+1] = p[o+1]*f; L[o+2] = p[o+2]*f;
+    if(kolor){ L[o] = kolor[0]*f; L[o+1] = kolor[1]*f; L[o+2] = kolor[2]*f; }
+    else { L[o] = p[o]*f; L[o+1] = p[o+1]*f; L[o+2] = p[o+2]*f; }
   }
   /* promień na suwaku to mniej więcej zasięg halo, czyli ~2σ */
   const sigma = Math.max(0.5, S.glowR/2*jednostka);

@@ -1,8 +1,12 @@
 import { S, MAX } from "./state.js";
+import { hex2rgb } from "./palettes.js";
 import { out, octx } from "./dom.js";
 import { adjust, fit, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomWSkali, zmiennoscCzynna } from "./stos.js";
 import { zmiennoscPrzed } from "./fx.js";
+import { geometria, kontury, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
+import { fakturaFarby } from "./faktura-farby.js";
+import { skrot } from "./fx.js";
 
 /* ---------- tryb 2: raster drukarski ----------
 
@@ -15,8 +19,8 @@ import { zmiennoscPrzed } from "./fx.js";
    o próbkę na granicy zaokrąglenia i zmienić promień o ułamek procenta.
    Podgląd i eksport wektorowy idą z z=1, czyli mnożeniem przez jeden. */
 
-export function sampler(W,H){
-  const step = Math.max(2, Math.round(S.cell/2));
+export function sampler(W,H,cell){
+  const step = Math.max(2, Math.round((cell || S.cell)/2));
   const sw = Math.max(1,Math.ceil(W/step)), sh = Math.max(1,Math.ceil(H/step));
   const c=document.createElement("canvas"); c.width=sw; c.height=sh;
   const ctx=c.getContext("2d");
@@ -63,25 +67,50 @@ export function collectScreen(smp, W,H, angle, cov, off, z){
   }
   return {dots, a, cell:cell*z};
 }
-function drawScreen(target, smp, W,H, angle, color, cov, off, z){
+/* Rysuje jedną farbę na osobnym płótnie i nakłada ją mnożeniem. Geometria
+   z siatki.js; dawne kształty rysowane dokładnie jak wcześniej, nowe i linie
+   z konturów (ten sam opis trafia do SVG). */
+function drawScreen(target, smp, W,H, ink, z){
   z = z || 1;
-  const {dots,a,cell} = collectScreen(smp,W,H,angle,cov,off,z);
+  const g = geometria(smp, W, H, ink, z), ksztalt = ink.ksztalt || S.shape;
   const c=document.createElement("canvas"); c.width=W*z; c.height=H*z;
   const x=c.getContext("2d");
-  x.fillStyle=color; x.strokeStyle=color;
-  for(const [px,py,r] of dots){
-    x.save(); x.translate(px,py); x.rotate(a);
-    switch(S.shape){
-      case "square": x.fillRect(-r,-r,r*2,r*2); break;
-      case "diamond": x.beginPath(); x.moveTo(0,-r*1.3); x.lineTo(r*1.3,0); x.lineTo(0,r*1.3); x.lineTo(-r*1.3,0); x.closePath(); x.fill(); break;
-      case "line": x.fillRect(-cell*0.75, -r*0.9, cell*1.5, r*1.8); break;
-      case "cross": x.fillRect(-r*1.5,-r*0.45,r*3,r*0.9); x.fillRect(-r*0.45,-r*1.5,r*0.9,r*3); break;
-      default: x.beginPath(); x.arc(0,0,r,0,6.2832); x.fill();
+  x.fillStyle=ink.color; x.strokeStyle=ink.color;
+  if(g.linie){
+    x.beginPath();
+    for(const l of g.linie){
+      const k = konturLinii(l);
+      x.moveTo(k[0][0], k[0][1]);
+      for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]);
+      x.closePath();
     }
-    x.restore();
+    x.fill();
+  } else if(NOWE_KSZTALTY.includes(ksztalt)){
+    x.beginPath();
+    for(const [px,py,r,kat] of g.kropki) for(const k of kontury(ksztalt, px, py, r, kat)){
+      x.moveTo(k[0][0], k[0][1]);
+      for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]);
+      x.closePath();
+    }
+    x.fill("evenodd");
+  } else {
+    const cell = g.cell;
+    for(const [px,py,r,kat] of g.kropki){
+      x.save(); x.translate(px,py); x.rotate(kat);
+      switch(ksztalt){
+        case "square": x.fillRect(-r,-r,r*2,r*2); break;
+        case "diamond": x.beginPath(); x.moveTo(0,-r*1.3); x.lineTo(r*1.3,0); x.lineTo(0,r*1.3); x.lineTo(-r*1.3,0); x.closePath(); x.fill(); break;
+        case "line": x.fillRect(-cell*0.75, -r*0.9, cell*1.5, r*1.8); break;
+        case "cross": x.fillRect(-r*1.5,-r*0.45,r*3,r*0.9); x.fillRect(-r*0.45,-r*1.5,r*0.9,r*3); break;
+        default: x.beginPath(); x.arc(0,0,r,0,6.2832); x.fill();
+      }
+      x.restore();
+    }
   }
+  fakturaFarby(c, W, H, z, ink.color);
   target.save();
   target.globalCompositeOperation="multiply";
+  if(ink.krycie !== undefined && ink.krycie < 1) target.globalAlpha = ink.krycie;
   target.drawImage(c,0,0);
   target.restore();
 }
@@ -103,6 +132,37 @@ export function inkList(){
   const cmyk = (r,g,b)=>{ const k=1-Math.max(r,g,b)/255;
     if(k>=0.999) return [0,0,0,1];
     return [(1-r/255-k)/(1-k), (1-g/255-k)/(1-k), (1-b/255-k)/(1-k), k]; };
+
+  /* Risograf: 1–4 farby, każda z własnym rastrem (kąt, gęstość, kształt),
+     kryciem i pasowaniem (przesunięcie, obrót płyty), i z tym, skąd bierze
+     ilość farby: jasność, kanał R/G/B, rozbicie CMYK albo „swój kolor" —
+     rzut ciemności piksela na ciemność farby (różowa farba bierze to, co
+     w obrazie różowe i ciemne). Farby nakładane mnożeniem, więc z dwóch
+     robi się trzecia, jak na papierze. */
+  if(S.inkmode==="riso"){
+    const zrodla = {
+      jasnosc: () => (r,g,b) => 1 - lum(r,g,b),
+      r: () => (r) => 1 - r/255, g: () => (r,g) => 1 - g/255, b: () => (r,g,b) => 1 - b/255,
+      c: () => (r,g,b) => cmyk(r,g,b)[0], m: () => (r,g,b) => cmyk(r,g,b)[1],
+      y: () => (r,g,b) => cmyk(r,g,b)[2], k: () => (r,g,b) => cmyk(r,g,b)[3],
+      farba: kol => {
+        const f = hex2rgb(kol).map(v => 1 - v/255), ff = f[0]*f[0] + f[1]*f[1] + f[2]*f[2] || 1;
+        return (r,g,b) => Math.max(0, ((1-r/255)*f[0] + (1-g/255)*f[1] + (1-b/255)*f[2])/ff);
+      }
+    };
+    /* losowe pasowanie: przesunięcie do ±6 px i obrót do ±1° na farbę,
+       ze skrótu numeru farby i wariantu — powtarzalne, inne przy każdym wariancie */
+    const farby = [], los = (S.risoLos || 0)/100, wr = S.risoWariant | 0;
+    const rzut = (i, k) => (skrot(i, k, wr*31 + 7) - 0.5)*2*los;
+    for(let i=1; i<=Math.max(1, Math.min(4, S.risoIle|0)); i++){
+      const kol = S["risoK"+i], zr = zrodla[S["risoZ"+i]] || zrodla.farba;
+      farby.push({color: kol, ang: S["risoA"+i], cov: zr(kol), name: "farba-"+i,
+        off: los ? [S["risoX"+i] + rzut(i, 1)*6, S["risoY"+i] + rzut(i, 2)*6] : [S["risoX"+i], S["risoY"+i]],
+        cell: S["risoC"+i], ksztalt: S["risoS"+i],
+        krycie: S["risoO"+i]/100, obrot: S["risoR"+i]/10 + (los ? rzut(i, 3) : 0)});
+    }
+    return farby;
+  }
   return [
     {color:"#FFE800", ang:S.ang-45, cov:(r,g,b)=>cmyk(r,g,b)[2], off:off(1), name:"yellow"},
     {color:"#EC008C", ang:S.ang+30, cov:(r,g,b)=>cmyk(r,g,b)[1], off:off(2), name:"magenta"},
@@ -113,8 +173,10 @@ export function inkList(){
 /* papier i wszystkie farby, bez ziarna i efektów, na płótnie (W·z)×(H·z) */
 function rysujRaster(ctx, W, H, z){
   ctx.fillStyle = S.paper; ctx.fillRect(0,0,W*z,H*z);
-  const smp = sampler(W,H);
-  for(const k of inkList()) drawScreen(ctx, smp, W,H, k.ang, k.color, k.cov, k.off, z);
+  const farby = inkList();
+  /* próbki tak gęsto, jak wymaga najdrobniejsza farba (risograf: każda ma własną gęstość) */
+  const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));
+  for(const k of farby) drawScreen(ctx, smp, W,H, k, z);
 }
 export function renderHalftone(scale){
   const z = Math.max(1, Math.round(scale));

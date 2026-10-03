@@ -287,3 +287,17 @@ function szukaczOklab(pal){
   szukaczeOklab.set(klucz, f);
   return f;
 }
+
+/* Tusze risografu do wyboru przy farbach rastra — przybliżenia ekranowe
+   kolorów z kart producenta (papier i farba na ekranie nie dadzą się
+   zgrać dokładnie). Kolejność: od najczęściej używanych. */
+export const TUSZE_RISO = [
+  ["Fluo róż", "#ff48b0"], ["Niebieski", "#0078bf"], ["Żółty", "#ffe800"], ["Czarny", "#000000"],
+  ["Czerwony", "#ff665e"], ["Turkus", "#00838a"], ["Zielony", "#00a95c"], ["Fioletowy", "#765ba7"],
+  ["Fluo pomarańcz", "#ff7477"], ["Pomarańczowy", "#ff6c2f"], ["Jasna czerwień", "#f15060"], ["Szkarłat", "#f65058"],
+  ["Burgund", "#914e72"], ["Średni niebieski", "#3255a4"], ["Federal Blue", "#3d5588"], ["Chabrowy", "#62a8e5"],
+  ["Morski", "#0074a2"], ["Akwamaryna", "#5ec8e5"], ["Mięta", "#82d8d5"], ["Turkusowy", "#00aa93"],
+  ["Trawiasty", "#397e58"], ["Butelkowy", "#407060"], ["Jasna limonka", "#e3ed55"], ["Słonecznik", "#ffb511"],
+  ["Melon", "#ffae3b"], ["Brązowy", "#925f52"], ["Płaskie złoto", "#bb8b41"], ["Gumy balonowej", "#f984ca"],
+  ["Lawendowy", "#9d7ad2"], ["Śliwkowy", "#845991"], ["Jasnoszary", "#88898a"], ["Grafit", "#70747c"]
+];

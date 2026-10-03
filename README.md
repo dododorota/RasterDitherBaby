@@ -1,7 +1,8 @@
 # Raster
 
-Narzędzie do ditheringu i rastra drukarskiego. Wszystko liczy się w przeglądarce,
-nic nie wychodzi na serwer. Eksport do PNG i do SVG.
+Narzędzie do ditheringu i rastra drukarskiego. Wszystko liczy się w przeglądarce
+(albo w oknie aplikacji na pulpit), nic nie wychodzi na serwer. Eksport do PNG
+i do SVG.
 
 ## Odpalenie
 
@@ -20,6 +21,30 @@ ze starym `dither-core.js` — co daje błędy, których w kodzie nie ma) i jawn
 podaje typ plików `.js` (na Windowsie `python -m http.server` potrafi wziąć go
 z rejestru jako `text/plain` i apka wtedy w ogóle nie startuje). `npx serve .`
 też działa, ale po zmianach rób twarde odświeżenie (Cmd/Ctrl+Shift+R).
+
+## Aplikacja na pulpit (Electron)
+
+Ta sama apka w osobnym oknie, bez przeglądarki i bez serwera:
+
+```bash
+npm install            # raz — pobiera Electrona (~200 MB w node_modules)
+npm start              # okno z apką prosto z plików projektu
+npm run paczka         # dist/: instalator „Raster Setup …exe" i wersja przenośna
+```
+
+Jeśli po `npm install` brakuje `node_modules/electron/dist` (npm 11 nie
+uruchamia skryptów instalacyjnych), pobierz go ręcznie:
+`node node_modules/electron/install.js`.
+
+Electron jest tylko opakowaniem (`electron/main.js`) — kod apki się nie
+zmienia i dalej działa w przeglądarce. Zapis pliku otwiera systemowe okno
+„Zapisz jako" z ostatnio użytym folderem. Pliki `.exe` nie są podpisane
+certyfikatem, więc przy pierwszym uruchomieniu Windows SmartScreen pokaże
+ostrzeżenie — „Więcej informacji" → „Uruchom mimo to". Ikona powstaje
+skryptem: `npm run ikona`.
+
+Krój Archivo leży w `fonty/` (licencja SIL OFL obok), więc apka nie łączy
+się z Google Fonts i bez sieci wygląda tak samo.
 
 ## Co robi
 
@@ -44,8 +69,12 @@ wyciągana ze zdjęcia, a kolory przypisane albo jako najbliższe, albo według
 jasności — jak mapa gradientu. Opis niżej, w „Kolorach w ditheringu".
 
 **Tryb raster drukarski** — prawdziwe obrócone siatki rastrowe, jedna farba,
-duotone albo pełny CMYK pod klasycznymi kątami, z mnożeniem farb. Suwak pasowania
-psuje rejestrację arkusza, ziarno dokłada fakturę papieru.
+duotone, pełny CMYK pod klasycznymi kątami albo risograf z 1–4 własnymi
+farbami, z mnożeniem farb. Siatka kwadratowa, heksagonalna, z okręgów albo
+spirala; punkt okrągły, kwadratowy, gwiazdka, pierścień i inne, albo raster
+liniowy z falującymi liniami. Suwak pasowania psuje rejestrację arkusza,
+ziarno dokłada fakturę papieru, „faktura farby" — szorstkie krawędzie,
+rozlanie, plamy i dziury w apli. Opis niżej, w „Rastrze i risografie".
 
 Skala zapisu w obu trybach daje dokładne powiększenie podglądu: przy 4× rośnie
 rozdzielczość, a nie gęstość rastra — ta sama liczba punktów, tylko narysowana
@@ -77,7 +106,10 @@ src/dither-core.js   ditherPixels() — korekta i dithering, bez DOM-u
 src/worker.js        wątek, w którym liczy się dyfuzja błędu
 src/worker-client.js kolejka zadań workera, wypieranie nieaktualnych
 src/dither.js     ditherData() ogarnia canvas i worker, renderDither() rysuje
-src/halftone.js   sampler, collectScreen() liczy punkty, drawScreen() rysuje
+src/halftone.js   sampler, inkList() farby, drawScreen() rysuje
+src/siatki.js     geometria rastra: siatki, kształty punktu, raster liniowy
+src/faktura-farby.js szorstkość, rozlanie, plamy i dziury farby
+src/wycinanie.js  usuwanie tła po kolorze (maska), bez DOM-u
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
 src/contours.js   obrys konturowy: śledzenie brzegów i wygładzanie ścieżek
@@ -110,6 +142,42 @@ są asynchroniczne i zwracają `null`, gdy zadanie zostało wyparte świeższym
 (przeciąganie suwaka). Do zapisu pliku wołaj je z `{keep:true}` — takie zadanie
 nie wypada z kolejki. Gdy workera nie ma, liczenie leci na głównym wątku tą samą
 funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
+
+## Raster i risograf
+
+- **Siatka** — kwadratowa (klasyczna), heksagonalna (punkty w trójkątach,
+  równe odstępy we wszystkich kierunkach), koncentryczne okręgi, spirala,
+  promienie (słońce) albo „wzdłuż kształtu"; okręgi, spirala i promienie od
+  środka przesuniętego suwakami.
+- **Wzdłuż kształtu** — równe linie pod kątem farby, które obraz wygina:
+  zaginają się wokół form i zagęszczają na krawędziach, jak rytowane linie
+  obchodzące policzek. Siłę ustawia „Odkształcenie", gładkość upraszcza
+  linie do większych form. Działa też z punktami (punkty wzdłuż linii).
+- **Kształt punktu** — dawne (koło, kwadrat, romb, elipsa, linia, krzyżyk)
+  i nowe: gwiazdka, krzyżyk ukośny, pierścień, sześciokąt, elipsa pod kątem.
+- **Linie — raster liniowy**: zamiast punktów ciągłe linie wzdłuż siatki,
+  grubsze w ciemnych miejscach. „Odkształcenie" przesuwa linię w bok o jasność
+  obrazu — z prostych pasów robią się fale, jak w grafice rytowanej; na siatce
+  z okręgów — obręcze. Gładkość uśrednia wygięcie, a grubość najmniejsza
+  i największa ustawiają zakres — przy najmniejszej powyżej zera linia
+  zostaje też w światłach. W SVG linie są prawdziwymi ścieżkami.
+- **Risograf — własne farby**: 1–4 warstwy, każda ze swoim kolorem,
+  gęstością, kątem, kształtem, kryciem, przesunięciem X/Y i obrotem płyty.
+  Każda farba bierze z obrazu swoje źródło: jasność, kanał R/G/B, rozbicie
+  CMYK albo „swój kolor" (ile ciemności piksela leży w kierunku tej farby).
+  Farby mnożą się, więc z różu i niebieskiego robi się fiolet. Kolor można
+  wybrać z listy tuszy riso (32 kolory, przybliżenia ekranowe). „Losowe
+  pasowanie" rozsuwa farby (do ±6 px i ±1°) — powtarzalnie, inny układ
+  przy każdym „wariancie losowania".
+- **Faktura farby** (dla każdego rodzaju farb): szorstkość — poszarpane
+  krawędzie; rozlanie — farba wypływa poza punkt; plamy — nierówne krycie
+  w apli; dziury — drobne niedodruki; ślady wałka — poziome smugi słabszej
+  farby. Szum leży na siatce podglądu, więc
+  zapis w skali daje ten sam wzór, tylko ostrzej. Faktura jest tylko na
+  podglądzie i w PNG — SVG ma czyste kształty.
+
+Presety: *Riso duo*, *Rytownik* (fale na żółtym), *Obręcze*, *Wzdłuż
+  kształtu*, *Promienie*.
 
 ## Kontury zamiast prostokątów
 
@@ -208,7 +276,19 @@ zmianie, więc między klatkami szumi i „gotuje się". To bywa efektem samym
 w sobie; spokojny obraz dają algorytmy uporządkowane (Bayer, siatka punktowa)
 i raster drukarski, bo ich wzór stoi w miejscu.
 
-Bez dźwięku — film wychodzi niemy, dźwięk dokłada się w montażu.
+**Dźwięk** — MP4 z filmu dostaje jego ścieżkę dźwiękową, przyciętą do
+zakresu zapisu (ptaszek „Dźwięk z filmu" przy MP4). Kodowany przez
+przeglądarkę do AAC; gdy kodera AAC nie ma — do Opusa (odtworzy go
+przeglądarka i VLC, QuickTime nie). GIF, klatki PNG i animacja obrazu są bez
+dźwięku.
+
+**Stabilizacja dyfuzji** (grupa *Wideo*) — zmniejsza migotanie dyfuzji błędu:
+piksel zostaje w kolorze z poprzedniej klatki, jeśli ten jest prawie tak samo
+dobry jak najbliższy. Na nieruchomym ujęciu z szumem migotanie spada
+z kilkudziesięciu procent pikseli na klatkę do prawie zera, a ruch nie
+zostawia smug. Działa przy odtwarzaniu i w zapisie, bo wymaga klatek po
+kolei — na zatrzymanym kadrze widać obraz bez stabilizacji. Zapis zaczyna
+od czystej pamięci, więc wynik nie zależy od tego, co wcześniej oglądano.
 
 ## Algorytmy
 
@@ -301,6 +381,12 @@ najbliższy. Przy kolorowych paletach mniej przeskoków w dziwne odcienie.
 hex do wpisania (z # albo bez), strzałki ↑ ↓ do przesuwania i × do usuwania.
 *Kopiuj kody* wrzuca całą paletę do schowka.
 
+**Zapisane palety** (presety kolorów) — rozwijana lista pod przyciskami
+palety: nazwa i „Zapamiętaj" zapisują bieżącą paletę razem z kolejnością
+i sposobem przypisania kolorów (gradient albo najbliższy); klik w nazwę
+przywraca, × usuwa. Żyją w tej przeglądarce — na inny komputer przenosi je
+„Zapisz .hex".
+
 **Zapisz .hex** — bieżąca paleta w formacie Lospec, w kolejności, w jakiej
 działa bieżący tryb.
 
@@ -332,9 +418,14 @@ bieli ditheringu, całą siatkę rastra, efekty i poświatę. Animowana
 pikselizacja zmienia wymiar obrazu o parę pikseli — w zapisie każda klatka
 jest wyrównywana do rozmiaru pierwszej.
 
+**Przejście** między klatkami ustawia się dla całej ścieżki przyciskiem przy
+jej nazwie pod osią: ∿ płynnie (wolny start i koniec), ⟋ liniowo, ⊓ skokowo
+(wartość trzyma się do następnej klatki — jak „Hold" w After Effects).
+
 Pętla bez przeskoku: ustaw ostatnią klatkę kluczową na tę samą wartość co
-pierwszą. Klatki kluczowe nie trafiają (jeszcze) do presetów ani plików
-ustawień — żyją do zamknięcia karty.
+pierwszą. Klatki kluczowe (z przejściami) zapisują się w presetach — w pliku
+i w przeglądarce. Preset z animacją ją przywraca; preset bez animacji
+(wbudowany, stary plik) zostawia bieżącą.
 
 ## Efekty po rastrze
 
@@ -378,7 +469,8 @@ przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
   krawędziach), więc przy ditheringu pod konkretny sprzęt — Game Boy, CGA —
   wynik przestaje być wierny palecie. W ditheringu przesunięcie jest w całych
   pikselach po pikselizacji.
-- **Poświata** — jasne miejsca świecą miękkim halo we własnym kolorze, nałożonym
+- **Poświata** — jasne miejsca świecą miękkim halo w kolorze z obrazu albo
+  w wybranym (np. szare zdjęcie świeci na niebiesko), nałożonym
   trybem „screen" (tylko rozjaśnia). *Promień* to zasięg halo, *Świeci powyżej
   jasności* — od jakiej jasności piksel zaczyna świecić. Siła ponad 100%
   przepala halo do bieli. Halo ma dwie warstwy: jasny rdzeń tuż przy świecącym
@@ -416,7 +508,8 @@ w Illustratorze), TXT (sam tekst).
 ## Warstwy
 
 „Kompozycja z warstw" w grupie *Obraz* robi z bieżącego obrazu pierwszą
-warstwę płótna. Dalej:
+warstwę płótna. „Usuń tło i podłóż kolor" robi to samo, od razu z wyciętym
+tłem i płótnem w kolorze papieru — wystarczy zmienić kolor tła płótna. Dalej:
 
 - **Płótno** — format (kwadrat, post 4:5, story 9:16, 16:9, A4) albo własny
   rozmiar, kolor tła albo przezroczyste.
@@ -426,6 +519,12 @@ warstwę płótna. Dalej:
 - **Zaznaczona warstwa** — położenie, skala, obrót, krycie, mieszanie
   (normalne, mnożenie, rozjaśnienie, nakładka…). Przesuwa się też myszą na
   podglądzie.
+- **Usuń tło tej warstwy** — po kolorze: tło to piksele bliskie wskazanemu
+  kolorowi (odległość w Oklab, czyli tak, jak różnicę widzi oko). Kolor
+  zgadywany z brzegów zdjęcia albo „Wskaż kolor" i klik w podgląd.
+  Tolerancja, miękka krawędź i „tylko tło połączone z brzegami" — wtedy
+  biała koszula na białym tle zostaje, jeśli nie dotyka krawędzi. Pod
+  wycięty obiekt idzie kolor płótna (albo przezroczystość).
 - **Zakończ kompozycję** — zostaje spłaszczony obraz.
 
 Kompozycja to materiał jak zdjęcie: przechodzi przez tryb, korektę, efekty,
@@ -469,7 +568,8 @@ przeglądaniem. Dithering liczy się w workerze, więc interfejs i tak nie staje
 ## Presety
 
 Kilka wbudowanych na tryb (w ditheringu m.in. *Poświata*, *Termowizja*,
-*Riso*), plus dwa sposoby na własne:
+*Riso*), plus dwa sposoby na własne (preset zapisuje cały wygląd, paletę
+własną i klatki kluczowe animacji):
 
 - **„Zapamiętaj"** — preset ląduje w przeglądarce jako przycisk obok
   wbudowanych (w przerywanej ramce, z × do usuwania). Bez nazwy dostaje
@@ -517,18 +617,22 @@ pikselizację na 3–4×.
 
 Porównanie z Dither Boyem (studioaaa.com) — czego tu jeszcze nie ma:
 
-- stabilizacja ditheringu w czasie (mniej migotania dyfuzji w filmie);
-- dźwięk w MP4;
-- więcej algorytmów dyfuzji i wzory (pattern dithering);
-- glitche i efekty specjalne (JPEG glitch, aberracja, fale);
-- efekty układane w dowolnej kolejności, zamiast stałej;
-- klatki kluczowe w plikach ustawień (dziś giną po zamknięciu karty);
-- inne krzywe przejścia między klatkami (liniowo, skokowo);
-- efekty działające tylko na warstwy pod nimi, animacja położenia warstw;
+- efekty działające tylko na warstwy pod nimi i animacja położenia warstw;
 - wiele kopii tego samego efektu w stosie;
 - dot diffusion (Knuth) i wariant Riemersmy z rozkładem przestrzennym —
   wymagają tabel, których nie było z czego wiarygodnie wziąć;
-- kolor poświaty niezależny od koloru obrazu.
+- osobne krzywe przejścia dla pojedynczych klatek (dziś jedna na ścieżkę).
+
+Wycinanie z tła (jest: po kolorze, w warstwach):
+
+- *automatycznie (sieć neuronowa)* — wycina postać czy przedmiot z dowolnego
+  tła, ale wymaga pobrania modelu (kilka–kilkadziesiąt MB) z sieci przy
+  pierwszym użyciu, co łamie zasadę „bez zależności” — tylko za zgodą;
+- **ręczna poprawka maski** — pędzel „dodaj / usuń” na podglądzie.
+
+Raster i risograf — z listy zostało:
+
+- faktura papieru pod farbą (włókna, struktura) — dziś tylko ziarno.
 
 ## Licencja
 

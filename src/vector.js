@@ -2,7 +2,8 @@ import { S, MAX } from "./state.js";
 import { $ } from "./dom.js";
 import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
-import { sampler, collectScreen, inkList } from "./halftone.js";
+import { sampler, inkList } from "./halftone.js";
+import { geometria, kontury, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
 import { czynne, wpisEfektu } from "./stos.js";
 import { svgAscii } from "./ascii.js";
@@ -97,9 +98,9 @@ export async function svgDither(){
   parts.push("</svg>");
   return {svg:parts.join("\n"), count};
 }
-function svgShape(x,y,r,deg,cell){
+function svgShape(x,y,r,deg,cell,ksztalt){
   const t = ` transform="rotate(${n2(deg)} ${n2(x)} ${n2(y)})"`;
-  switch(S.shape){
+  switch(ksztalt || S.shape){
     case "square": return `<rect x="${n2(x-r)}" y="${n2(y-r)}" width="${n2(r*2)}" height="${n2(r*2)}"${t}/>`;
     case "diamond": return `<polygon points="0,${n2(-r*1.3)} ${n2(r*1.3)},0 0,${n2(r*1.3)} ${n2(-r*1.3)},0" transform="translate(${n2(x)} ${n2(y)}) rotate(${n2(deg)})"/>`;
     case "line": return `<rect x="${n2(x-cell*0.75)}" y="${n2(y-r*0.9)}" width="${n2(cell*1.5)}" height="${n2(r*1.8)}"${t}/>`;
@@ -110,15 +111,29 @@ function svgShape(x,y,r,deg,cell){
 }
 export function svgHalftone(){
   const [W,H] = fit(S.img.width, S.img.height, MAX);
-  const smp = sampler(W,H);
+  const farby = inkList();
+  const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));
   const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
   parts.push(`<rect width="${W}" height="${H}" fill="${S.paper}"/>`);
   let count=0;
-  for(const ink of inkList()){
-    const {dots,cell} = collectScreen(smp,W,H, ink.ang, ink.cov, ink.off);
-    const body=[];
-    for(const [x,y,r] of dots){ body.push(svgShape(x,y,r, ink.ang, cell)); count++; }
-    parts.push(`<g id="${ink.name}" fill="${ink.color}" style="mix-blend-mode:multiply">${body.join("")}</g>`);
+  /* kontur jako fragment ścieżki: M … L … Z */
+  const kontur = k => "M" + k.map(([x, y]) => n2(x) + " " + n2(y)).join("L") + "Z";
+  for(const ink of farby){
+    const g = geometria(smp, W, H, ink, 1), ksztalt = ink.ksztalt || S.shape;
+    const krycie = ink.krycie !== undefined && ink.krycie < 1 ? ` opacity="${n2(ink.krycie)}"` : "";
+    let body;
+    if(g.linie){
+      /* raster liniowy: każda linia to jedna ścieżka o zmiennej grubości */
+      body = g.linie.map(l => `<path d="${kontur(konturLinii(l))}"/>`);
+      count += g.linie.length;
+    } else if(NOWE_KSZTALTY.includes(ksztalt)){
+      body = [`<path fill-rule="evenodd" d="${g.kropki.map(([x,y,r,kat]) => kontury(ksztalt, x, y, r, kat).map(kontur).join("")).join("")}"/>`];
+      count += g.kropki.length;
+    } else {
+      body = g.kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt));
+      count += g.kropki.length;
+    }
+    parts.push(`<g id="${ink.name}" fill="${ink.color}"${krycie} style="mix-blend-mode:multiply">${body.join("")}</g>`);
   }
   parts.push("</svg>");
   return {svg:parts.join("\n"), count};

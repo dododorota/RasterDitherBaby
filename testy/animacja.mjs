@@ -1,6 +1,6 @@
 /* Klatki kluczowe: interpolacja, zaokrąglenie do kroku suwaka, granice,
    dodawanie, nadpisywanie i usuwanie. Uruchom: node testy/animacja.mjs */
-import { SCIEZKI, KONW, ustawKlucz, usunKlucz, kluczW, czyAnimowany, wartoscSuwaka, wartoscS, zastosuj, wyczysc } from "../src/animacja.js";
+import { SCIEZKI, KONW, ustawKlucz, usunKlucz, kluczW, czyAnimowany, wartoscSuwaka, wartoscS, zastosuj, wyczysc, zrzut, wczytaj, ustawKrzywa, KRZYWE } from "../src/animacja.js";
 
 let bledy = 0;
 const sprawdz = (warunek, opis) => { console.log((warunek ? "  ok    " : "  ŹLE   ") + opis); if(!warunek) bledy++; };
@@ -42,6 +42,36 @@ sprawdz(S.bri === 0 && S.gam === 3 && S.con === 7, "zastosuj: animowane ustawion
 
 wyczysc();
 sprawdz(!Object.keys(SCIEZKI).length, "wyczyść usuwa wszystko");
+
+console.log("--- zapis w presecie ---");
+KONW.bri = {zS: v => v, min: -100, max: 100};
+ustawKlucz("bri", 0, -40); ustawKlucz("bri", 2.5, 60); ustawKlucz("gam", 1, 150);
+const z = JSON.parse(JSON.stringify(zrzut()));
+sprawdz(JSON.stringify(z) === '{"bri":[[0,-40],[2.5,60]],"gam":[[1,150]]}', "zrzut: " + JSON.stringify(z));
+wyczysc();
+sprawdz(wczytaj(z) === 0 && JSON.stringify(zrzut()) === JSON.stringify(z), "wczytanie zrzutu odtwarza klatki co do wartości");
+const zle = wczytaj({bri: [[0, 500], [-1, 3], [1, "x"], [2]], nieznany: [[0, 1]], gam: "nie lista"});
+sprawdz(zle === 5 && JSON.stringify(zrzut()) === '{"bri":[[0,100]]}', "nieufnie: wartość przycięta do suwaka, złe wpisy i nieznane parametry pominięte (" + zle + ")");
+sprawdz(wczytaj(null) === 1 && !Object.keys(zrzut()).length, "zły typ: nic nie wczytane");
+
+console.log("--- krzywe przejścia ---");
+wyczysc();
+ustawKlucz("bri", 0, 0); ustawKlucz("bri", 4, 80);
+const w = () => [1, 2, 3].map(s => wartoscSuwaka("bri", s)).join();
+sprawdz(w() === "13,40,68", "płynnie (domyślnie, 67,5 → 68): " + w());
+ustawKrzywa("bri", "liniowo");
+sprawdz(w() === "20,40,60", "liniowo: " + w());
+ustawKrzywa("bri", "skokowo");
+sprawdz(w() === "0,0,0" && wartoscSuwaka("bri", 4) === 80, "skokowo: trzyma do następnej klatki, potem 80");
+const zk = JSON.parse(JSON.stringify(zrzut()));
+sprawdz(JSON.stringify(zk) === '{"bri":{"krzywa":"skokowo","klatki":[[0,0],[4,80]]}}', "w presecie krzywa zapisana: " + JSON.stringify(zk));
+wyczysc();
+sprawdz(wczytaj(zk) === 0 && KRZYWE.bri === "skokowo" && w() === "0,0,0", "wczytana z presetu");
+sprawdz(wczytaj({bri: {krzywa: "zygzak", klatki: [[0, 5]]}}) === 1 && !KRZYWE.bri && wartoscSuwaka("bri", 0) === 5, "nieznana krzywa: odrzucona, klatki zostają");
+usunKlucz("bri", 0);
+sprawdz(!KRZYWE.bri, "usunięcie ostatniej klatki usuwa też krzywą");
+wyczysc();
+wyczysc();
 
 console.log("\nBŁĘDÓW:", bledy);
 process.exitCode = bledy ? 1 : 0;

@@ -21,6 +21,11 @@ export const PRESETS = {
     ["Offset", {inkmode:"cmyk", cell:7, ang:45, dot:1, shape:"circle", mis:6, grain:10, con:12}],
     ["Gazeta 1974", {inkmode:"mono", cell:6, ang:45, dot:1.1, shape:"circle", ink:"#1c1c1c", paper:"#efe9da", mis:14, grain:26, con:30, gam:1.1}],
     ["Riso", {inkmode:"duo", cell:9, ang:15, dot:1.05, shape:"circle", mis:30, grain:18, con:16}],
-    ["Linia", {inkmode:"mono", cell:6, ang:20, dot:1.2, shape:"line", ink:"#000000", mis:0, grain:0, con:24}]
+    ["Linia", {inkmode:"mono", cell:6, ang:20, dot:1.2, shape:"line", ink:"#000000", mis:0, grain:0, con:24}],
+    ["Riso duo", {inkmode:"riso", risoIle:2, risoC1:7, risoC2:7, risoX1:5, risoY1:-3, paper:"#f5f1e8", szorstkosc:45, rozlanie:20, plamy:22, dziury:12, con:15}],
+    ["Rytownik", {inkmode:"mono", shape:"pasy", cell:9, ang:90, fala:70, blur:3, ink:"#ff2a00", paper:"#ffd21a", con:20}],
+    ["Obręcze", {inkmode:"mono", shape:"pasy", siatka:"okregi", cell:7, fala:40, blur:2, ink:"#1a1a1a", paper:"#f2c84b", con:15}],
+    ["Wzdłuż kształtu", {inkmode:"mono", shape:"pasy", siatka:"warstwice", cell:6, ang:20, fala:60, gladkosc:15, liniaMin:12, liniaMax:100, ink:"#1a1a1a", paper:"#f2efe6", con:20}],
+    ["Promienie", {inkmode:"mono", shape:"pasy", siatka:"promienie", cell:8, ink:"#c8102e", paper:"#f5ecd7", con:15}]
   ]
 };

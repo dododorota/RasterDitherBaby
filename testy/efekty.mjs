@@ -146,5 +146,17 @@ spr(!efektyPo(), "siła 0 = efekty wyłączone");
   const maly = kropka(w, h); poswiata(maly, w, h, 0.5);
   spr(maly[(30*w+40)*4+2] < duzy[(30*w+40)*4+2], "jednostka 1/pix zmniejsza zasięg na buforze po pikselizacji");
 }
+{
+  /* własny kolor halo: szara kropka świeci na niebiesko */
+  Object.assign(S, DEFAULTS, {glow: 150, glowR: 12, glowProg: 30, glowZrodlo: "kolor", glowKolor: "#0040ff"});
+  const w = 61, h = 61, p = new Uint8ClampedArray(w*h*4);
+  for(let i=3;i<p.length;i+=4) p[i]=255;
+  for(let y=28;y<33;y++) for(let x=28;x<33;x++){ const o=(y*w+x)*4; p[o]=p[o+1]=p[o+2]=230; }
+  poswiata(p, w, h, 1);
+  const o = (30*w+37)*4;
+  const ok = p[o+2] > 20 && p[o+2] > p[o]*3 && p[o+1] < p[o+2];
+  console.log((ok ? "  ok    " : "  ŹLE   ") + `szara kropka, własny kolor #0040ff: halo niebieskie (${p[o]},${p[o+1]},${p[o+2]})`);
+  if(!ok) b4++;
+}
 console.log("\nBŁĘDÓW RAZEM:", bledy+b2+b3+obce+b4);
 process.exitCode = (bledy+b2+b3+obce+b4) ? 1 : 0;

@@ -636,6 +636,53 @@ try{
   sprawdz(komp.przezr, "przezroczyste tło płótna");
   sprawdz(komp.koniec.join() === "false,1080,1080,true", "„Zakończ kompozycję”: zostaje spłaszczony obraz 1080×1080");
 
+  console.log("--- usuwanie tła ---");
+  const tlo = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { K } = await import("/src/warstwy.js");
+    const $ = s => document.querySelector(s);
+    /* zdjęcie produktowe: szare tło, czerwone koło, w środku szara plama */
+    const c = document.createElement("canvas"); c.width = 400; c.height = 300;
+    const x = c.getContext("2d");
+    x.fillStyle = "#e6e6e4"; x.fillRect(0, 0, 400, 300);
+    x.fillStyle = "#c82828"; x.beginPath(); x.arc(200, 150, 100, 0, 7); x.fill();
+    x.fillStyle = "#e6e6e4"; x.beginPath(); x.arc(200, 150, 25, 0, 7); x.fill();
+    const blob = await new Promise(r => c.toBlob(r, "image/png"));
+    const stary = S.img;
+    upusc(new File([blob], "produkt.png", {type: "image/png"}));
+    await czekaj(() => S.img !== stary && S.img.width === 400);
+    await new Promise(r => setTimeout(r, 100));
+    const wyn = {przycisk: !$("#usun-tlo").classList.contains("hidden")};
+    $("#usun-tlo").click();
+    const t = $("#komp-tlo"); t.value = "#0000ff"; t.dispatchEvent(new Event("input"));
+    const piksel = (px, py) => [...K.kanwa.getContext("2d").getImageData(px, py, 1, 1).data].slice(0, 3).join();
+    wyn.po = [K.aktywna, K.warstwy[0].tlo.wl, K.warstwy[0].tlo.kolor.join(), $("#komp-wytnij").checked,
+              !$("#komp-wytnij-opcje").classList.contains("hidden")];
+    wyn.piksele = [piksel(5, 5), piksel(200, 70), piksel(200, 150)];
+    /* bez „tylko połączone”: plama w środku też znika */
+    $("#komp-spojne").click();
+    wyn.srodek = piksel(200, 150);
+    /* kroplomierz: klik w czerwone koło → wycina czerwień, szare zostaje */
+    $("#komp-kroplomierz").click();
+    wyn.kursor = $("#out").classList.contains("kroplomierz");
+    const r = $("#out").getBoundingClientRect();
+    const zd = (typ, px, py) => $("#out").dispatchEvent(new PointerEvent(typ, {clientX: r.left + px/400*r.width, clientY: r.top + py/300*r.height, pointerId: 1, bubbles: true}));
+    zd("pointerdown", 200, 70); zd("pointerup", 200, 70);
+    wyn.kroplomierz = [K.warstwy[0].tlo.kolor.join(), $("#out").classList.contains("kroplomierz"), piksel(200, 70), piksel(5, 5), Math.round(K.warstwy[0].x)];
+    /* wyłączenie — oryginał wraca */
+    $("#komp-wytnij").click();
+    wyn.wylaczone = piksel(5, 5);
+    $("#komp-koniec").click();
+    await new Promise(r => setTimeout(r, 200));
+    return wyn;
+  });
+  sprawdz(tlo.przycisk && tlo.po.join("|") === "true|true|230,230,228|true|true", "„Usuń tło i podłóż kolor”: kompozycja z wyciętą warstwą, kolor z brzegów " + tlo.po[2]);
+  sprawdz(tlo.piksele.join("|") === "0,0,255|200,40,40|230,230,228", "tło → kolor płótna, obiekt i szara plama w środku zostają: " + tlo.piksele.join(" "));
+  sprawdz(tlo.srodek === "0,0,255", "bez „tylko połączone z brzegami” plama w środku też znika");
+  sprawdz(tlo.kursor && tlo.kroplomierz.join("|") === "200,40,40|false|0,0,255|230,230,228|200",
+          "kroplomierz: klik w obiekt bierze jego kolor i go wycina, warstwa się nie przesuwa: " + tlo.kroplomierz.join(" "));
+  sprawdz(tlo.wylaczone === "230,230,228", "wyłączenie usuwania tła przywraca oryginał");
+
   console.log("--- przezroczyste tło w PNG ---");
   const przezr = await wykonaj(async () => {
     const { S } = await import("/src/state.js");
@@ -656,6 +703,117 @@ try{
   });
   sprawdz(przezr.widac && przezr.udzial > 0.1 && przezr.udzial < 0.95, `1-bit: kolor papieru przezroczysty (${(przezr.udzial*100).toFixed(0)}% pikseli)`);
   sprawdz(przezr.ukryte, "przy palecie bez papieru opcja znika");
+
+  console.log("--- presety kolorów i ustawień ---");
+  const pr = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { SCIEZKI } = await import("/src/animacja.js");
+    const { W } = await import("/src/video.js");
+    const $ = s => document.querySelector(s);
+    const zmien = (s, v) => { const el = $(s); el.value = v; el.dispatchEvent(new Event("change")); };
+    const wyn = {};
+    /* paleta: zapamiętaj Termowizję, przełącz na inną, przywróć z listy */
+    zmien("#pal", "g-termo");
+    $("#pal-zap-nazwa").value = "Moja termo";
+    $("#pal-zap").click();
+    wyn.zapisana = [$("#pal-zap-ile").textContent, $("#pal-zap-lista").children.length];
+    zmien("#pal", "gameboy");
+    $("#pal-zap-lista .uzyj").click();
+    wyn.uzyta = [S.pal, S.custom.nazwa, S.custom.kolory.length, S.mapa];
+    /* preset z animacją: animuj obraz, klatka jasności, zapamiętaj preset
+       (najpierw czyścimy klatki zostawione przez wcześniejsze testy) */
+    for(const k of Object.keys(SCIEZKI)) delete SCIEZKI[k];
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    $("#animuj").click(); await czekaj(() => W.z && W.z.rodzaj === "stopklatka");
+    const s = $("#bri"); s.value = -30; s.dispatchEvent(new Event("input")); $("#kl-bri").click();
+    $("#preset-name").value = "Z animacją"; $("#preset-keep").click();
+    const zapisany = JSON.parse(localStorage.getItem("raster.presety")).find(p => p.nazwa === "Z animacją");
+    wyn.wPresecie = zapisany && JSON.stringify(zapisany.animacja);
+    /* zmiana: usuń animację, potem preset ją przywraca */
+    for(const k of Object.keys(SCIEZKI)) delete SCIEZKI[k];
+    [...$("#presets").querySelectorAll(".moj .btn")].find(b => b.textContent === "Z animacją").click();
+    wyn.przywrocona = [JSON.stringify(SCIEZKI.bri && SCIEZKI.bri.map(k => [k.t, k.v])), $("#preset-msg").textContent];
+    /* wbudowany preset animacji nie rusza */
+    [...document.querySelectorAll("#presets .btn")].find(b => b.textContent === "Promo").click();
+    wyn.poWbudowanym = !!(SCIEZKI.bri && SCIEZKI.bri.length);
+    $("#anim-koniec").click();
+    return wyn;
+  });
+  sprawdz(pr.zapisana.join() === "1,1", "„Zapamiętaj” paletę: na liście zapisanych");
+  sprawdz(pr.uzyta.join() === "custom,Moja termo,7,jasnosc", "klik w zapisaną: paleta i sposób przypisania wracają (" + pr.uzyta.join(", ") + ")");
+  sprawdz(pr.wPresecie === "{\"bri\":[[0,-30]]}", "preset ustawień zapisuje klatki kluczowe: " + pr.wPresecie);
+  sprawdz(pr.przywrocona[0] === "[[0,-30]]" && /animacją/.test(pr.przywrocona[1]), "preset przywraca animację: " + pr.przywrocona[1]);
+  sprawdz(pr.poWbudowanym, "wbudowany preset animacji nie kasuje");
+
+  console.log("--- dźwięk w MP4 ---");
+  const dz = await wykonaj(async () => {
+    const { zlozMp4 } = await import("/src/mp4.js");
+    const { W } = await import("/src/video.js");
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const wyn = {};
+    /* film testowy: 2 s obrazu i 2 s tonu 440 Hz, zakodowany tak jak zapis apki */
+    const w = 320, h = 240, fps = 30, n = 60, R = 48000;
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    const pv = []; let avcC = null;
+    const ev = new VideoEncoder({output: (ch, m) => { if(m?.decoderConfig?.description) avcC = new Uint8Array(m.decoderConfig.description.slice ? m.decoderConfig.description.slice(0) : m.decoderConfig.description.buffer.slice(0));
+      const d = new Uint8Array(ch.byteLength); ch.copyTo(d); pv.push({dane: d, pts: ch.timestamp, dur: Math.round(1e6/fps), klucz: ch.type === "key"}); }, error: e => { throw e; }});
+    ev.configure({codec: "avc1.42e01f", width: w, height: h, bitrate: 2e6, framerate: fps, avc: {format: "avc"}});
+    for(let i=0; i<n; i++){ rysujKlatke(ctx, i, w, h); const f = new VideoFrame(c, {timestamp: Math.round(i*1e6/fps)}); ev.encode(f, {keyFrame: i % 30 === 0}); f.close(); }
+    await ev.flush(); ev.close();
+    let kodek = null, cfg = null;
+    for(const [k, cf] of [["aac", {codec: "mp4a.40.2", aac: {format: "aac"}}], ["opus", {codec: "opus"}]]){
+      const p = {...cf, sampleRate: R, numberOfChannels: 1, bitrate: 128000};
+      if((await AudioEncoder.isConfigSupported(p)).supported){ kodek = k; cfg = p; break; }
+    }
+    wyn.kodek = kodek;
+    if(!kodek) return wyn;
+    const pa = []; let opis = null;
+    const ea = new AudioEncoder({output: (ch, m) => { const d0 = m?.decoderConfig?.description; if(d0 && !opis) opis = new Uint8Array(d0.slice ? d0.slice(0) : d0.buffer.slice(0));
+      const d = new Uint8Array(ch.byteLength); ch.copyTo(d); pa.push({dane: d, pts: ch.timestamp, dur: ch.duration || 0}); }, error: e => { throw e; }});
+    ea.configure(cfg);
+    const ton = new Float32Array(2*R); for(let i=0; i<ton.length; i++) ton[i] = 0.5*Math.sin(2*Math.PI*440*i/R);
+    for(let s=0; s<ton.length; s+=4800){ const ad = new AudioData({format: "f32-planar", sampleRate: R, numberOfFrames: 4800, numberOfChannels: 1, timestamp: Math.round(s*1e6/R), data: ton.subarray(s, s+4800)}); ea.encode(ad); ad.close(); }
+    await ea.flush(); ea.close();
+    for(const p of pa) if(!p.dur) p.dur = Math.round((kodek === "aac" ? 1024 : 960)*1e6/R);
+    const plik = new File([new Blob(zlozMp4({szer: w, wys: h, avcC, probki: pv, dzwiek: {kodek, opis, czestotliwosc: R, kanaly: 1, bitrate: 128000, probki: pa}}))], "z dźwiękiem.mp4", {type: "video/mp4"});
+    /* sam film testowy: czy przeglądarka czyta jego dźwięk */
+    const zrodlo = await new OfflineAudioContext(1, 1, R).decodeAudioData(await plik.arrayBuffer());
+    wyn.zrodlo = Math.round(zrodlo.duration*10)/10;
+    upusc(plik);
+    await czekaj(() => W.z && W.z.nazwa === "z dźwiękiem.mp4");
+    const sel = $("#fmt"); sel.value = "mp4"; sel.dispatchEvent(new Event("change"));
+    wyn.opcja = !$("#dzwiek-opcja").classList.contains("hidden") && $("#dzwiek").checked;
+    /* zakres 0,5–1,5 s: dźwięk ma być przycięty tak samo */
+    const zak = (id, v) => { const el = $(id); el.value = v; el.dispatchEvent(new Event("input")); };
+    zak("#od", 15); zak("#do", 44);
+    pobrane.length = 0; $("#save").click();
+    await czekaj(() => pobrane.length, 120000);
+    await czekaj(() => !$(".panel").classList.contains("zajete"));
+    wyn.msg = $("#save-msg").textContent;
+    const wyj = await (await fetch(pobrane[0].url)).arrayBuffer();
+    const a = await new OfflineAudioContext(1, 1, R).decodeAudioData(wyj);
+    const d = a.getChannelData(0); let rms = 0; for(let i=0; i<d.length; i++) rms += d[i]*d[i];
+    wyn.wynik = [Math.round(a.duration*100)/100, Math.round(Math.sqrt(rms/d.length)*100)/100];
+    /* bez dźwięku, gdy odznaczone */
+    $("#dzwiek").click();
+    pobrane.length = 0; $("#save").click();
+    await czekaj(() => pobrane.length, 120000);
+    await czekaj(() => !$(".panel").classList.contains("zajete"));
+    try{ await new OfflineAudioContext(1, 1, R).decodeAudioData(await (await fetch(pobrane[0].url)).arrayBuffer()); wyn.bez = "jest dźwięk"; }
+    catch{ wyn.bez = "brak dźwięku"; }
+    $("#dzwiek").click();
+    return wyn;
+  });
+  if(!dz.kodek) console.log("        (ta przeglądarka nie ma kodera dźwięku — pomijam)");
+  else {
+    sprawdz(dz.zrodlo === 2, `film testowy z dźwiękiem (${dz.kodek}): przeglądarka czyta ${dz.zrodlo} s`);
+    sprawdz(dz.opcja, "„Dźwięk z filmu” widoczne i zaznaczone przy MP4 z filmu");
+    sprawdz(/z dźwiękiem/.test(dz.msg), "komunikat: " + dz.msg);
+    sprawdz(Math.abs(dz.wynik[0] - 1) < 0.08 && dz.wynik[1] > 0.2, `dźwięk przycięty do zakresu: ${dz.wynik[0]} s, RMS ${dz.wynik[1]} (ton 0,5 → RMS 0,35)`);
+    sprawdz(dz.bez === "brak dźwięku", "odznaczone: plik bez ścieżki dźwięku");
+  }
 
   /* Pomiar, nie test: film Full HD (apka przycina go do 1400 px), 3 s.
      Włączany zmienną POMIAR=1, bo trwa kilkadziesiąt sekund. */
