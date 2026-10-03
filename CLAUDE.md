@@ -267,6 +267,13 @@ poziomów naraz; osobne przejście na poziom przy gęstości 3 było za wolne.
 Czyste warstwice samego obrazu próbowane i porzucone: płaskie miejsca
 zostawały puste, a linie zbijały się w czarne pasy na krawędziach.
 Losowe pasowanie riso ze `skrot()` numeru farby i wariantu, nie z Math.random.
+**Nierówny raster** (chmury, nierówne punkty, drganie, postrzępione brzegi)
+też w geometrii: chmury ze skrótu położenia w pikselach podglądu, reszta ze
+skrótu numeru punktu (kolejność liczenia nie zależy od z) — test sprawdza
+dokładne ×4 razem z obrysami. Chmury to szum gradientowy (Perlin); szum
+wartości dawał widoczną kratkę. Punkt z nierównością ma piąty element (numer),
+a `geometria()` zwraca `postrzep` — wtedy rysujemy ścieżką przez `obrys()`.
+Przy zerowych suwakach geometria co do bitu jak wcześniej (72 przypadki).
 
 **Risograf** (`inkmode:"riso"`): farby w kluczach `risoK/Z/A/C/S/O/X/Y/R{i}`,
 panel czterech warstw generuje `panelRiso()` w app.js z `DEFAULTS` i sam

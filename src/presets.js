@@ -26,6 +26,8 @@ export const PRESETS = {
     ["Rytownik", {inkmode:"mono", shape:"pasy", cell:9, ang:90, fala:70, blur:3, ink:"#ff2a00", paper:"#ffd21a", con:20}],
     ["Obręcze", {inkmode:"mono", shape:"pasy", siatka:"okregi", cell:7, fala:40, blur:2, ink:"#1a1a1a", paper:"#f2c84b", con:15}],
     ["Wzdłuż kształtu", {inkmode:"mono", shape:"pasy", siatka:"warstwice", cell:6, ang:20, fala:60, gladkosc:15, liniaMin:12, liniaMax:100, ink:"#1a1a1a", paper:"#f2efe6", con:20}],
-    ["Promienie", {inkmode:"mono", shape:"pasy", siatka:"promienie", cell:8, ink:"#c8102e", paper:"#f5ecd7", con:15}]
+    ["Promienie", {inkmode:"mono", shape:"pasy", siatka:"promienie", cell:8, ink:"#c8102e", paper:"#f5ecd7", con:15}],
+    ["Skan", {inkmode:"mono", cell:7, ang:15, dot:0.95, chmury:40, nierowne:40, drganie:10, postrzep:50, szorstkosc:20, ink:"#111111", paper:"#ffffff", bri:10}],
+    ["Niebieski skan", {inkmode:"mono", cell:6, ang:45, dot:0.95, chmury:60, nierowne:30, drganie:8, postrzep:40, ink:"#4b4fa0", paper:"#ffffff", bri:30, con:-15}]
   ]
 };

@@ -1,7 +1,7 @@
 /* Geometria rastra (siatki.js) i faktura farby (faktura-farby.js).
    Uruchom z katalogu projektu: node testy/siatki.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { geometria, kontury, konturLinii, NOWE_KSZTALTY } from "../src/siatki.js";
+import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY } from "../src/siatki.js";
 import { krycie } from "../src/faktura-farby.js";
 
 let bledy = 0;
@@ -130,6 +130,35 @@ console.log("--- promienie i warstwice ---");
   ustaw({cell: 8, siatka: "warstwice", shape: "circle"});
   const wk = geometria(szary, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
   sprawdz(wk.length > W*H/64*0.8 && wk.length < W*H/64*1.2, `wzdłuż kształtu z punktów: ${wk.length} punktów co komórkę (≈ ${Math.round(W*H/64)})`);
+}
+
+console.log("--- nierówny raster ---");
+{
+  const szary = probki(W, H, 4, () => 128), ink = {ang: 15, cov, off: [0, 0], name: "a", color: "#000000"};
+  ustaw({cell: 8, shape: "circle", siatka: "kwadrat"});
+  const gladki = geometria(szary, W, H, ink, 1).kropki;
+  ustaw({cell: 8, shape: "circle", siatka: "kwadrat", chmury: 80});
+  const ch = geometria(szary, W, H, ink, 1).kropki, rs = ch.map(p => p[2]);
+  sprawdz(Math.max(...rs) > gladki[0][2]*1.15 && Math.min(...rs) < gladki[0][2]*0.85 && ch.every((p, i) => p[0] === gladki[i]?.[0] || true),
+          `chmury: na równej szarości promienie ${Math.min(...rs).toFixed(2)}–${Math.max(...rs).toFixed(2)} (bez chmur ${gladki[0][2].toFixed(2)})`);
+  const ch2 = geometria(szary, W, H, {...ink, name: "b"}, 1).kropki;
+  sprawdz(ch2.some((p, i) => ch[i] && p[2] !== ch[i][2]), "chmury: inna farba = inne plamy");
+  ustaw({cell: 8, shape: "circle", siatka: "kwadrat", chmury: 60, nierowne: 70, drganie: 50, postrzep: 80});
+  const g1 = geometria(szary, W, H, ink, 1), g4 = geometria(szary, W, H, ink, 4), g1b = geometria(szary, W, H, ink, 1);
+  sprawdz(JSON.stringify(g1) === JSON.stringify(g1b), "powtarzalnie: dwa liczenia co do bitu");
+  const dokl = g1.kropki.length === g4.kropki.length && g1.kropki.every((p, i) => [0, 1, 2].every(j => Math.abs(p[j]*4 - g4.kropki[i][j]) < 1e-9) && p[4] === g4.kropki[i][4]);
+  const o1 = g1.kropki.slice(0, 50).map(k => obrys("circle", k, g1.postrzep)[0]), o4 = g4.kropki.slice(0, 50).map(k => obrys("circle", k, g4.postrzep)[0]);
+  const oDokl = o1.every((k, i) => k.every((p, j) => Math.abs(p[0]*4 - o4[i][j][0]) < 1e-9 && Math.abs(p[1]*4 - o4[i][j][1]) < 1e-9));
+  sprawdz(dokl && oDokl && g1.postrzep > 0, `z=4: punkty, drgania i postrzępione obrysy dokładnie ×4 (${g1.kropki.length} punktów)`);
+  const naSiatce = g1.kropki.filter(p => gladki.some(q => q[0] === p[0] && q[1] === p[1])).length;
+  sprawdz(naSiatce < g1.kropki.length*0.1, `drganie: ${g1.kropki.length - naSiatce} z ${g1.kropki.length} punktów zeszło z siatki`);
+  const pole = k => { let s = 0; for(let i=0;i<k.length;i++){ const [a, b] = k[i], [c, d] = k[(i+1) % k.length]; s += a*d - b*c; } return Math.abs(s/2); };
+  const stos = g1.kropki.slice(0, 200).map(k => pole(obrys("circle", k, g1.postrzep)[0])/(Math.PI*k[2]*k[2]));
+  const sr = stos.reduce((a, b) => a + b)/stos.length;
+  sprawdz(Math.abs(sr - 1) < 0.08, `postrzępione brzegi: średnio ${(sr*100).toFixed(1)}% pola koła (ton się nie zmienia)`);
+  ustaw({cell: 8, shape: "pasy", siatka: "kwadrat", chmury: 80});
+  const lc = geometria(szary, W, H, ink, 1).linie.flat().map(p => p[2]);
+  sprawdz(Math.max(...lc) - Math.min(...lc) > 1, "chmury działają też na raster liniowy");
 }
 
 console.log("--- nowe kształty ---");

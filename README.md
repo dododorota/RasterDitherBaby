@@ -169,6 +169,11 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
   wybrać z listy tuszy riso (32 kolory, przybliżenia ekranowe). „Losowe
   pasowanie" rozsuwa farby (do ±6 px i ±1°) — powtarzalnie, inny układ
   przy każdym „wariancie losowania".
+- **Nierówny raster** — jak zeskanowany odbity raster: chmury krycia
+  (farba nałożona nierówno, niezależnie od obrazu, każda farba plami się
+  gdzie indziej), nierówne punkty, drganie punktów z siatki i postrzępione
+  brzegi okrągłych punktów. W geometrii, więc też w SVG; presety *Skan*
+  i *Niebieski skan*.
 - **Faktura farby** (dla każdego rodzaju farb): szorstkość — poszarpane
   krawędzie; rozlanie — farba wypływa poza punkt; plamy — nierówne krycie
   w apli; dziury — drobne niedodruki; ślady wałka — poziome smugi słabszej
@@ -633,6 +638,13 @@ Wycinanie z tła (jest: po kolorze, w warstwach):
 Raster i risograf — z listy zostało:
 
 - faktura papieru pod farbą (włókna, struktura) — dziś tylko ziarno.
+
+Tekstury nakładane na obraz (jak „Tile" w Dither Boyu) — efekt w stosie,
+powtarzany kafel z wyborem wzoru, skalą, siłą i trybem mieszania:
+
+- RGB Matrix (subpiksele LCD), RGB Rosette, paski RGB;
+- szum barwny (chroma noise), szum tkaniny (fabric noise);
+- tęcza, romby (diamond), wałek (roller), linie skanowania (scanline).
 
 ## Licencja
 

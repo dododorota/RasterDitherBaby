@@ -153,6 +153,8 @@ let farbaRiso = 1;
     {id: "gladkosc", key: "gladkosc", opis: v => v ? v + "%" : "brak"},
     {id: "liniaMin", key: "liniaMin", opis: v => v + "%"}, {id: "liniaMax", key: "liniaMax", opis: v => v + "%"},
     {id: "walek", key: "walek", opis: v => v ? v + "%" : "brak"},
+    {id: "chmury", key: "chmury", opis: v => v ? v + "%" : "brak"}, {id: "nierowne", key: "nierowne", opis: v => v ? v + "%" : "brak"},
+    {id: "drganie", key: "drganie", opis: v => v ? v + "%" : "brak"}, {id: "postrzep", key: "postrzep", opis: v => v ? v + "%" : "brak"},
     {id: "risoLos", key: "risoLos", opis: v => v ? v + "%" : "brak"}, {id: "risoWariant", key: "risoWariant", opis: v => String(v)},
     {id: "szorstkosc", key: "szorstkosc", opis: v => v ? v + "%" : "brak"}, {id: "rozlanie", key: "rozlanie", opis: v => v ? v + "%" : "brak"},
     {id: "plamy", key: "plamy", opis: v => v ? v + "%" : "brak"}, {id: "dziury", key: "dziury", opis: v => v ? v + "%" : "brak"});

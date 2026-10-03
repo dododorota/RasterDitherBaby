@@ -4,7 +4,7 @@ import { out, octx } from "./dom.js";
 import { adjust, fit, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomWSkali, zmiennoscCzynna } from "./stos.js";
 import { zmiennoscPrzed } from "./fx.js";
-import { geometria, kontury, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
+import { geometria, obrys, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
 import { fakturaFarby } from "./faktura-farby.js";
 import { skrot } from "./fx.js";
 
@@ -85,9 +85,9 @@ function drawScreen(target, smp, W,H, ink, z){
       x.closePath();
     }
     x.fill();
-  } else if(NOWE_KSZTALTY.includes(ksztalt)){
+  } else if(NOWE_KSZTALTY.includes(ksztalt) || g.postrzep){
     x.beginPath();
-    for(const [px,py,r,kat] of g.kropki) for(const k of kontury(ksztalt, px, py, r, kat)){
+    for(const kr of g.kropki) for(const k of obrys(ksztalt, kr, g.postrzep)){
       x.moveTo(k[0][0], k[0][1]);
       for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]);
       x.closePath();

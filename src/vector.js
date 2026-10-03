@@ -3,7 +3,7 @@ import { $ } from "./dom.js";
 import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
 import { sampler, inkList } from "./halftone.js";
-import { geometria, kontury, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
+import { geometria, obrys, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
 import { czynne, wpisEfektu } from "./stos.js";
 import { svgAscii } from "./ascii.js";
@@ -126,8 +126,8 @@ export function svgHalftone(){
       /* raster liniowy: każda linia to jedna ścieżka o zmiennej grubości */
       body = g.linie.map(l => `<path d="${kontur(konturLinii(l))}"/>`);
       count += g.linie.length;
-    } else if(NOWE_KSZTALTY.includes(ksztalt)){
-      body = [`<path fill-rule="evenodd" d="${g.kropki.map(([x,y,r,kat]) => kontury(ksztalt, x, y, r, kat).map(kontur).join("")).join("")}"/>`];
+    } else if(NOWE_KSZTALTY.includes(ksztalt) || g.postrzep){
+      body = [`<path fill-rule="evenodd" d="${g.kropki.map(kr => obrys(ksztalt, kr, g.postrzep).map(kontur).join("")).join("")}"/>`];
       count += g.kropki.length;
     } else {
       body = g.kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt));

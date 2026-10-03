@@ -18,6 +18,7 @@ export const DEFAULTS = {
   cell:8, ang:45, dot:1, blur:0, shape:"circle", inkmode:"mono", mis:0, grain:0,
   siatka:"kwadrat", srodekX:0, srodekY:0, fala:0, gladkosc:0, liniaMin:0, liniaMax:100,
   szorstkosc:0, rozlanie:0, plamy:0, dziury:0, walek:0,
+  chmury:0, nierowne:0, drganie:0, postrzep:0,
   risoIle:2, risoLos:0, risoWariant:1,
   risoK1:"#ff48b0", risoZ1:"farba", risoA1:15, risoC1:8, risoS1:"circle", risoO1:100, risoX1:0, risoY1:0, risoR1:0,
   risoK2:"#0078bf", risoZ2:"farba", risoA2:75, risoC2:8, risoS2:"circle", risoO2:100, risoX2:0, risoY2:0, risoR2:0,

@@ -14,6 +14,7 @@
    i heksagonalnej, obręcze na okręgach, jedna długa linia na spirali — grubsze w ciemnych miejscach i wygięte przez obraz
    (odkształcenie), jak grafika rytowana. */
 import { S } from "./state.js";
+import { skrot } from "./fx.js";
 
 /* pokrycie farby w punkcie podglądu — najbliższa próbka, jak w collectScreen() */
 export function pokrycie(smp, cov, px, py){
@@ -29,9 +30,40 @@ export function ustawieniaFarby(ink){
     cell: ink.cell || S.cell, dot: ink.dot || S.dot, ksztalt: ink.ksztalt || S.shape,
     siatka: ink.siatka || S.siatka || "kwadrat", obrot: ink.obrot || 0,
     fala: (S.fala || 0)/100, sx: (S.srodekX || 0)/100, sy: (S.srodekY || 0)/100,
-    glad: (S.gladkosc || 0)/100, mn: (S.liniaMin || 0)/100, mx: (S.liniaMax ?? 100)/100
+    glad: (S.gladkosc || 0)/100, mn: (S.liniaMin || 0)/100, mx: (S.liniaMax ?? 100)/100,
+    ch: (S.chmury || 0)/100, nr: (S.nierowne || 0)/100, dr: (S.drganie || 0)/100, post: (S.postrzep || 0)/100,
+    ziarno: ziarnoFarby(ink)
   };
 }
+
+/* ---------- nierówny raster ----------
+   Jak zeskanowany odbity raster: krycie płynie chmurami niezależnymi od
+   obrazu (nierówno nałożona farba), punkty mają różne wielkości, lekko
+   drgają z miejsca i mają postrzępione brzegi. Wszystko w geometrii, więc
+   trafia też do SVG; losowość ze skrótu — położenia (chmury) albo numeru
+   punktu (wielkość, drganie, brzeg), które nie zależą od z. Każda farba ma
+   własne ziarno, żeby farby riso nie plamiły się w tych samych miejscach. */
+function ziarnoFarby(ink){
+  let h = 7;
+  for(const c of String(ink.name || "") + String(ink.color || "")) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return (h >>> 0) % 100003;
+}
+/* szum gradientowy (Perlin): w węzłach losowe kierunki, nie wartości — szum
+   wartości zdradzał kratkę (plamy w krzyżyki i kwadraty). Wynik ~0–1. */
+function szum(x, y, skala, ziarno){
+  const gx = x/skala + 500, gy = y/skala + 500, i = Math.floor(gx), j = Math.floor(gy), fx = gx - i, fy = gy - j;
+  const g = (a, b, dx, dy) => { const k = skrot(a, b, ziarno)*6.2832; return Math.cos(k)*dx + Math.sin(k)*dy; };
+  const f = t => t*t*t*(t*(t*6 - 15) + 10);
+  const sx = f(fx), sy = f(fy);
+  const n0 = g(i, j, fx, fy), n1 = g(i + 1, j, fx - 1, fy), n2 = g(i, j + 1, fx, fy - 1), n3 = g(i + 1, j + 1, fx - 1, fy - 1);
+  const a = n0 + (n1 - n0)*sx, b = n2 + (n3 - n2)*sx;
+  return 0.5 + (a + (b - a)*sy)*0.9;
+}
+/* mnożnik krycia z chmur: dwie skale, większa ~7 komórek */
+const chmura = (x, y, u) => {
+  const c = szum(x, y, Math.max(24, u.cell*8), u.ziarno)*0.6 + szum(x, y, Math.max(10, u.cell*3), u.ziarno + 1)*0.28 + szum(x, y, Math.max(4, u.cell*1.2), u.ziarno + 2)*0.12;
+  return Math.max(0, 1 + u.ch*2.2*(c - 0.5));
+};
 
 /* Zwraca {kropki: [[x, y, r, kąt], …], cell} albo {linie: [[[x, y, półgrubość], …], …], cell},
    wszystko już pomnożone przez z. */
@@ -43,7 +75,11 @@ export function geometria(smp, W, H, ink, z){
      się razem z rastrem — pokrycie liczone przed obrotem), potem skala z */
   const ob = u.obrot*Math.PI/180, co = Math.cos(ob), so = Math.sin(ob), cx = W/2, cy = H/2;
   const t = (x, y) => ob ? [(cx + (x - cx)*co - (y - cy)*so)*z, (cy + (x - cx)*so + (y - cy)*co)*z] : [x*z, y*z];
-  if(wyn.kropki) wyn.kropki = wyn.kropki.map(([x, y, r, k]) => { const [a, b] = t(x, y); return [a, b, r*z, k + ob]; });
+  if(wyn.kropki){
+    wyn.kropki = wyn.kropki.map(([x, y, r, k, ...id]) => { const [a, b] = t(x, y); return [a, b, r*z, k + ob, ...id]; });
+    /* postrzępione brzegi tylko dla okrągłych punktów — reszta kształtów ma własny obrys */
+    if(u.post && u.ksztalt === "circle") wyn.postrzep = u.post;
+  }
   else wyn.linie = wyn.linie.map(l => l.map(([x, y, hw]) => { const [a, b] = t(x, y); return [a, b, hw*z]; }));
   wyn.cell = u.cell*z;
   return wyn;
@@ -54,9 +90,17 @@ function kropki(smp, W, H, ink, u){
   const off = ink.off || [0, 0];
   const dodaj = (px, py, kat, s) => {
     if(px < -cell || py < -cell || px > W + cell || py > H + cell) return;
-    const k = pokrycie(smp, ink.cov, px, py);
+    let k = pokrycie(smp, ink.cov, px, py);
+    if(u.ch) k *= chmura(px, py, u);
     if(k <= 0.004) return;
-    out.push([px, py, maxR*Math.sqrt(Math.min(1.35, k))*(s === undefined ? 1 : s), kat]);
+    let r = maxR*Math.sqrt(Math.min(1.35, k))*(s === undefined ? 1 : s);
+    if(!(u.nr || u.dr || u.post)){ out.push([px, py, r, kat]); return; }
+    /* numer punktu: kolejność liczenia nie zależy od z, więc zapis w skali
+       dostaje te same wielkości, drgania i brzegi */
+    const id = out.length, z0 = u.ziarno*3;
+    if(u.nr) r *= Math.max(0.15, 1 + u.nr*(0.9*(skrot(id, 1, z0) - 0.5) + (skrot(id, 2, z0) > 0.975 ? 0.7 : 0)));
+    if(u.dr){ px += u.dr*0.3*cell*(skrot(id, 3, z0) - 0.5)*2; py += u.dr*0.3*cell*(skrot(id, 4, z0) - 0.5)*2; }
+    out.push([px, py, r, kat, id]);
   };
   if(u.siatka === "heks"){
     /* wektory siatki (cell, 0) i (cell/2, cell·√3/2), obrócone o kąt farby */
@@ -134,7 +178,11 @@ function linie(smp, W, H, ink, u){
   const okno = u.glad*2*cell;
   const przetworz = (baza, okres) => {
     const n = baza.length, ks = new Float64Array(n), ds = new Float64Array(n);
-    for(let i=0; i<n; i++){ ks[i] = Math.min(1.35, Math.max(0, pokrycie(smp, ink.cov, baza[i][0], baza[i][1]))); ds[i] = amp*(ks[i] - 0.5); }
+    for(let i=0; i<n; i++){
+      ks[i] = Math.min(1.35, Math.max(0, pokrycie(smp, ink.cov, baza[i][0], baza[i][1])));
+      if(u.ch) ks[i] = Math.min(1.35, ks[i]*chmura(baza[i][0], baza[i][1], u));
+      ds[i] = amp*(ks[i] - 0.5);
+    }
     let d = ds;
     if(okno > 0 && amp){
       /* średnia odkształcenia z punktów bliżej niż okno wzdłuż linii; na
@@ -167,7 +215,7 @@ function linie(smp, W, H, ink, u){
     /* wzdłuż kształtu: linie już wygięte przez obraz (warstwice()),
        grubość z pokrycia w każdym punkcie, jak na innych siatkach */
     for(const l of warstwice(smp, W, H, ink, u)){
-      const kaw = l.map(([x, y]) => [x + off[0], y + off[1], grubosc(Math.min(1.35, Math.max(0, pokrycie(smp, ink.cov, x, y))), 1)]);
+      const kaw = l.map(([x, y]) => [x + off[0], y + off[1], grubosc(Math.min(1.35, Math.max(0, pokrycie(smp, ink.cov, x, y))*(u.ch ? chmura(x, y, u) : 1)), 1)]);
       out.push(kaw);
     }
     return {linie: out};
@@ -363,4 +411,20 @@ export function konturLinii(l){
     lewa.push([x - ty*hw, y + tx*hw]); prawa.push([x + ty*hw, y - tx*hw]);
   }
   return lewa.concat(prawa.reverse());
+}
+
+/* obrys punktu do rysowania ścieżką: nowe kształty albo postrzępione koło.
+   Brzeg z dwóch harmonicznych (punkt staje się nieregularną plamką, nie
+   gwiazdką) i drobnego szumu na wierzchołkach; wszystko ze skrótu numeru
+   punktu, więc w skali z ten sam kształt, tylko większy. */
+export function obrys(ksztalt, [x, y, r, kat, id], postrzep){
+  if(!(postrzep && ksztalt === "circle")) return kontury(ksztalt, x, y, r, kat);
+  const n = 22, a1 = skrot(id, 11, 913), a2 = skrot(id, 12, 913), f1 = skrot(id, 13, 913)*6.2832, f2 = skrot(id, 14, 913)*6.2832;
+  const p = [];
+  for(let j=0; j<n; j++){
+    const t = j*2*Math.PI/n, h = skrot(id, 20 + j, 913);
+    const R = r*(1 + postrzep*(0.24*a1*Math.sin(2*t + f1) + 0.2*a2*Math.sin(3*t + f2) + 0.22*(h - 0.5)));
+    p.push([x + R*Math.cos(t), y + R*Math.sin(t)]);
+  }
+  return [p];
 }

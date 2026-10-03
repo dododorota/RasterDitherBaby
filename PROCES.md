@@ -103,7 +103,9 @@ to przegląd bez zmian w kodzie.
     electron-builder, ikona generowana skryptem, krój Archivo lokalnie
     zamiast z Google Fonts. Przy okazji: niewidoczne opcje list
     w ciemnym motywie na Windowsie, faktura farby bez „cyfrowego moro"
-    (plamy jako ziarno, obrócona siatka szumu).
+    (plamy jako ziarno, obrócona siatka szumu). Potem: nierówny raster
+    (chmury krycia, nierówne punkty, drganie, postrzępione brzegi; presety
+    Skan i Niebieski skan) po zrzutach zeskanowanych rastrów.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -155,8 +157,6 @@ Nie sprawdzone:
 
 ## Otwarte decyzje
 
-- **Stabilizacja ditheringu w filmie** — dyfuzja błędu migocze między
-  klatkami. Następny krok przy wideo, jeśli przeszkadza w pracy.
 - **Reszta różnic z Dither Boyem** — lista w README, „Co dalej".
 - **Automatyczne usuwanie tła (sieć neuronowa)** — wymaga pobrania modelu
   z sieci, czyli łamie zasadę „bez zależności". Do decyzji użytkowniczki.
