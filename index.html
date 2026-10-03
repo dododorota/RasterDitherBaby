@@ -62,10 +62,20 @@
         <input type="color" id="komp-tlo" value="#000000" aria-label="Kolor tła płótna">
         <label class="check" style="margin:0"><input type="checkbox" id="komp-przezr"> Przezroczyste tło</label>
       </div>
-      <button class="btn" id="komp-dodaj" style="margin-top:10px">+ Dodaj obraz</button>
+      <div class="btns" style="margin-top:10px">
+        <button class="btn" id="komp-dodaj">+ Dodaj obraz</button>
+        <button class="btn" id="komp-dodaj-efekt">+ Warstwa efektu</button>
+      </div>
       <input type="file" id="komp-plik" accept="image/*" multiple class="hidden">
       <div class="warstwy-lista" id="komp-lista" role="listbox" aria-label="Warstwy, od góry"></div>
       <div id="komp-wlasciwosci" class="hidden">
+        <div id="komp-efektowe" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="komp-efekt">Efekt</label></div>
+          <select id="komp-efekt"></select>
+          <div id="komp-efekt-karta"></div>
+          <p class="hint">Działa tylko na warstwy pod nią (razem z tłem płótna) — warstwy nad nią zostają czyste. Przenieś ją ↑ ↓, żeby zmienić, co obejmuje.</p>
+        </div>
+        <div class="tylko-obraz">
         <div class="row" style="margin-top:12px"><label for="komp-x">Położenie X</label><span class="val" id="komp-x-v">0</span></div>
         <input type="range" id="komp-x" min="0" max="1080" value="540">
         <div class="row"><label for="komp-y">Położenie Y</label><span class="val" id="komp-y-v">0</span></div>
@@ -74,13 +84,21 @@
         <input type="range" id="komp-skala" min="5" max="400" value="100">
         <div class="row"><label for="komp-obrot">Obrót</label><span class="val" id="komp-obrot-v">0°</span></div>
         <input type="range" id="komp-obrot" min="-180" max="180" value="0">
-        <div class="row"><label for="komp-krycie">Krycie</label><span class="val" id="komp-krycie-v">100%</span></div>
+        </div>
+        <div class="row" style="margin-top:12px"><label for="komp-krycie">Krycie</label><span class="val" id="komp-krycie-v">100%</span></div>
         <input type="range" id="komp-krycie" min="0" max="100" value="100">
         <div class="row"><label for="komp-tryb">Mieszanie</label></div>
         <select id="komp-tryb"></select>
+        <div class="tylko-obraz">
         <button class="btn" id="komp-srodek" style="margin-top:8px">Wyśrodkuj i dopasuj</button>
         <label class="check" style="margin-top:12px"><input type="checkbox" id="komp-wytnij"> Usuń tło tej warstwy</label>
         <div id="komp-wytnij-opcje" class="hidden">
+          <div class="tabs" role="group" aria-label="Sposób usuwania tła" id="komp-sposob" style="margin-bottom:10px">
+            <button data-s="kolor" aria-pressed="true">Po kolorze</button>
+            <button data-s="ai" aria-pressed="false">Automatycznie</button>
+          </div>
+          <p class="hint hidden" id="komp-ai-stan" style="margin-top:0"></p>
+          <div id="komp-kolor-opcje">
           <div class="swatches">
             <span class="kolor-tla" id="komp-kolor-tla" title="Kolor uznany za tło"></span>
             <button class="btn" id="komp-kroplomierz" style="width:auto; padding:6px 10px">Wskaż kolor</button>
@@ -92,9 +110,21 @@
           <input type="range" id="komp-miek" min="0" max="100" value="10">
           <label class="check"><input type="checkbox" id="komp-spojne" checked> Tylko tło połączone z brzegami</label>
           <p class="hint" id="komp-kroplomierz-hint">Dobre do zdjęć na jednolitym tle. „Wskaż kolor” — potem kliknij tło na podglądzie.</p>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px"><label>Pędzel maski</label></div>
+        <div class="tabs" role="group" aria-label="Pędzel maski" id="komp-pedzel">
+          <button data-p="" aria-pressed="true">Wył.</button>
+          <button data-p="usun" aria-pressed="false">Usuń</button>
+          <button data-p="dodaj" aria-pressed="false">Przywróć</button>
+        </div>
+        <div class="row" style="margin-top:10px"><label for="komp-pedzel-r">Rozmiar pędzla</label><span class="val" id="komp-pedzel-r-v">40 px</span></div>
+        <input type="range" id="komp-pedzel-r" min="4" max="300" value="40">
+        <button class="btn hidden" id="komp-pedzel-wyczysc" style="margin-top:8px">Wyczyść poprawki pędzla</button>
+        <p class="hint">Maluj po podglądzie: „Usuń” zdejmuje fragment warstwy, „Przywróć” oddaje to, co zjadło usuwanie tła. Działa też bez usuwania tła.</p>
         </div>
       </div>
-      <p class="hint">Zaznaczoną warstwę przesuwasz też myszą na podglądzie. Otwarty albo przeciągnięty plik trafia jako nowa warstwa. Efekty działają na całą kompozycję.</p>
+      <p class="hint">Zaznaczoną warstwę przesuwasz też myszą na podglądzie. Otwarty albo przeciągnięty plik trafia jako nowa warstwa. Warstwa efektu działa na warstwy pod nią, przed ditheringiem; stos „Efekty po rastrze” — na cały gotowy obraz.</p>
       <button class="btn" id="komp-koniec" style="margin-top:6px">Zakończ kompozycję</button>
     </div>
 
@@ -199,6 +229,7 @@
           <option value="stevenson">Stevenson–Arce</option>
           <option value="ostromoukhov">Ostromukhov — zmienne wagi</option>
           <option value="riemersma">Riemersma — krzywa Hilberta</option>
+          <option value="knuth">Dot diffusion — Knuth</option>
         </optgroup>
         <optgroup label="Uporządkowany">
           <option value="bayer2">Bayer 2×2</option>
@@ -416,6 +447,17 @@
       <input type="range" id="mis" min="0" max="60" value="0">
       <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
       <input type="range" id="grain" min="0" max="60" value="0">
+      <div class="row"><label for="papierRodzaj">Faktura papieru</label></div>
+      <select id="papierRodzaj">
+        <option value="gladki" selected>Gładki</option>
+        <option value="wlokna">Włókna</option>
+        <option value="czerpany">Czerpany</option>
+        <option value="makulatura">Makulatura</option>
+      </select>
+      <div id="papier-opcje" class="hidden">
+        <div class="row" style="margin-top:10px"><label for="papierSila">Siła faktury papieru</label><span class="val" id="papierSila-v">50%</span></div>
+        <input type="range" id="papierSila" min="0" max="100" value="50">
+      </div>
       <div class="row" style="margin-top:14px"><label><strong>Nierówny raster</strong></label></div>
       <div class="row"><label for="chmury">Chmury krycia</label><span class="val" id="chmury-v">brak</span></div>
       <input type="range" id="chmury" min="0" max="100" value="0">
@@ -534,6 +576,7 @@
           <optgroup label="Kineskop">
             <option value="maskaRGB">Maska RGB (pasy)</option>
             <option value="rozeta">Rozeta RGB (triady)</option>
+            <option value="matryca">Matryca RGB (LCD)</option>
             <option value="skanlinie">Linie skanowania</option>
           </optgroup>
           <optgroup label="Szum">
@@ -545,6 +588,7 @@
             <option value="kratka">Kratka</option>
             <option value="romby">Romby</option>
             <option value="tecza">Tęcza</option>
+            <option value="walek">Wałek</option>
           </optgroup>
         </select>
         <div class="row" style="margin-top:12px"><label for="faktSkala">Skala</label><span class="val" id="faktSkala-v">2 px</span></div>

@@ -96,7 +96,7 @@ select:focus-visible,.btn:focus-visible{outline:2px solid var(--magenta); outlin
   background:transparent; color:var(--ink); border:0; border-right:1px solid var(--ink);
 }
 .tabs button:last-child{border-right:0}
-.tabs button[aria-selected=true]{background:var(--ink); color:var(--paper)}
+.tabs button[aria-selected=true], .tabs button[aria-pressed=true]{background:var(--ink); color:var(--paper)}
 
 .check{display:flex; align-items:center; gap:8px; color:var(--soft); cursor:pointer; margin:9px 0}
 .check input{accent-color:var(--magenta); width:15px; height:15px}
@@ -249,3 +249,6 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
    ale kolor tekstu bierze z selecta — w ciemnym motywie jasny na białym,
    czyli niewidoczny. Opcje dostają oba kolory jawnie. */
 select option, select optgroup{background:var(--paper); color:var(--ink)}
+#out.pedzel{cursor:crosshair; touch-action:none}
+.sciezka .tor .kl.wlasna{width:auto; white-space:nowrap}
+#komp-efekt-karta .fx-cialo{margin-top:8px}

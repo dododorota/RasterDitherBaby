@@ -14,7 +14,9 @@
    w skali i podgląd liczą to samo. Przeliczenie na S daje KONW, ustawiane
    przez app.js z tabeli suwaków (tu nie wiemy nic o kontrolkach). */
 
-/* klucz S → [{t, v}], posortowane po czasie */
+/* klucz S → [{t, v, k?}], posortowane po czasie; k — krzywa przejścia OD tej
+   klatki do następnej (jak interpolacja wyjściowa w After Effects), bez k —
+   krzywa całej ścieżki */
 export const SCIEZKI = {};
 /* klucz S → krzywa przejścia całej ścieżki; brak wpisu = „plynnie" */
 export const KRZYWE = {};
@@ -50,6 +52,13 @@ export function usunKlucz(k, t){
 export function usunSciezke(k){ delete SCIEZKI[k]; delete KRZYWE[k]; }
 export function wyczysc(){ for(const k of Object.keys(SCIEZKI)) delete SCIEZKI[k]; for(const k of Object.keys(KRZYWE)) delete KRZYWE[k]; }
 export function ustawKrzywa(k, r){ if(r === "plynnie" || !RODZAJE_KRZYWYCH.some(([x]) => x === r)) delete KRZYWE[k]; else KRZYWE[k] = r; }
+/* krzywa jednej klatki (przejście do następnej); null albo nieznana — jak ścieżka */
+export function ustawKrzywaKlucza(k, t, r){
+  const i = kluczW(k, t);
+  if(i < 0) return;
+  if(RODZAJE_KRZYWYCH.some(([x]) => x === r)) SCIEZKI[k][i].k = r; else delete SCIEZKI[k][i].k;
+}
+export const krzywaKlucza = (k, t) => { const i = kluczW(k, t); return i < 0 ? null : (SCIEZKI[k][i].k || null); };
 
 /* Krzywe: płynnie — wolny start i koniec (jak „Easy Ease"), liniowo — stałe
    tempo, skokowo — wartość trzyma się do następnej klatki i przeskakuje
@@ -66,7 +75,7 @@ export function wartoscSuwaka(k, t){
   else {
     let i = 1; while(s[i].t < t) i++;
     const a = s[i-1], b = s[i], u = (t - a.t)/(b.t - a.t);
-    v = a.v + (b.v - a.v)*(PRZEJSCIE[KRZYWE[k]] || PRZEJSCIE.plynnie)(u);
+    v = a.v + (b.v - a.v)*(PRZEJSCIE[a.k || KRZYWE[k]] || PRZEJSCIE.plynnie)(u);
   }
   v = Math.round(v);
   const kw = KONW[k];
@@ -79,29 +88,49 @@ export function wartoscS(k, t){
   const kw = KONW[k];
   return kw && kw.zS ? kw.zS(v) : v;
 }
+/* Parametry spoza S — np. położenie warstwy kompozycji („w:3:x"): klucz
+   z dwukropkiem trafia do celu zarejestrowanego dla przedrostka zamiast do S,
+   a po ustawieniu wszystkich wartości cel dostaje „po()" (warstwy składają
+   wtedy płótno). Dzięki temu podgląd, zapis filmu i przewijanie — wszystko,
+   co woła zastosuj() — animuje też warstwy, bez osobnej ścieżki. */
+const CELE = {};
+export function cel(przedrostek, ustaw, po){ CELE[przedrostek] = {ustaw, po}; }
+const celKlucza = k => k.includes(":") ? CELE[k.split(":")[0]] : null;
+
 /* ustawia w stanie wszystkie animowane parametry na chwilę t */
 export function zastosuj(S, t){
-  for(const k of Object.keys(SCIEZKI)){ const v = wartoscS(k, t); if(v !== null) S[k] = v; }
+  const ruszone = new Set();
+  for(const k of Object.keys(SCIEZKI)){
+    const v = wartoscS(k, t);
+    if(v === null) continue;
+    const c = celKlucza(k);
+    if(c){ c.ustaw(k, v); ruszone.add(c); } else if(!k.includes(":")) S[k] = v;
+  }
+  for(const c of ruszone) if(c.po) c.po();
 }
 
 /* ---------- zapis w presecie ----------
    Klatki kluczowe trafiają do presetu (plik i przeglądarka) polem „animacja":
    {klucz: [[czas, wartość suwaka], …]} albo — gdy ścieżka ma krzywą inną niż
-   płynna — {klucz: {krzywa, klatki: [[…], …]}}. Wczytywanie nieufne jak reszta
+   płynna — {klucz: {krzywa, klatki: [[…], …]}}. Klatka z własną krzywą ma ją
+   trzecim elementem: [czas, wartość, "liniowo"] — stare pliki (dwa elementy)
+   czytają się bez zmian. Wczytywanie nieufne jak reszta
    presetu: tylko parametry, które da się animować (są w KONW), liczby
    skończone, czas 0–3600 s, wartość przycięta do zakresu suwaka, najwyżej
    MAX_KLATEK na parametr. Zwraca liczbę odrzuconych wpisów. */
 export const MAX_KLATEK = 1000;
 export function zrzut(){
   const wyn = {};
-  for(const [k, s] of Object.entries(SCIEZKI)) if(s.length){
-    const klatki = s.map(kl => [kl.t, kl.v]);
+  /* parametry spoza S (warstwy) to materiał, nie wygląd — do presetu nie idą */
+  for(const [k, s] of Object.entries(SCIEZKI)) if(s.length && !k.includes(":")){
+    const klatki = s.map(kl => kl.k ? [kl.t, kl.v, kl.k] : [kl.t, kl.v]);
     wyn[k] = KRZYWE[k] ? {krzywa: KRZYWE[k], klatki} : klatki;
   }
   return wyn;
 }
 export function wczytaj(dane){
-  wyczysc();
+  /* animacja warstw (klucze z dwukropkiem) nie jest częścią presetu — zostaje */
+  for(const k of Object.keys(SCIEZKI)) if(!k.includes(":")) usunSciezke(k);
   let odrzucone = 0;
   if(!dane || typeof dane !== "object" || Array.isArray(dane)) return 1;
   for(const [k, wpis] of Object.entries(dane)){
@@ -112,8 +141,9 @@ export function wczytaj(dane){
       if(RODZAJE_KRZYWYCH.some(([x]) => x === wpis.krzywa)) ustawKrzywa(k, wpis.krzywa); else odrzucone++;
     }
     for(const kl of lista.slice(0, MAX_KLATEK)){
-      if(!Array.isArray(kl) || kl.length !== 2 || !kl.every(x => typeof x === "number" && isFinite(x)) || kl[0] < 0 || kl[0] > 3600){ odrzucone++; continue; }
+      if(!Array.isArray(kl) || (kl.length !== 2 && kl.length !== 3) || !kl.slice(0, 2).every(x => typeof x === "number" && isFinite(x)) || kl[0] < 0 || kl[0] > 3600){ odrzucone++; continue; }
       ustawKlucz(k, kl[0], Math.max(kw.min, Math.min(kw.max, Math.round(kl[1]))));
+      if(kl.length === 3){ if(RODZAJE_KRZYWYCH.some(([x]) => x === kl[2])) ustawKrzywaKlucza(k, kl[0], kl[2]); else odrzucone++; }
     }
     if(lista.length > MAX_KLATEK) odrzucone += lista.length - MAX_KLATEK;
   }

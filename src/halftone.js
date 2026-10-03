@@ -7,6 +7,7 @@ import { zmiennoscPrzed } from "./fx.js";
 import { geometria, obrys, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
 import { fakturaFarby } from "./faktura-farby.js";
 import { skrot } from "./fx.js";
+import { papier } from "./papier.js";
 
 /* ---------- tryb 2: raster drukarski ----------
 
@@ -173,6 +174,7 @@ export function inkList(){
 /* papier i wszystkie farby, bez ziarna i efektów, na płótnie (W·z)×(H·z) */
 function rysujRaster(ctx, W, H, z){
   ctx.fillStyle = S.paper; ctx.fillRect(0,0,W*z,H*z);
+  papier(ctx, W, H, z);
   const farby = inkList();
   /* próbki tak gęsto, jak wymaga najdrobniejsza farba (risograf: każda ma własną gęstość) */
   const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));

@@ -1,6 +1,6 @@
 /* Klatki kluczowe: interpolacja, zaokrąglenie do kroku suwaka, granice,
    dodawanie, nadpisywanie i usuwanie. Uruchom: node testy/animacja.mjs */
-import { SCIEZKI, KONW, ustawKlucz, usunKlucz, kluczW, czyAnimowany, wartoscSuwaka, wartoscS, zastosuj, wyczysc, zrzut, wczytaj, ustawKrzywa, KRZYWE } from "../src/animacja.js";
+import { SCIEZKI, KONW, ustawKlucz, usunKlucz, kluczW, czyAnimowany, wartoscSuwaka, wartoscS, zastosuj, wyczysc, zrzut, wczytaj, ustawKrzywa, KRZYWE, ustawKrzywaKlucza, krzywaKlucza, cel } from "../src/animacja.js";
 
 let bledy = 0;
 const sprawdz = (warunek, opis) => { console.log((warunek ? "  ok    " : "  ŹLE   ") + opis); if(!warunek) bledy++; };
@@ -72,6 +72,51 @@ usunKlucz("bri", 0);
 sprawdz(!KRZYWE.bri, "usunięcie ostatniej klatki usuwa też krzywą");
 wyczysc();
 wyczysc();
+
+console.log("--- krzywa pojedynczej klatki ---");
+{
+  wyczysc();
+  KONW.bri = {zS: v => v, min: -100, max: 100};
+  ustawKlucz("bri", 0, 0); ustawKlucz("bri", 1, 100); ustawKlucz("bri", 2, 0);
+  ustawKrzywaKlucza("bri", 0, "liniowo");
+  sprawdz(wartoscSuwaka("bri", 0.25) === 25, "odcinek od klatki z krzywą liniową: liniowo (" + wartoscSuwaka("bri", 0.25) + ")");
+  sprawdz(wartoscSuwaka("bri", 1.25) === 84, "następny odcinek: dalej płynnie jak ścieżka (" + wartoscSuwaka("bri", 1.25) + ")");
+  ustawKrzywaKlucza("bri", 1, "skokowo");
+  sprawdz(wartoscSuwaka("bri", 1.9) === 100 && wartoscSuwaka("bri", 2) === 0, "skokowo: trzyma do następnej klatki");
+  ustawKlucz("bri", 1, 80);
+  sprawdz(krzywaKlucza("bri", 1) === "skokowo", "nadpisanie wartości zostawia krzywą klatki");
+  ustawKrzywa("bri", "liniowo");
+  sprawdz(wartoscSuwaka("bri", 0.25) === 20 && krzywaKlucza("bri", 0) === "liniowo", "krzywa ścieżki nie rusza krzywych klatek");
+  const z = zrzut();
+  sprawdz(JSON.stringify(z.bri) === JSON.stringify({krzywa: "liniowo", klatki: [[0, 0, "liniowo"], [1, 80, "skokowo"], [2, 0]]}), "zapis: krzywa klatki trzecim elementem " + JSON.stringify(z.bri));
+  wczytaj(z);
+  sprawdz(krzywaKlucza("bri", 0) === "liniowo" && krzywaKlucza("bri", 1) === "skokowo" && krzywaKlucza("bri", 2) === null, "odczyt przywraca krzywe klatek");
+  const odrz = wczytaj({bri: [[0, 0, "sprezyscie"], [1, 50, 7], [2, 10]]});
+  sprawdz(odrz === 2 && SCIEZKI.bri.length === 3 && SCIEZKI.bri.every(k => !k.k), "nieznana krzywa klatki odrzucona, klatka zostaje (" + odrz + " odrzucone)");
+  sprawdz(wczytaj({bri: [[0, 0], [1, 50]]}) === 0, "stary zapis (dwa elementy) bez zmian");
+  ustawKrzywaKlucza("bri", 0, "liniowo"); ustawKrzywaKlucza("bri", 0, null);
+  sprawdz(krzywaKlucza("bri", 0) === null, "null przywraca krzywą ścieżki");
+  wyczysc();
+}
+
+console.log("--- parametry spoza S (warstwy) ---");
+{
+  wyczysc();
+  const warstwa = {x: 0}; let zlozono = 0;
+  cel("w", (k, v) => { if(k === "w:7:x") warstwa.x = v; }, () => zlozono++);
+  KONW["w:7:x"] = {zS: v => v, min: -20000, max: 20000};
+  KONW.bri = {zS: v => v, min: -100, max: 100};
+  ustawKlucz("w:7:x", 0, 100); ustawKlucz("w:7:x", 2, 300); ustawKlucz("bri", 0, 10); ustawKlucz("bri", 2, 30);
+  const S = {bri: 0};
+  zastosuj(S, 1);
+  sprawdz(warstwa.x === 200 && S.bri === 20 && !("w:7:x" in S), "klucz warstwy trafia do celu, nie do S (x " + warstwa.x + ")");
+  sprawdz(zlozono === 1, "po ustawieniu wszystkich wartości cel składa raz");
+  const z = zrzut();
+  sprawdz(Object.keys(z).join() === "bri", "do presetu idzie tylko wygląd, bez warstw");
+  wczytaj({bri: [[0, 5]]});
+  sprawdz(SCIEZKI["w:7:x"] && SCIEZKI["w:7:x"].length === 2, "wczytanie presetu z animacją nie kasuje animacji warstw");
+  wyczysc();
+}
 
 console.log("\nBŁĘDÓW:", bledy);
 process.exitCode = bledy ? 1 : 0;

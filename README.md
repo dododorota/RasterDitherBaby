@@ -36,6 +36,11 @@ Jeśli po `npm install` brakuje `node_modules/electron/dist` (npm 11 nie
 uruchamia skryptów instalacyjnych), pobierz go ręcznie:
 `node node_modules/electron/install.js`.
 
+Automatyczne usuwanie tła potrzebuje modelu, którego nie ma w repozytorium
+(~180 MB): `npm run modele` pobiera go do `modele/` i kopiuje środowisko ONNX
+do `vendor/onnx/`. Robi to raz; `npm run paczka` pakuje oba do instalatora,
+więc wersja na pulpit działa bez sieci (instalator ma wtedy ~280 MB).
+
 Electron jest tylko opakowaniem (`electron/main.js`) — kod apki się nie
 zmienia i dalej działa w przeglądarce. Zapis pliku otwiera systemowe okno
 „Zapisz jako" z ostatnio użytym folderem. Pliki `.exe` nie są podpisane
@@ -48,10 +53,10 @@ się z Google Fonts i bez sieci wygląda tak samo.
 
 ## Co robi
 
-**Tryb dithering** — piętnaście algorytmów dyfuzji błędu (Floyd–Steinberg,
+**Tryb dithering** — szesnaście algorytmów dyfuzji błędu (Floyd–Steinberg,
 False Floyd–Steinberg, Fan, Shiau–Fan 1 i 2, Atkinson, Jarvis–Judice–Ninke,
 Stucki, Burkes, trzy warianty Sierry, Stevenson–Arce, Ostromukhov ze zmiennymi
-wagami, Riemersma po krzywej Hilberta), osiem uporządkowanych (Bayer
+wagami, Riemersma po krzywej Hilberta, dot diffusion Knutha), osiem uporządkowanych (Bayer
 2/4/8/16, siatka punktowa, niebieski szum, szum gradientowy IGN, szum losowy)
 i pięć wzorów (linie poziome, pionowe, ukośne, krzyżyki, kropki 8×8).
 
@@ -73,8 +78,9 @@ duotone, pełny CMYK pod klasycznymi kątami albo risograf z 1–4 własnymi
 farbami, z mnożeniem farb. Siatka kwadratowa, heksagonalna, z okręgów albo
 spirala; punkt okrągły, kwadratowy, gwiazdka, pierścień i inne, albo raster
 liniowy z falującymi liniami. Suwak pasowania psuje rejestrację arkusza,
-ziarno dokłada fakturę papieru, „faktura farby" — szorstkie krawędzie,
-rozlanie, plamy i dziury w apli. Opis niżej, w „Rastrze i risografie".
+ziarno i faktura papieru (włókna, czerpany, makulatura) leżą pod farbą,
+„faktura farby" — szorstkie krawędzie, rozlanie, plamy i dziury w apli.
+Opis niżej, w „Rastrze i risografie".
 
 Skala zapisu w obu trybach daje dokładne powiększenie podglądu: przy 4× rośnie
 rozdzielczość, a nie gęstość rastra — ta sama liczba punktów, tylko narysowana
@@ -110,6 +116,7 @@ src/halftone.js   sampler, inkList() farby, drawScreen() rysuje
 src/siatki.js     geometria rastra: siatki, kształty punktu, raster liniowy
 src/faktura-farby.js szorstkość, rozlanie, plamy i dziury farby
 src/wycinanie.js  usuwanie tła po kolorze (maska), bez DOM-u
+src/papier.js     faktura papieru pod farbą w rastrze
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
 src/contours.js   obrys konturowy: śledzenie brzegów i wygładzanie ścieżek
@@ -174,6 +181,10 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
   gdzie indziej), nierówne punkty, drganie punktów z siatki i postrzępione
   brzegi okrągłych punktów. W geometrii, więc też w SVG; presety *Skan*
   i *Niebieski skan*.
+- **Faktura papieru** — gładki, włókna, czerpany (chmurki masy papierowej)
+  albo makulatura (drobinki), z siłą. Papier leży pod farbami, które kładą
+  się na nim mnożeniem, więc prześwituje przez nie jak na arkuszu. Tylko
+  w PNG — SVG ma gładki papier.
 - **Faktura farby** (dla każdego rodzaju farb): szorstkość — poszarpane
   krawędzie; rozlanie — farba wypływa poza punkt; plamy — nierówne krycie
   w apli; dziury — drobne niedodruki; ślady wałka — poziome smugi słabszej
@@ -307,6 +318,15 @@ Poza klasyką dyfuzji błędu i Bayerem:
 - **Riemersma — krzywa Hilberta** (1998). Obraz przechodzony po krzywej
   wypełniającej płaszczyznę zamiast wierszami, błąd niesie kolejka 16
   ostatnich pikseli. Bez kierunkowych smug, ziarno bardziej organiczne.
+- **Dot diffusion — Knuth** (ACM TOG 1987). Piksele w 64 klasach według
+  położenia w kratce 8×8, liczone klasa po klasie; błąd idzie tylko do
+  sąsiadów z późniejszych klas. Faktura „labiryntu" w półtonach, ostre
+  krawędzie (z wyostrzeniem z programu autora). Wynik zgadza się co do
+  piksela z przepisanym programem Knutha DOT-DIFF; pominięty tylko jego model
+  rozpryskiwania tonera drukarki. Tabela klas z jego programu (font ddith300)
+  — odrobinę inna niż wydrukowana w artykule. W jasnych tonach o 3–4%
+  ciemniej niż inne — błąd „baronów" (pikseli bez późniejszych sąsiadów)
+  przepada, tak samo jak u autora.
 - **Stevenson–Arce** — szeroka dyfuzja z siatki sześciokątnej, miękka faktura.
 - **Niebieski szum** — uporządkowany jak Bayer (stabilny w filmie, nie
   migocze), ale bez kratki: punkty rozłożone równomiernie i bez wzoru.
@@ -426,6 +446,9 @@ jest wyrównywana do rozmiaru pierwszej.
 **Przejście** między klatkami ustawia się dla całej ścieżki przyciskiem przy
 jej nazwie pod osią: ∿ płynnie (wolny start i koniec), ⟋ liniowo, ⊓ skokowo
 (wartość trzyma się do następnej klatki — jak „Hold" w After Effects).
+Pojedynczej klatce — przejściu od niej do następnej — **Shift+klik w ◆** na
+ścieżce: po kolei jak cała ścieżka, płynnie, liniowo, skokowo. Klatka z własną
+krzywą ma jej znak obok rombu (◆⟋).
 
 Pętla bez przeskoku: ustaw ostatnią klatkę kluczową na tę samą wartość co
 pierwszą. Klatki kluczowe (z przejściami) zapisują się w presetach — w pliku
@@ -438,6 +461,11 @@ Efekty to **stos**: „+ Dodaj efekt" dokłada kartę na koniec listy, a efekty
 działają po kolei od góry. Każda karta ma ↑ ↓ (kolejność), ◉ (ukryj — parametry
 zostają), × (usuń) i zwija się kliknięciem w nazwę. Działają we wszystkich
 trzech trybach; w rastrze drukarskim ziarno papieru zawsze na samym końcu.
+
+Ten sam efekt można dodać **kilka razy** (do 9) — w menu ma dopisek
+„kolejna kopia", a karta numer („Przesunięcie RGB 2"). Każda kopia ma własne
+ustawienia; animować da się tylko pierwszą. „Zmienności w czasie" kopiować się
+nie da.
 
 Stare presety i pliki (sprzed stosu) dostają kolejność sortowanie →
 przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
@@ -452,8 +480,9 @@ przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
   rozjaśnienie.
 - **Gwiazdki** — promienie z najjaśniejszych punktów, jak z przysłony:
   liczba promieni, długość, obrót, próg.
-- **Faktura** — wzór nałożony na obraz: maska RGB i rozeta jak w kineskopie,
-  linie skanowania, szum, szum barwny, tkanina, kratka, romby, tęcza;
+- **Faktura** (odpowiednik „Tile" z Dither Boya) — wzór nałożony na obraz:
+  maska RGB, rozeta i matryca LCD, linie skanowania, szum, szum barwny,
+  tkanina, kratka, romby, tęcza, wałek;
   skala, mieszanie (mnożenie, rozjaśnienie, nakładka, miękkie światło), krycie.
   W ditheringu faktura leży na siatce pikseli po pikselizacji.
 - **Obróbka końcowa** — jasność, kontrast i nasycenie już po ditheringu,
@@ -530,12 +559,33 @@ tłem i płótnem w kolorze papieru — wystarczy zmienić kolor tła płótna. 
   Tolerancja, miękka krawędź i „tylko tło połączone z brzegami" — wtedy
   biała koszula na białym tle zostaje, jeśli nie dotyka krawędzi. Pod
   wycięty obiekt idzie kolor płótna (albo przezroczystość).
+- **Usuń tło — automatycznie** — przełącznik „Po kolorze / Automatycznie":
+  sieć neuronowa IS-Net (model isnet-general-use, Apache 2.0, z projektu
+  rembg) znajduje obiekt na dowolnym tle — postać, zwierzę, przedmiot. Liczy
+  się na karcie graficznej (WebGPU), bez niej na procesorze; 1–3 s. Skrót
+  „Usuń tło i podłóż kolor" próbuje najpierw automatycznie. Bez pobranego
+  modelu (`npm run modele`) zostaje usuwanie po kolorze z podpowiedzią.
+- **Pędzel maski** — „Usuń" zdejmuje fragment warstwy malowaniem po
+  podglądzie, „Przywróć" oddaje to, co zjadło usuwanie tła; miękki brzeg,
+  rozmiar suwakiem, „Wyczyść poprawki pędzla" wraca do samego automatu.
+  Działa też bez usuwania tła (ręczna maska).
 - **Zakończ kompozycję** — zostaje spłaszczony obraz.
 
+- **Warstwa efektu** — „+ Warstwa efektu" dokłada do listy efekt (te same co
+  w stosie: przesunięcie RGB, aberracja, JPEG glitch, zabarwienie, poświata,
+  sortowanie, faktura…), który działa **tylko na warstwy pod nim** razem z tłem
+  płótna, przed ditheringiem. Warstwy nad nim zostają czyste — ↑ ↓ zmienia, co
+  obejmuje. Ma krycie i tryb mieszania jak obraz.
+- **Animacja warstw** — po „Animuj obraz" suwaki położenia, skali, obrotu
+  i krycia warstwy mają ◆ jak suwaki wyglądu; przeciąganie warstwy myszą po
+  animowanym położeniu też ustawia klatkę. Ścieżki warstw są pod osią czasu
+  („zdjęcie.jpg: Położenie X"), a usunięcie warstwy usuwa jej animację.
+
 Kompozycja to materiał jak zdjęcie: przechodzi przez tryb, korektę, efekty,
-animację i zapis, ale nie trafia do presetów. Efekty działają na całą
-kompozycję — w Dither Boyu efekt może działać tylko na warstwy pod nim, tu nie.
-Filmów w kompozycji nie ma (tylko obrazy).
+animację i zapis, ale nie trafia do presetów (animacja warstw też nie — preset
+z animacją jej nie kasuje). Stos „Efekty po rastrze" działa na cały gotowy
+obraz, warstwa efektu — na warstwy pod nią przed rastrem. Filmów w kompozycji
+nie ma (tylko obrazy).
 
 ## Przezroczyste tło
 
@@ -620,31 +670,42 @@ pikselizację na 3–4×.
 
 ## Co dalej
 
-Porównanie z Dither Boyem (studioaaa.com) — czego tu jeszcze nie ma:
+Porównanie z Dither Boyem (studioaaa.com): wszystko z listy jest, poza
+wariantem Riemersmy z rozkładem przestrzennym (brak źródła).
 
-- efekty działające tylko na warstwy pod nimi i animacja położenia warstw;
-- wiele kopii tego samego efektu w stosie;
-- dot diffusion (Knuth) i wariant Riemersmy z rozkładem przestrzennym —
-  wymagają tabel, których nie było z czego wiarygodnie wziąć;
-- osobne krzywe przejścia dla pojedynczych klatek (dziś jedna na ścieżkę).
+Porównanie rastra z **Halftone Maker** (halftonemaker.com) i **Vector
+Halftone Maker** (halftone.xoihazard.com) — czego u nas nie ma, od
+najciekawszych:
 
-Wycinanie z tła (jest: po kolorze, w warstwach):
+- **kolor punktów z obrazu i mapa gradientu** — punkty w kolorach zdjęcia
+  albo barwione tonem przez gradient (presety, OKLCH); u nas raster ma farby,
+  nie kolory źródła;
+- **fala tonu** (sawtooth / triangle / przesunięcie) — ton zawijany
+  cyklicznie, z gładkiego zdjęcia robią się koncentryczne pasy jak warstwice;
+- **odkształcenie siatki szumem** (Perlin: siła, skala, wir, przesunięcie)
+  oraz **rozciągnięcie i pochylenie** siatki — u nas siatkę można tylko
+  obrócić, a drganie punktów jest losowe, nie płynne;
+- **kształty**: trójkąt, wielokąt o N bokach i gwiazda z regulowanym
+  wcięciem, superelipsa (od koła do kwadratu), znak / litera / emoji jako
+  punkt, własny kształt z pliku SVG, zaokrąglanie rogów, **obrys zamiast
+  wypełnienia**;
+- **krzywa wielkości punktu** — odpowiedź ton → rozmiar (wykładnik),
+  minimalny rozmiar punktu (dla punktów, linie już mają);
+- **metaballe / „liquid"** — punkty zlewające się w płynne plamy z progiem,
+  i **blob** — mostki między sąsiednimi punktami;
+- **stippling** — punkty rozmieszczone gęstością (relaksacja Lloyda), bez
+  siatki; **scalanie regionów** — jednolite obszary jako większe punkty
+  (zachłannie albo fraktalnie, jak drzewo czwórkowe);
+- **siatka trójkątna** i siatka z kodu QR (ciekawostka);
+- **kadrowanie** obrazu z proporcjami i automatyczne dopasowanie do obiektu;
+- **„wyrzuć przezroczyste"** — PNG z alfą: tło przezroczyste zostaje puste
+  zamiast liczyć się jako biel; próbkowanie kanału alfa;
+- **SVG: scalenie kształtów** w jedną ścieżkę (unia) i dokładność liczb;
+- **cofnij / ponów**.
 
-- *automatycznie (sieć neuronowa)* — wycina postać czy przedmiot z dowolnego
-  tła, ale wymaga pobrania modelu (kilka–kilkadziesiąt MB) z sieci przy
-  pierwszym użyciu, co łamie zasadę „bez zależności” — tylko za zgodą;
-- **ręczna poprawka maski** — pędzel „dodaj / usuń” na podglądzie.
-
-Raster i risograf — z listy zostało:
-
-- faktura papieru pod farbą (włókna, struktura) — dziś tylko ziarno.
-
-Tekstury nakładane na obraz (jak „Tile" w Dither Boyu) — efekt w stosie,
-powtarzany kafel z wyborem wzoru, skalą, siłą i trybem mieszania:
-
-- RGB Matrix (subpiksele LCD), RGB Rosette, paski RGB;
-- szum barwny (chroma noise), szum tkaniny (fabric noise);
-- tęcza, romby (diamond), wałek (roller), linie skanowania (scanline).
+U nas jest, a tam nie: risograf z farbami i fakturą, raster liniowy
+z falami i „wzdłuż kształtu", faktura papieru, nierówny raster, kompozycja
+z warstw, efekty, wideo i animacja, przetwarzanie folderu.
 
 ## Licencja
 

@@ -10,7 +10,7 @@
    Uruchom z katalogu projektu: node testy/algorytmy.mjs */
 import { readFileSync } from "node:fs";
 import { S, DEFAULTS } from "../src/state.js";
-import { ditherPixels } from "../src/dither-core.js";
+import { ditherPixels, DOT_DIFF } from "../src/dither-core.js";
 import { palette, paletaGradientu } from "../src/palettes.js";
 import { niebieskiSzum, WZORY } from "../src/kernels.js";
 
@@ -42,7 +42,7 @@ function obraz(w, h, f){
 }
 const gradient = (w, h) => obraz(w, h, (x, y) => [x*255/(w-1), (x*255/(w-1) + y*3) % 256, 255 - x*255/(w-1)]);
 const szary = (w, h, v) => obraz(w, h, () => [v, v, v]);
-const NOWE = ["ostromoukhov", "riemersma", "stevenson", "falseFloyd", "fan", "shiauFan", "shiauFan2", "niebieski", "bayer16", "ign", "linieH", "linieV", "ukosne", "krzyze", "kropki8"];
+const NOWE = ["ostromoukhov", "riemersma", "knuth", "stevenson", "falseFloyd", "fan", "shiauFan", "shiauFan2", "niebieski", "bayer16", "ign", "linieH", "linieV", "ukosne", "krzyze", "kropki8"];
 
 console.log("--- tylko kolory palety, w obu trybach ---");
 for(const [pal, mapa] of [["pico8", "kolor"], ["g-zachod", "jasnosc"], ["bw", "jasnosc"], ["quant", "kolor"]]){
@@ -68,9 +68,77 @@ for(const algo of NOWE){
     let b = 0; for(let i=0;i<p.length;i+=4) if(p[i] === 255) b++;
     const u = b/(w*h);
     wyniki.push((u*100).toFixed(1) + "%");
-    if(Math.abs(u - v/255) > 0.03) ok = false;
+    /* dot diffusion gubi błąd „baronów" (klasa 63 nie ma wyższych sąsiadów)
+       i w jasnych tonach wychodzi o 3–4% ciemniej — tak samo w programie
+       Knutha, z którym zgadzamy się co do piksela (test niżej) */
+    if(Math.abs(u - v/255) > (algo === "knuth" ? 0.05 : 0.03)) ok = false;
   }
   sprawdz(ok, `${algo}: ${wyniki.join(" / ")} białych (oczekiwane 25,1% / 70,2%)`);
+}
+
+console.log("--- dot diffusion kontra program Knutha ---");
+{
+  /* DOT-DIFF (cs.stanford.edu/~knuth/programs/dot-diff.w) przepisany wiersz
+     w wiersz: tablica ciemności z marginesem, indeksy od 1, store_eight,
+     „kompilacja" instrukcji, wyostrzenie, decyzja z modelem zeta. U nas
+     zeta = 0 (ekran, nie toner), więc wzorzec liczymy z zeta = 0. */
+  function knuth(we, m, n, zeta, sharpening){
+    const a = Array.from({length: m + 2}, () => new Float64Array(n + 2)), aa = Array.from({length: m + 2}, () => new Int8Array(n + 2));
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) a[i][j] = 1 - we[(i-1)*n + (j-1)]/255;
+    const class_number = Array.from({length: 10}, () => new Int8Array(10)), class_row = [], class_col = [];
+    let kk = 0;
+    const store = (i, j) => { if(i<1) i+=8; else if(i>8) i-=8; if(j<1) j+=8; else if(j>8) j-=8; class_number[i][j]=kk; class_row[kk]=i; class_col[kk]=j; kk++; };
+    const store_eight = (i, j) => { store(i,j); store(i-4,j+4); store(1-j,i-4); store(5-j,i); store(j,5-i); store(4+j,1-i); store(5-i,5-j); store(1-i,1-j); };
+    store_eight(7,2); store_eight(8,3); store_eight(8,2); store_eight(8,1); store_eight(1,4); store_eight(1,3); store_eight(1,2); store_eight(2,3);
+    for(let i=1;i<=8;i++){ class_number[i][0]=class_number[i][8]; class_number[i][9]=class_number[i][1]; }
+    for(let j=0;j<=9;j++){ class_number[0][j]=class_number[8][j]; class_number[9][j]=class_number[1][j]; }
+    const start = [], del_i = [], del_j = [], alpha = [];
+    let l = 0;
+    for(let k=0;k<64;k++){
+      start[k] = l; const i = class_row[k], j = class_col[k]; let w = 0;
+      for(let ii=i-1;ii<=i+1;ii++) for(let jj=j-1;jj<=j+1;jj++) if(class_number[ii][jj] > k){
+        del_i[l]=ii-i; del_j[l]=jj-j; l++;
+        if(ii!==i && jj!==j) w++; else w+=2;
+      }
+      for(let jj=start[k]; jj<l; jj++) alpha[jj] = (del_i[jj]!==0 && del_j[jj]!==0) ? 1/w : 2/w;
+    }
+    start[64] = l;
+    if(sharpening){
+      for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+        const abar = (a[i-1][j-1]+a[i-1][j]+a[i-1][j+1]+a[i][j-1]+a[i][j]+a[i][j+1]+a[i+1][j-1]+a[i+1][j]+a[i+1][j+1])/9;
+        a[i-1][j-1] = (a[i][j] - sharpening*abar)/(1 - sharpening);
+      }
+      for(let i=m;i>0;i--) for(let j=n;j>0;j--) a[i][j] = a[i-1][j-1] <= 0 ? 0 : a[i-1][j-1] >= 1 ? 1 : a[i-1][j-1];
+    }
+    const white = 0, gray = 1, black = 2;
+    for(let k=0;k<64;k++) for(let i=class_row[k]; i<=m; i+=8) for(let j=class_col[k]; j<=n; j+=8){
+      let err;
+      if(aa[i][j] === white) err = a[i][j] - 1 - 4*zeta;
+      else { err = a[i][j] - 1 + zeta; if(aa[i-1][j]===white) err-=zeta; if(aa[i+1][j]===white) err-=zeta; if(aa[i][j-1]===white) err-=zeta; if(aa[i][j+1]===white) err-=zeta; }
+      if(err + a[i][j] > 0){
+        aa[i][j] = black;
+        if(aa[i-1][j]===white) aa[i-1][j]=gray; if(aa[i+1][j]===white) aa[i+1][j]=gray; if(aa[i][j-1]===white) aa[i][j-1]=gray; if(aa[i][j+1]===white) aa[i][j+1]=gray;
+      } else err = a[i][j];
+      for(let q=start[k]; q<start[k+1]; q++) a[i+del_i[q]][j+del_j[q]] += err*alpha[q];
+    }
+    return {aa, l};
+  }
+  /* uwaga: w przepisanym programie margines (wiersz m+1, kolumna n+1) też
+     dostaje błąd — u nas poza kadrem nic się nie zapisuje; to te same piksele
+     w kadrze, bo margines nie jest nigdy czytany przy decyzji o pikselu */
+  sprawdz(DOT_DIFF.instr.reduce((s, x) => s + x.length, 0) === 256 && new Set(DOT_DIFF.macierz.flat()).size === 64,
+          "64 klasy po razie, 256 instrukcji dyfuzji — jak w komentarzu autora („at this point l will be 256”)");
+  for(const [nazwa, w, h, f] of [["gradient", 120, 80, (x, y) => (x*2.1 + y*0.7) % 256], ["zdjęciopodobny", 97, 61, (x, y) => 128 + 100*Math.sin(x/7)*Math.cos(y/5)]]){
+    const we = new Float64Array(w*h);
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) we[y*w + x] = Math.round(f(x, y));
+    const {aa} = knuth(we, h, w, 0, 0.9);
+    ustaw({algo: "knuth", pal: "bw", mapa: "jasnosc", ink: "#000000", paper: "#ffffff", str: 1, thr: 0});
+    const p = obraz(w, h, (x, y) => { const v = we[y*w + x]; return [v, v, v]; });
+    ditherPixels(p, w, h);
+    let rozne = 0;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if((p[(y*w + x)*4] === 0) !== (aa[y+1][x+1] === 2)) rozne++;
+    sprawdz(rozne === 0, `${nazwa} ${w}×${h}: pikseli innych niż w programie Knutha (zeta 0, wyostrzenie 0,9): ${rozne}`);
+  }
 }
 
 console.log("--- Riemersma ---");

@@ -506,6 +506,13 @@ try{
     await naKlatce(48);
     wyn.srodek = [S.bri, +$("#bri").value, $("#bri-v").textContent, $("#kl-bri").getAttribute("aria-pressed")];
     wyn.sciezki = [$("#os-sciezki").children.length, $("#os-sciezki").querySelectorAll(".kl").length];
+    /* Shift+klik w pierwszy ◆: krzywa tej klatki — płynnie, liniowo… i z powrotem jak ścieżka */
+    const shiftKlik = () => $("#os-sciezki .kl").dispatchEvent(new MouseEvent("click", {shiftKey: true, bubbles: true}));
+    shiftKlik(); shiftKlik();
+    await naKlatce(24);
+    wyn.krzywaKlatki = [SCIEZKI.bri[0].k, $("#os-sciezki .kl").textContent, $("#os-sciezki .kl").classList.contains("wlasna"), S.bri, W.biezaca];
+    shiftKlik(); shiftKlik();
+    wyn.krzywaPowrot = [SCIEZKI.bri[0].k === undefined, $("#os-sciezki .kl").textContent];
     /* zapis GIF-a całej animacji */
     const sel = $("#fmt"); sel.value = "gif"; sel.dispatchEvent(new Event("change"));
     pobrane.length = 0;
@@ -552,6 +559,8 @@ try{
   sprawdz(Math.abs(animObrazu.srodek[0]) <= 1 && animObrazu.srodek[1] === animObrazu.srodek[0] && animObrazu.srodek[3] === "false",
           `w połowie jasność ${animObrazu.srodek[0]}, suwak pokazuje ${animObrazu.srodek[1]} (${animObrazu.srodek[2]}), ◆ zgaszony`);
   sprawdz(animObrazu.sciezki.join() === "1,2", "pod osią jedna ścieżka z dwiema klatkami");
+  sprawdz(animObrazu.krzywaKlatki.slice(0, 3).join("|") === "liniowo|◆⟋|true" && animObrazu.krzywaKlatki[3] === -30 && animObrazu.krzywaPowrot.join("|") === "true|◆",
+          "Shift+klik w ◆: własna krzywa klatki (liniowo: ćwierć drogi = −30), cztery kliknięcia — znów jak ścieżka: " + animObrazu.krzywaKlatki.join(" "));
   sprawdz(animObrazu.nazwa === "próbka-dither.gif" && animObrazu.gifKlatek === 96, `GIF: ${animObrazu.nazwa}, ${animObrazu.gifKlatek} klatek`);
   sprawdz(animObrazu.jasnosci[0] < animObrazu.jasnosci[1] && animObrazu.jasnosci[1] < animObrazu.jasnosci[2] && animObrazu.jasnosci[2] - animObrazu.jasnosci[0] > 60,
           "jasność klatek GIF-a rośnie: " + animObrazu.jasnosci.join(" → "));
@@ -656,6 +665,14 @@ try{
     $("#usun-tlo").click();
     const t = $("#komp-tlo"); t.value = "#0000ff"; t.dispatchEvent(new Event("input"));
     const piksel = (px, py) => [...K.kanwa.getContext("2d").getImageData(px, py, 1, 1).data].slice(0, 3).join();
+    /* skrót najpierw próbuje automatycznie (sieć neuronowa); bez pobranego
+       modelu zostaje po kolorze z komunikatem */
+    await czekaj(() => /Gotowe|Nie udało|nie jest pobrany/.test($("#komp-ai-stan").textContent), 120000);
+    const maModel = (await fetch("/modele/isnet-general-use.onnx", {method: "HEAD"})).ok;
+    wyn.ai = {model: maModel, stan: $("#komp-ai-stan").textContent, sposob: K.warstwy[0].tlo.sposob,
+              tlo: piksel(5, 5), obiekt: piksel(200, 70), wcisniety: $('#komp-sposob [data-s="ai"]').getAttribute("aria-pressed")};
+    /* dalej — po kolorze, jak przed dodaniem automatu */
+    $('#komp-sposob [data-s="kolor"]').click();
     wyn.po = [K.aktywna, K.warstwy[0].tlo.wl, K.warstwy[0].tlo.kolor.join(), $("#komp-wytnij").checked,
               !$("#komp-wytnij-opcje").classList.contains("hidden")];
     wyn.piksele = [piksel(5, 5), piksel(200, 70), piksel(200, 150)];
@@ -665,10 +682,23 @@ try{
     /* kroplomierz: klik w czerwone koło → wycina czerwień, szare zostaje */
     $("#komp-kroplomierz").click();
     wyn.kursor = $("#out").classList.contains("kroplomierz");
-    const r = $("#out").getBoundingClientRect();
-    const zd = (typ, px, py) => $("#out").dispatchEvent(new PointerEvent(typ, {clientX: r.left + px/400*r.width, clientY: r.top + py/300*r.height, pointerId: 1, bubbles: true}));
+    /* położenie podglądu czytane przy każdym zdarzeniu — panel nad nim zmienia wysokość (np. pojawia się przycisk) */
+    const zd = (typ, px, py) => { const r = $("#out").getBoundingClientRect();
+      $("#out").dispatchEvent(new PointerEvent(typ, {clientX: r.left + px/400*r.width, clientY: r.top + py/300*r.height, pointerId: 1, bubbles: true})); };
     zd("pointerdown", 200, 70); zd("pointerup", 200, 70);
     wyn.kroplomierz = [K.warstwy[0].tlo.kolor.join(), $("#out").classList.contains("kroplomierz"), piksel(200, 70), piksel(5, 5), Math.round(K.warstwy[0].x)];
+    /* pędzel: „Usuń” na zostawionym szarym tle, „Przywróć” na wyciętej czerwieni, potem „Wyczyść” */
+    const pr = $("#komp-pedzel-r"); pr.value = 30; pr.dispatchEvent(new Event("input"));
+    const malujPo = (tryb, punkty) => {
+      $(`#komp-pedzel button[data-p="${tryb}"]`).click();
+      zd("pointerdown", ...punkty[0]); for(const p of punkty.slice(1)) zd("pointermove", ...p); zd("pointerup", ...punkty[punkty.length - 1]);
+    };
+    malujPo("usun", [[40, 250], [80, 250]]);
+    malujPo("dodaj", [[200, 70], [200, 75]]);
+    wyn.pedzel = [piksel(60, 250), piksel(200, 70), piksel(5, 5), Math.round(K.warstwy[0].x), !$("#komp-pedzel-wyczysc").classList.contains("hidden"), $("#out").classList.contains("pedzel")];
+    $("#komp-pedzel-wyczysc").click();
+    wyn.wyczysc = [piksel(60, 250), piksel(200, 70)];
+    $('#komp-pedzel button[data-p=""]').click();
     /* wyłączenie — oryginał wraca */
     $("#komp-wytnij").click();
     wyn.wylaczone = piksel(5, 5);
@@ -676,12 +706,175 @@ try{
     await new Promise(r => setTimeout(r, 200));
     return wyn;
   });
+  if(tlo.ai.model)
+    sprawdz(tlo.ai.sposob === "ai" && /Gotowe/.test(tlo.ai.stan) && tlo.ai.tlo === "0,0,255" && tlo.ai.obiekt === "200,40,40" && tlo.ai.wcisniety === "true",
+            `automatycznie (sieć neuronowa): tło → kolor płótna, czerwone koło zostaje — ${tlo.ai.stan}`);
+  else sprawdz(/nie jest pobrany/.test(tlo.ai.stan) && tlo.ai.sposob === "kolor", "bez modelu: komunikat „npm run modele”, zostaje po kolorze");
   sprawdz(tlo.przycisk && tlo.po.join("|") === "true|true|230,230,228|true|true", "„Usuń tło i podłóż kolor”: kompozycja z wyciętą warstwą, kolor z brzegów " + tlo.po[2]);
   sprawdz(tlo.piksele.join("|") === "0,0,255|200,40,40|230,230,228", "tło → kolor płótna, obiekt i szara plama w środku zostają: " + tlo.piksele.join(" "));
   sprawdz(tlo.srodek === "0,0,255", "bez „tylko połączone z brzegami” plama w środku też znika");
   sprawdz(tlo.kursor && tlo.kroplomierz.join("|") === "200,40,40|false|0,0,255|230,230,228|200",
           "kroplomierz: klik w obiekt bierze jego kolor i go wycina, warstwa się nie przesuwa: " + tlo.kroplomierz.join(" "));
   sprawdz(tlo.wylaczone === "230,230,228", "wyłączenie usuwania tła przywraca oryginał");
+  sprawdz(tlo.pedzel.join("|") === "0,0,255|200,40,40|230,230,228|200|true|true",
+          "pędzel: „Usuń” zdejmuje tło, „Przywróć” oddaje wyciętą czerwień, reszta i położenie bez zmian: " + tlo.pedzel.join(" "));
+  sprawdz(tlo.wyczysc.join("|") === "230,230,228|0,0,255", "„Wyczyść poprawki pędzla”: wraca sam automat: " + tlo.wyczysc.join(" "));
+
+  console.log("--- animacja warstw ---");
+  const aw = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { K } = await import("/src/warstwy.js");
+    const { W, idzDo } = await import("/src/video.js");
+    const { SCIEZKI } = await import("/src/animacja.js");
+    const $ = s => document.querySelector(s);
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    $("#komp-start").click();
+    const fmt = $("#komp-format"); fmt.value = "1080x1080"; fmt.dispatchEvent(new Event("change"));
+    /* druga warstwa: czerwony kwadrat 100×100 w skali 10% */
+    const c = document.createElement("canvas"); c.width = 100; c.height = 100;
+    c.getContext("2d").fillStyle = "#ff0000"; c.getContext("2d").fillRect(0, 0, 100, 100);
+    upusc(new File([await new Promise(r => c.toBlob(r, "image/png"))], "kwadrat.png", {type: "image/png"}));
+    await czekaj(() => K.warstwy.length === 2);
+    const ust = (id, v) => { const el = $("#" + id); el.value = v; el.dispatchEvent(new Event("input")); };
+    ust("komp-skala", 10); ust("komp-y", 540);
+    $("#animuj").click();
+    await czekaj(() => W.z && W.z.rodzaj === "stopklatka");
+    const naKlatce = async i => { idzDo(i); await czekaj(() => W.biezaca === i, 8000); await new Promise(r => setTimeout(r, 50)); };
+    const ost = W.z.klatki.length - 1;
+    const wyn = {widac: getComputedStyle($("#kl-komp-x")).display !== "none", warstwy: !$("#g-warstwy").classList.contains("hidden")};
+    await naKlatce(0); ust("komp-x", 100); $("#kl-komp-x").click();
+    await naKlatce(ost); ust("komp-x", 900);
+    const id = K.warstwy[1].id;
+    wyn.klucze = (SCIEZKI["w:" + id + ":x"] || []).map(k => k.v).join();
+    const piksel = (x, y) => [...K.kanwa.getContext("2d").getImageData(x, y, 1, 1).data].slice(0, 3).join();
+    const pol = Math.round(ost/2);
+    await naKlatce(pol);
+    const t = W.z.klatki[pol].t, D = W.z.klatki[ost].t, u = t/D, s = u*u*(3 - 2*u);
+    wyn.srodek = [K.warstwy[1].x, Math.round(100 + 800*s), +$("#komp-x").value, piksel(Math.round(K.warstwy[1].x), 540), piksel(100, 540) !== "255,0,0"];
+    wyn.sciezka = [...$("#os-sciezki").querySelectorAll(".nazwa")].map(n => n.textContent).join("|");
+    /* usunięcie warstwy usuwa jej animację */
+    $('#komp-lista .warstwa[data-i="1"] [data-a="usun"]').click();
+    wyn.poUsunieciu = Object.keys(SCIEZKI).filter(k => k.startsWith("w:")).length;
+    $("#anim-koniec").click();
+    $("#komp-koniec").click();
+    await new Promise(r => setTimeout(r, 200));
+    return wyn;
+  });
+  sprawdz(aw.widac && aw.warstwy, "w animacji kompozycji suwaki warstwy mają ◆");
+  sprawdz(aw.klucze === "100,900", "◆ i ruszenie suwaka na innej klatce: klatki kluczowe położenia warstwy " + aw.klucze);
+  sprawdz(aw.srodek[0] === aw.srodek[1] && aw.srodek[2] === aw.srodek[0] && aw.srodek[3] === "255,0,0" && aw.srodek[4],
+          `w połowie warstwa w x ${aw.srodek[0]} (oczekiwane ${aw.srodek[1]}), suwak za nią, płótno złożone na nowo`);
+  sprawdz(aw.sciezka.split("|").includes("kwadrat.png: Położenie X"), "ścieżka pod osią z nazwą warstwy: " + aw.sciezka);
+  sprawdz(aw.poUsunieciu === 0, "usunięcie warstwy usuwa jej klatki kluczowe");
+
+  console.log("--- warstwa efektu ---");
+  const we = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { K } = await import("/src/warstwy.js");
+    const $ = s => document.querySelector(s);
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    $("#komp-start").click();
+    const fmt = $("#komp-format"); fmt.value = "1080x1080"; fmt.dispatchEvent(new Event("change"));
+    const c = document.createElement("canvas"); c.width = 100; c.height = 100;
+    c.getContext("2d").fillStyle = "#ff0000"; c.getContext("2d").fillRect(0, 0, 100, 100);
+    upusc(new File([await new Promise(r => c.toBlob(r, "image/png"))], "kwadrat.png", {type: "image/png"}));
+    await czekaj(() => K.warstwy.length === 2);
+    const ust = (id, v) => { const el = $("#" + id); el.value = v; el.dispatchEvent(new Event(el.tagName === "SELECT" ? "change" : "input")); };
+    ust("komp-skala", 20);
+    const piksel = (x, y) => [...K.kanwa.getContext("2d").getImageData(x, y, 1, 1).data].slice(0, 3);
+    const przed = piksel(200, 200);
+    /* warstwa efektu: zabarwienie na niebiesko, mocno */
+    $("#komp-dodaj-efekt").click();
+    const wyn = {lista: K.warstwy.map(w => w.typ || "obraz").join(), panel: [!$("#komp-efektowe").classList.contains("hidden"), $("#komp-wlasciwosci .tylko-obraz").classList.contains("hidden")]};
+    ust("komp-efekt", "tint");
+    ust("tint__w" + K.warstwy[2].id, 100);
+    ust("tintKolor__w" + K.warstwy[2].id, "#0000ff");
+    wyn.nazwa = K.warstwy[2].nazwa;
+    const nadWszystkim = [piksel(540, 540), piksel(200, 200)];
+    /* pod kwadrat: ↓ — kwadrat zostaje czerwony, zdjęcie pod nim dalej zabarwione */
+    $('#komp-lista .warstwa[data-i="2"] [data-a="dol"]').click();
+    const podKwadratem = [piksel(540, 540), piksel(200, 200)];
+    wyn.nad = nadWszystkim.map(p => p.join()); wyn.pod = podKwadratem.map(p => p.join()); wyn.przed = przed.join();
+    wyn.stos = [S.efekty, K.warstwy.map(w => w.typ || "obraz").join()];
+    $("#komp-koniec").click();
+    await new Promise(r => setTimeout(r, 200));
+    return wyn;
+  });
+  sprawdz(we.lista === "obraz,obraz,efekt" && we.panel.join() === "true,true" && we.nazwa === "Efekt: Zabarwienie",
+          "„+ Warstwa efektu”: warstwa na wierzchu, panel efektu zamiast położenia i maski, nazwa po efekcie");
+  const niebieski = s => { const [r, g, b] = s.split(",").map(Number); return b > r && b > g; };
+  sprawdz(we.nad[0] !== "255,0,0" && we.nad[1] !== we.przed, `nad wszystkim: zabarwione i kwadrat (czerwień × niebieski = ${we.nad[0]}), i zdjęcie`);
+  sprawdz(we.pod[0] === "255,0,0" && niebieski(we.pod[1]), `pod kwadratem: kwadrat czysty (${we.pod[0]}), zdjęcie dalej zabarwione (${we.pod[1]})`);
+  sprawdz(we.stos[0] === "", "warstwa efektu nie dotyka stosu efektów po rastrze");
+
+  console.log("--- kopie efektu ---");
+  const kop = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    /* odcisk podglądu, gdy przestał się zmieniać (render bywa w toku po poprzednim kroku) */
+    const odcisk = async () => {
+      const jeden = () => { const o = $("#out"), d = o.getContext("2d").getImageData(0, 0, o.width, o.height).data;
+        let h = o.width; for(let i=0; i<d.length; i+=7) h = (h*31 + d[i]) >>> 0; return h; };
+      let pop = -1;
+      for(let k=0; k<40; k++){ await new Promise(r => setTimeout(r, 400)); const h = jeden(); if(h === pop) return h; pop = h; }
+      return pop;
+    };
+    const dodajZMenu = () => { $("#fx-dodaj").click(); [...$("#fx-menu").children].find(b => b.dataset.dodaj === "rgb").click(); };
+    dodajZMenu();
+    const jeden = await odcisk();
+    const wyn = {etykieta: ($("#fx-dodaj").click(), [...$("#fx-menu").children].find(b => b.dataset.dodaj === "rgb").textContent)};
+    $("#fx-dodaj").click();
+    dodajZMenu();
+    const karta = document.querySelector('.fx[data-fx="rgb~2"]');
+    wyn.karta = [!!karta && !karta.classList.contains("hidden"), karta && karta.querySelector(".fx-nazwa").textContent, !!(karta && karta.querySelector("#rgb__2")), !(karta && karta.querySelector(".klucz"))];
+    const s = karta.querySelector("#rgb__2"); s.value = 14; s.dispatchEvent(new Event("input"));
+    wyn.stan = [S.efekty, S.efektyKopie, S.rgb, karta.querySelector("#rgb-v__2").textContent];
+    const dwa = await odcisk();
+    wyn.zmiana = dwa !== jeden;
+    karta.querySelector('[data-akcja="usun"]').click();
+    wyn.po = [S.efekty, S.efektyKopie, !document.querySelector('.fx[data-fx="rgb~2"]')];
+    wyn.powrot = (await odcisk()) === jeden;
+    document.querySelector('.fx[data-fx="rgb"] [data-akcja="usun"]').click();
+    return wyn;
+  });
+  sprawdz(kop.etykieta.includes("kolejna kopia"), "menu: efekt już na stosie można dodać jako kopię");
+  sprawdz(kop.karta.join("|") === "true|Przesunięcie RGB 2|true|true", "karta kopii z własnymi kontrolkami, bez klatek kluczowych: " + kop.karta.join(" "));
+  sprawdz(kop.stan[0] === "rgb,rgb~2" && JSON.parse(kop.stan[1])["rgb~2"].rgb === 14 && kop.stan[2] === 6, "suwak kopii pisze do jej parametrów, nie do S.rgb: " + kop.stan.join(" "));
+  sprawdz(kop.zmiana, "kopia zmienia podgląd (liczony w workerze)");
+  sprawdz(kop.po.join("|") === "rgb||true" && kop.powrot, "usunięcie kopii: karta i parametry znikają, obraz jak z jedną instancją");
+
+  console.log("--- faktura papieru ---");
+  /* Porównanie udziałem różnych pikseli, nie odciskiem: tysiące półprzezroczystych
+     włókien płótno rasteryzuje z drobnymi różnicami między renderami (patrz CLAUDE.md) */
+  const pap = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    const ust = (id, v) => { const e = $("#" + id); e.value = v; e.dispatchEvent(new Event(e.tagName === "SELECT" ? "change" : "input")); };
+    const piksele = () => { const o = $("#out"); return o.getContext("2d").getImageData(0, 0, o.width, o.height).data; };
+    /* zmiana → czekamy na kolejny gotowy render (licznik w out.dataset.nr), potem chwila spokoju */
+    const poRenderze = async zmiana => {
+      const n = +$("#out").dataset.nr || 0;
+      zmiana();
+      for(let k=0; k<200 && (+$("#out").dataset.nr || 0) <= n; k++) await new Promise(r => setTimeout(r, 50));
+      let m; do { m = +$("#out").dataset.nr; await new Promise(r => setTimeout(r, 300)); } while(+$("#out").dataset.nr !== m);
+      return piksele();
+    };
+    const rozne = (a, b) => { let n = 0; for(let i=0; i<a.length; i+=4) if(Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1]) + Math.abs(a[i+2] - b[i+2]) > 6) n++; return n/(a.length/4); };
+    await poRenderze(() => $("#tab-half").click());
+    /* punkt odniesienia z renderu na pewno w rastrze: siła bez znaczenia przy gładkim papierze */
+    const gladki = await poRenderze(() => ust("papierSila", 50));
+    const a = await poRenderze(() => { ust("papierRodzaj", "makulatura"); ust("papierSila", 80); });
+    const wyn = {opcje: !$("#papier-opcje").classList.contains("hidden")};
+    const b = await poRenderze(() => { ust("papierSila", 79); ust("papierSila", 80); });
+    const c = await poRenderze(() => ust("papierRodzaj", "gladki"));
+    wyn.zmiana = rozne(gladki, a); wyn.powtorka = rozne(a, b); wyn.powrot = rozne(gladki, c);
+    $("#tab-dither").click();
+    return wyn;
+  });
+  sprawdz(pap.opcje && pap.zmiana > 0.02 && pap.powtorka < 0.002 && pap.powrot < 0.002,
+          `faktura papieru: zmienia ${(pap.zmiana*100).toFixed(1)}% pikseli, powtórka ${(pap.powtorka*100).toFixed(2)}%, „Gładki” wraca (${(pap.powrot*100).toFixed(2)}%)`);
 
   console.log("--- przezroczyste tło w PNG ---");
   const przezr = await wykonaj(async () => {
@@ -801,7 +994,7 @@ try{
     pobrane.length = 0; $("#save").click();
     await czekaj(() => pobrane.length, 120000);
     await czekaj(() => !$(".panel").classList.contains("zajete"));
-    try{ await new OfflineAudioContext(1, 1, R).decodeAudioData(await (await fetch(pobrane[0].url)).arrayBuffer()); wyn.bez = "jest dźwięk"; }
+    try{ await new OfflineAudioContext(1, 1, R).decodeAudioData(await (await fetch(pobrane[0].url)).arrayBuffer(), undefined, () => {}); wyn.bez = "jest dźwięk"; }
     catch{ wyn.bez = "brak dźwięku"; }
     $("#dzwiek").click();
     return wyn;

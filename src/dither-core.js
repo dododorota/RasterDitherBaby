@@ -42,7 +42,7 @@ export function ditherPixels(p, w, h, opcje){
   adjustPixels(p);
   korektaPrzestrzenna(p, w, h, 1/S.pix);
   if(zmiennoscCzynna()) zmiennoscPrzed(p, w, h, 1/S.pix);
-  if(S.algo === "ostromoukhov" || S.algo === "riemersma"){ ditherSpecjalny(p, w, h); return; }
+  if(S.algo === "ostromoukhov" || S.algo === "riemersma" || S.algo === "knuth"){ ditherSpecjalny(p, w, h); return; }
   if(S.mapa === "jasnosc"){ ditherJasnosci(p, w, h, opcje); zapamietaj(p, w, h, opcje); return; }
 
   const pal = palette(), q = quantizer(), bias = S.thr*2.55;
@@ -231,7 +231,9 @@ function przygotuj(p, w, h){
 
 function ditherSpecjalny(p, w, h){
   const k = przygotuj(p, w, h);
-  if(S.algo === "ostromoukhov") ostromoukhov(k, w, h); else riemersma(k, w, h);
+  if(S.algo === "ostromoukhov") ostromoukhov(k, w, h);
+  else if(S.algo === "knuth") dotDiffusion(k, p, w, h);
+  else riemersma(k, w, h);
   k.zapisz();
 }
 
@@ -296,5 +298,77 @@ function riemersma(k, w, h){
        miejsce wchodzi bieżący jako najmłodszy. */
     for(let c=0; c<C; c++) kol[glowa*C + c] = (blad[c] - dodane[c])*S.str;
     glowa = (glowa + 1) % KOLEJKA;
+  }
+}
+
+/* ---------- dot diffusion (Knuth) ----------
+   D. E. Knuth, „Digital halftones by dot diffusion" (ACM TOG 6/4, 1987),
+   według jego programu DOT-DIFF (cs.stanford.edu/~knuth/programs/dot-diff.w).
+   Piksele dzielą się na 64 klasy według (wiersz mod 8, kolumna mod 8) i idą
+   klasami: najpierw wszystkie klasy 0, potem 1… Błąd piksela trafia tylko do
+   sąsiadów (3×3) o wyższej klasie — prostopadłym z wagą 2, ukośnym z wagą 1.
+   Kolejność klas to wzór kropek na siatce 45° z fontu ddith300 — liczona tu
+   tą samą procedurą co u autora (store_eight), nie przepisana ręcznie.
+   Przed ditheringiem wyostrzenie z programu autora: a ← (a − α·ā)/(1 − α),
+   ā — średnia z 3×3, α = 0,9, wynik przycięty do 0–255.
+   Pominięty model „zeta" (rozpryskiwanie tonera drukarki laserowej z lat 80.)
+   — na ekranie piksel nie brudzi sąsiadów, a bez niego decyzja to po prostu
+   najbliższy kolor, więc metoda działa z każdą paletą, jak reszta. */
+export const DOT_DIFF = (() => {
+  const nr = Array.from({length: 10}, () => new Int8Array(10)), wiersz = [], kolumna = [];
+  let kk = 0;
+  const store = (i, j) => {
+    if(i < 1) i += 8; else if(i > 8) i -= 8;
+    if(j < 1) j += 8; else if(j > 8) j -= 8;
+    nr[i][j] = kk; wiersz[kk] = i; kolumna[kk] = j; kk++;
+  };
+  const osiem = (i, j) => {
+    store(i, j); store(i - 4, j + 4); store(1 - j, i - 4); store(5 - j, i);
+    store(j, 5 - i); store(4 + j, 1 - i); store(5 - i, 5 - j); store(1 - i, 1 - j);
+  };
+  osiem(7, 2); osiem(8, 3); osiem(8, 2); osiem(8, 1); osiem(1, 4); osiem(1, 3); osiem(1, 2); osiem(2, 3);
+  for(let i=1; i<=8; i++){ nr[i][0] = nr[i][8]; nr[i][9] = nr[i][1]; }
+  for(let j=0; j<=9; j++){ nr[0][j] = nr[8][j]; nr[9][j] = nr[1][j]; }
+  /* „instrukcje" dyfuzji dla każdej klasy: [di, dj, waga] */
+  const instr = [];
+  for(let k=0; k<64; k++){
+    const i = wiersz[k], j = kolumna[k], lista = [];
+    let w = 0;
+    for(let ii=i-1; ii<=i+1; ii++) for(let jj=j-1; jj<=j+1; jj++) if(nr[ii][jj] > k){
+      lista.push([ii - i, jj - j]);
+      w += (ii !== i && jj !== j) ? 1 : 2;
+    }
+    instr.push(lista.map(([di, dj]) => [di, dj, (di !== 0 && dj !== 0 ? 1 : 2)/w]));
+  }
+  const macierz = Array.from({length: 8}, (_, y) => Array.from({length: 8}, (_, x) => nr[y + 1][x + 1]));
+  return {wiersz, kolumna, instr, macierz};
+})();
+const OSTROSC_KNUTHA = 0.9;
+function dotDiffusion(k, p, w, h){
+  const {C, buf, blad} = k;
+  /* wyostrzenie na buforze wartości (C kanałów), z zerami poza kadrem jak
+     w tablicy autora z marginesem */
+  const kopia = Float64Array.from(buf), a = OSTROSC_KNUTHA;
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++) for(let c=0; c<C; c++){
+    let s = 0;
+    for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){
+      const yy = y + dy, xx = x + dx;
+      if(yy >= 0 && yy < h && xx >= 0 && xx < w) s += kopia[(yy*w + xx)*C + c];
+      else s += 255;        /* poza kadrem: biel (u autora ciemność 0) */
+    }
+    const v = (kopia[(y*w + x)*C + c] - a*s/9)/(1 - a);
+    buf[(y*w + x)*C + c] = v < 0 ? 0 : (v > 255 ? 255 : v);
+  }
+  for(let kl=0; kl<64; kl++){
+    const ins = DOT_DIFF.instr[kl];
+    for(let y = DOT_DIFF.wiersz[kl] - 1; y < h; y += 8) for(let x = DOT_DIFF.kolumna[kl] - 1; x < w; x += 8){
+      const i = y*w + x;
+      k.kwantuj(i);
+      for(const [dy, dx, wg] of ins){
+        const yy = y + dy, xx = x + dx;
+        if(yy < 0 || yy >= h || xx < 0 || xx >= w) continue;
+        for(let c=0; c<C; c++) buf[(yy*w + xx)*C + c] += blad[c]*wg*S.str;
+      }
+    }
   }
 }

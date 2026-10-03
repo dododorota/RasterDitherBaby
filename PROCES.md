@@ -106,6 +106,20 @@ to przegląd bez zmian w kodzie.
     (plamy jako ziarno, obrócona siatka szumu). Potem: nierówny raster
     (chmury krycia, nierówne punkty, drganie, postrzępione brzegi; presety
     Skan i Niebieski skan) po zrzutach zeskanowanych rastrów.
+20. **Reszta listy** (3.10) — faktury z „Tile" Dither Boya (dwie brakujące:
+    matryca LCD i wałek; reszta już była jako efekt „Faktura"), pędzel
+    maski w warstwach, faktura papieru (włókna, czerpany, makulatura),
+    kopie efektu w stosie, krzywa przejścia dla pojedynczej klatki.
+    Przy okazji: niestabilne testy w Chrome (stare położenie podglądu,
+    zgadywany czas renderu) — licznik renderów w `out.dataset.nr`.
+21. **Warstwy jak w Dither Boyu** (3.10) — animacja położenia, skali, obrotu
+    i krycia warstw (klucze „w:id:pole" w animacja.js, cel() zamiast S);
+    warstwa efektu działająca tylko na warstwy pod nią, przed ditheringiem.
+22. **Dot diffusion i automatyczne usuwanie tła** (3.10) — Knuth według jego
+    programu DOT-DIFF (zgodność co do piksela); IS-Net w onnxruntime-web
+    (zgoda użytkowniczki na model z sieci), WebGPU albo WASM, izolacja
+    COOP/COEP dla wątków. Porównanie z halftonemaker.com i
+    halftone.xoihazard.com — lista braków w README.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -158,12 +172,10 @@ Nie sprawdzone:
 ## Otwarte decyzje
 
 - **Reszta różnic z Dither Boyem** — lista w README, „Co dalej".
-- **Automatyczne usuwanie tła (sieć neuronowa)** — wymaga pobrania modelu
-  z sieci, czyli łamie zasadę „bez zależności". Do decyzji użytkowniczki.
+- **Lista z porównania z Halftone Maker** — w README, „Co dalej"; do wyboru,
+  co robimy.
 - **Faktura farby i risograf** dobrane na próbce — do sprawdzenia na
   prawdziwych zdjęciach, czy skala plam (34 i 13 px podglądu) pasuje.
-- **Efekty tylko na warstwy pod nimi** — w Dither Boyu efekt w stosie warstw
-  działa na to, co pod nim; u nas stos efektów działa na całą kompozycję.
 - **MP4 z dźwiękiem w Premiere i na Instagramie** — sprawdzone tylko
   w Chrome (decodeAudioData na wyniku).
 - **Siła poświaty** dobrana na scenach generowanych w kodzie — do sprawdzenia
@@ -194,6 +206,7 @@ node testy/ascii.mjs
 node testy/stabilizacja.mjs
 node testy/siatki.mjs
 node testy/wycinanie.mjs
+npm run modele                  # raz: model do automatycznego usuwania tła
 node testy/przegladarka.mjs     # wymaga serwer.py i Chrome
 ```
 

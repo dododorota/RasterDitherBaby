@@ -3,7 +3,7 @@
    robi) i zapis w skali — faktura, ziarno i JPEG jako powiększenie podglądu.
    Uruchom z katalogu projektu: node testy/stos.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { lista, czynne, dodaj, usun, przelacz, przesun, uruchomNaBuforze, uruchomWSkali, EFEKTY } from "../src/stos.js";
+import { lista, czynne, dodaj, usun, przelacz, przesun, uruchomNaBuforze, uruchomWSkali, EFEKTY, kopie, ustawParametrKopii } from "../src/stos.js";
 import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka, zmiennoscPrzed, FAKTURY } from "../src/fx.js";
 
 let bledy = 0;
@@ -136,6 +136,47 @@ console.log("--- dithering: SVG bez efektów tworzących kolory ---");
   ustaw({efekty: "sort", sort: "poziomo"});
   uruchomNaBuforze(b, w, h, 1);
   sprawdz(rowne(a, b), "{wektor:true}: zostaje samo sortowanie");
+}
+
+console.log("--- kopie efektu ---");
+{
+  const w = 40, h = 30;
+  /* stos: zabarwienie, kopia zabarwienia z innym kolorem = dwa razy zabarwienie po kolei */
+  ustaw({});
+  dodaj("tint"); S.tint = 60; S.tintKolor = "#ff0000";
+  const inst = dodaj("tint");
+  ustawParametrKopii(inst, "tint", 40); ustawParametrKopii(inst, "tintKolor", "#0000ff");
+  sprawdz(inst === "tint~2" && S.efekty === "tint,tint~2" && czynne().join() === "tint,tint~2", "druga instancja: " + S.efekty);
+  const a = gradient(w, h); uruchomNaBuforze(a, w, h, 1);
+  const b = gradient(w, h), st = {...S};
+  S.tint = 60; S.tintKolor = "#ff0000"; zabarwienie(b); S.tint = 40; S.tintKolor = "#0000ff"; zabarwienie(b);
+  Object.assign(S, st);
+  sprawdz(rowne(a, b), "kopia działa ze swoimi parametrami, po pierwszej instancji");
+  sprawdz(S.tint === 60 && S.tintKolor === "#ff0000", "po uruchomieniu kopii S ma z powrotem parametry pierwszej instancji");
+  /* skala: kopia też dokładnie powiększona (faktura liczona w siatce z×z) */
+  ustaw({});
+  dodaj("faktura"); S.faktura = "rozeta"; S.faktKrycie = 60;
+  const fk = dodaj("faktura"); ustawParametrKopii(fk, "faktura", "skanlinie"); ustawParametrKopii(fk, "faktSkala", 3);
+  const maly = gradient(w, h), duzy = powieksz(maly, w, h, 3), m = new Uint8ClampedArray(maly);
+  uruchomWSkali(duzy, m, w, h, 3);
+  const pod = new Uint8ClampedArray(maly); uruchomWSkali(pod, pod, w, h, 1);
+  sprawdz(rowne(duzy, powieksz(pod, w, h, 3)), "faktura + kopia faktury, z=3: dokładnie powiększony podgląd");
+  /* nieufnie: obce klucze, zły typ, nieskończoność, kopia efektu „w czasie" */
+  ustaw({efekty: "tint,tint~2,czas~2,rgb~11", efektyKopie: JSON.stringify({"tint~2": {tint: "dużo", tintKolor: "#00ff00", sort: "poziomo", efekty: "x"}, "czas~2": {czasSzum: 50}, "tint~3": {tint: 1e999}})});
+  const kp = kopie();
+  sprawdz(JSON.stringify(kp) === JSON.stringify({"tint~2": {tintKolor: "#00ff00"}, "tint~3": {}}) && lista().map(e => e.id).join() === "tint,tint~2",
+          "zmieniony plik: tylko klucze tego efektu z dobrym typem, bez kopii „w czasie” i numerów > 9");
+  ustaw({efektyKopie: "{zepsuty"});
+  sprawdz(JSON.stringify(kopie()) === "{}", "zepsuty JSON — brak kopii, bez wyjątku");
+  /* usunięcie kopii usuwa jej parametry, pierwsza zostaje */
+  ustaw({});
+  dodaj("rgb"); const r2 = dodaj("rgb"); ustawParametrKopii(r2, "rgb", 9);
+  usun(r2);
+  sprawdz(S.efekty === "rgb" && S.efektyKopie === "" && S.rgb === 6, "usunięcie kopii: znika z listy i z parametrów");
+  let n = 0; while(dodaj("rgb")) n++;
+  sprawdz(lista().length === 9, `najwyżej 9 instancji (dodano ${n} kopii)`);
+  ustaw({}); dodaj("czas");
+  sprawdz(dodaj("czas") === null, "zmienności w czasie nie da się skopiować");
 }
 
 console.log("\nBŁĘDÓW:", bledy);

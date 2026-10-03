@@ -496,7 +496,9 @@ const CZESTOTLIWOSC = 48000;
 async function dzwiekFilmu(plik, od, doo){
   if(!plik || typeof AudioEncoder === "undefined") throw new Error("przeglądarka nie ma kodera dźwięku");
   let buf;
-  try{ buf = await new OfflineAudioContext(1, 1, CZESTOTLIWOSC).decodeAudioData(await plik.arrayBuffer()); }
+  /* pusty callback błędu: bez niego Chrome bywa, że loguje odrzucenie (film
+     bez dźwięku) jako błąd w konsoli, choć łapiemy je niżej */
+  try{ buf = await new OfflineAudioContext(1, 1, CZESTOTLIWOSC).decodeAudioData(await plik.arrayBuffer(), undefined, () => {}); }
   catch{ return null; }
   const kanaly = Math.min(2, buf.numberOfChannels);
   const s0 = Math.max(0, Math.round(od*CZESTOTLIWOSC)), s1 = Math.min(buf.length, Math.round(doo*CZESTOTLIWOSC));

@@ -23,10 +23,15 @@ class BezCache(http.server.SimpleHTTPRequestHandler):
     # Windows potrafi zgłaszać .js jako text/plain z rejestru — moduły ES
     # wymagają typu JavaScript, więc ustawiamy go jawnie
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
-                      ".js": "text/javascript", ".mjs": "text/javascript"}
+                      ".js": "text/javascript", ".mjs": "text/javascript",
+                      ".wasm": "application/wasm"}
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
+        # izolacja między źródłami: bez niej WebAssembly nie dostanie wielu
+        # wątków i automatyczne usuwanie tła liczy się na jednym rdzeniu
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         super().end_headers()
 
 

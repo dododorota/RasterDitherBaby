@@ -10,11 +10,13 @@
     "dev": "npx --yes serve .",
     "start": "node electron/start.mjs",
     "ikona": "node electron/ikona.mjs",
-    "paczka": "electron-builder --win"
+    "paczka": "electron-builder --win",
+    "modele": "node narzedzia/modele.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "onnxruntime-web": "^1.30.0"
   },
   "build": {
     "appId": "pl.dodo.raster",
@@ -29,7 +31,9 @@
       "fonty/**/*",
       "electron/main.js",
       "electron/ikona.png",
-      "package.json"
+      "package.json",
+      "vendor/**/*",
+      "modele/**/*"
     ],
     "win": {
       "target": [

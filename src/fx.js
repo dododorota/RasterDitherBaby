@@ -218,7 +218,17 @@ export const FAKTURY = {
   szum:       (X, Y) => { const v = 120 + skrot(X, Y, 21)*135; return [v, v, v]; },
   tkanina:    (X, Y) => { const pion = ((X >> 2) + (Y >> 2)) & 1, nic = pion ? (X & 3) : (Y & 3), v = (nic === 0 || nic === 3) ? 150 : 245; return [v, v - 6, v - 14]; },
   romby:      (X, Y) => (Math.abs((X % 8) - 3.5) + Math.abs((Y % 8) - 3.5) < 4) ? [255,255,255] : [90,90,90],
-  tecza:      (X, Y) => tecza((X + Y)/48)
+  tecza:      (X, Y) => tecza((X + Y)/48),
+  /* matryca LCD: komórka 4×4 — trzy subpiksele R, G, B i ciemna przerwa
+     w czwartej kolumnie i wierszu, jak ekran pod lupą */
+  matryca:    (X, Y) => (((X % 4) + 4) % 4 === 3 || ((Y % 4) + 4) % 4 === 3) ? [25,25,25] : [[255,50,50],[50,255,50],[60,60,255]][((X % 4) + 4) % 4],
+  /* wałek: poziome pasy nierównej farby — jasność płynie wzdłuż Y (szum
+     interpolowany co 5 komórek), z drobnymi smugami wzdłuż X */
+  walek:      (X, Y) => {
+    const t = Y/5, j = Math.floor(t), f = t - j, s = f*f*(3 - 2*f);
+    const v = skrot(0, j, 31) + (skrot(0, j + 1, 31) - skrot(0, j, 31))*s, smuga = skrot(X >> 4, Y, 32) < 0.15 ? 25 : 0;
+    const c = 135 + v*120 - smuga; return [c, c, c];
+  }
 };
 export function faktura(p, w, h, z){
   const wzor = FAKTURY[S.faktura], a = S.faktKrycie/100;

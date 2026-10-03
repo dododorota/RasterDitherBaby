@@ -298,9 +298,66 @@ podaje tabela `TYPY` — nowy rodzaj pliku w apce (np. `.webp` jako zasób)
 trzeba tam dopisać. Nowy katalog z plikami apki dopisz też do `build.files`
 w package.json, inaczej zabraknie go w .exe. Terminal VS Code ustawia
 `ELECTRON_RUN_AS_NODE=1` — stąd `npm start` przez `electron/start.mjs`,
+(test z `RASTER_ZRZUT` ma własny profil, więc działa obok otwartej apki),
 a ręcznie `env -u ELECTRON_RUN_AS_NODE …`. Test bez klikania:
 `RASTER_ZRZUT=plik.png` — wczytuje „Próbkę", zapisuje zrzut okna i błędy
 konsoli, zamyka się (działa też na `dist/win-unpacked/Raster.exe`).
+
+**Kopie efektu** (stos.js): instancja „rgb~2" w `S.efekty`, jej parametry
+w `S.efektyKopie` (tekst JSON, czytany nieufnie przez `kopie()`). Na czas
+uruchomienia kopii `zKopia()` podmienia jej klucze w S i przywraca — funkcje
+efektów i worker nic o kopiach nie wiedzą. Karta kopii to klon ciała karty
+z id + „__2" (`kartaKopii()` w app.js); jej kontrolki piszą przez
+`ustawParametrKopii()`, nie do S. Klatki kluczowe tylko dla pierwszej instancji.
+
+**Pędzel maski** (warstwy.js): `w.auto` (maska z koloru, liczona przy zmianie
+jej ustawień) + `w.reka` {dodaj, usun} na kopii roboczej. Pociągnięcie
+przelicza tylko prostokąt pod pędzlem (`odswiezObszar`) — pełne `wytnij()`
+przy każdym ruchu myszy cięło malowanie.
+
+**Animacja warstw**: klucze „w:<id>:<pole>" w tych samych `SCIEZKI`, ale
+`zastosuj()` oddaje je celowi zarejestrowanemu przez warstwy.js (`cel("w", …)`),
+nie S — po wszystkich wartościach cel raz woła `zloz()`. Klucze
+z dwukropkiem nie idą do presetu i `wczytaj()` ich nie kasuje; `KONW` dla nich
+ustawia app.js przy pierwszej klatce (`kluczWarstwyTeraz`). Id warstwy, nie
+indeks — kolejność warstw się zmienia.
+
+**Warstwa efektu** (`dodajEfekt` w warstwy.js): `zloz()` przy niej bierze
+dotąd złożone płótno, puszcza przez `uruchomEfekt()` ze stos.js (parametry
+podmieniane w S jak przy kopiach) i nakłada z kryciem i trybem warstwy. Nie ma
+obrazu — każda funkcja warstw dotykająca `w.obraz`/`w.tlo` musi ją pominąć
+(`czyEfekt`); kompUI kończy się przed polami tła.
+
+**Dot diffusion** (`dotDiffusion()` w dither-core.js): wg programu Knutha
+DOT-DIFF — tabela klas liczona jego `store_eight`, nie przepisana. Bez modelu
+„zeta" (toner), więc decyzja = najbliższy kolor przez `przygotuj()`. Test
+w algorytmy.mjs porównuje z jego programem przepisanym 1:1 (0 różnic) i ma
+luźniejszą tolerancję jasności — baronowie gubią błąd, tak jak u autora.
+
+**Automatyczne usuwanie tła** (`wycinanie-ai.js` + `wycinanie-ai-worker.js`):
+IS-Net w onnxruntime-web, w osobnym wątku. Przygotowanie wejścia jak w rembg
+(dzielenie przez max, −0,5, 1024², min–max na wyjściu) — zmieniając je,
+porównaj maskę z rembg. Pliki ONNX (`vendor/onnx/`) i model (`modele/`) są
+w .gitignore, przygotowuje je `npm run modele`; onnxruntime 1.30 ładuje
+wariant „asyncify" — przy aktualizacji pakietu sprawdź, którego pliku chce
+(błąd „Failed to fetch dynamically imported module"). Wiele wątków wymaga
+izolacji: serwer.py i electron/main.js wysyłają COOP/COEP — nie dokładaj
+zasobów z innych domen bez CORP, bo przestaną się ładować. Maska AI to
+`w.maskaAI` (raz na warstwę), `w.tlo.sposob` przełącza między nią a kolorem.
+
+**Krzywa klatki** (animacja.js): `{t, v, k}` — `k` to przejście OD tej klatki
+do następnej, bez `k` krzywa ścieżki. W presecie trzeci element klatki.
+
+**Faktura papieru** (`papier.js`): włókna i drobinki jako kształty
+w pikselach podglądu (`ctx.scale(z)`), chmurki jako mały obraz powiększany
+płynnie. Rysowana po kolorze papieru, przed farbami.
+
+**Testy przeglądarkowe a czas renderu**: `render()` podbija `out.dataset.nr`
+po każdym gotowym renderze — czekaj na niego, nie na `setTimeout`. Do
+porównań rastra z fakturą papieru używaj udziału różnych pikseli, nie
+odcisku całego obrazu (rasteryzacja tysięcy włókien nie jest bajt w bajt
+powtarzalna). Położenie `#out` czytaj przy każdym zdarzeniu — panel nad nim
+zmienia wysokość (przy wąskim oknie podgląd jest pod panelem).
 
 **Rozmycie** jest w `rozmycie.js` (czyste), bo potrzebuje go i halftone.js,
 i effects.js w workerze — a halftone.js importuje dom.js, którego worker nie

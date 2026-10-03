@@ -19,16 +19,21 @@ const KORZEN = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TYPY = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png",
-  ".jpg": "image/jpeg", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".ico": "image/x-icon"
+  ".jpg": "image/jpeg", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".ico": "image/x-icon",
+  ".wasm": "application/wasm", ".onnx": "application/octet-stream"
 };
+/* izolacja między źródłami — wiele wątków WebAssembly dla usuwania tła */
+const IZOLACJA = {"cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp"};
 
 protocol.registerSchemesAsPrivileged([{
   scheme: "app",
   privileges: {standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true}
 }]);
 
-/* jedno okno — drugie uruchomienie tylko je wyciąga na wierzch */
-if(!app.requestSingleInstanceLock()) app.quit();
+/* jedno okno — drugie uruchomienie tylko je wyciąga na wierzch. Test
+   (RASTER_ZRZUT) dostaje własny, tymczasowy profil i działa obok otwartej apki. */
+if(process.env.RASTER_ZRZUT) app.setPath("userData", path.join(app.getPath("temp"), "raster-test-" + process.pid));
+else if(!app.requestSingleInstanceLock()) app.quit();
 
 let okno = null, ostatniFolder = null;
 
@@ -77,7 +82,12 @@ function zrzut(plik){
       document.querySelector("#sample").click();
       await new Promise(r => setTimeout(r, 2500));
       const o = document.querySelector("#out");
-      return {szer: o.width, wys: o.height, font: document.fonts.check("14px Archivo"), worker: typeof Worker, koder: typeof VideoEncoder};
+      const wyn = {szer: o.width, wys: o.height, font: document.fonts.check("14px Archivo"), worker: typeof Worker, koder: typeof VideoEncoder, izolacja: crossOriginIsolated};
+      /* automatyczne usuwanie tła: model z paczki, WebAssembly/WebGPU */
+      document.querySelector("#usun-tlo").click();
+      for(let i=0; i<300 && !/Gotowe|Nie udało|nie jest pobrany/.test(document.querySelector("#komp-ai-stan").textContent); i++) await new Promise(r => setTimeout(r, 200));
+      wyn.tlo = document.querySelector("#komp-ai-stan").textContent;
+      return wyn;
     })()`);
     const obraz = await okno.webContents.capturePage();
     const { writeFile } = await import("node:fs/promises");
@@ -96,7 +106,7 @@ app.whenReady().then(() => {
     /* tylko pliki apki — ścieżka nie może wyjść poza jej katalog */
     if(!plik.startsWith(KORZEN + path.sep)) return new Response("", {status: 403});
     try{
-      return new Response(await readFile(plik), {headers: {"content-type": TYPY[path.extname(plik).toLowerCase()] || "application/octet-stream"}});
+      return new Response(await readFile(plik), {headers: {"content-type": TYPY[path.extname(plik).toLowerCase()] || "application/octet-stream", ...IZOLACJA}});
     }catch{
       return new Response("", {status: 404});
     }
