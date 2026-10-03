@@ -54,6 +54,7 @@ h1{
 .reg i{width:9px;height:9px;border-radius:50%;display:block;mix-blend-mode:multiply}
 :root[data-theme="dark"] .reg i{mix-blend-mode:normal}
 header .motyw{width:auto; padding:3px 10px; font-size:12px; align-self:center}
+header .motyw:disabled{opacity:.35; cursor:default}
 .tagline{color:var(--soft); font-size:13px}
 
 /* kolumna: nagłówek tyle, ile zajmie, reszta ekranu dla panelu i podglądu —
@@ -252,3 +253,11 @@ select option, select optgroup{background:var(--paper); color:var(--ink)}
 #out.pedzel{cursor:crosshair; touch-action:none}
 .sciezka .tor .kl.wlasna{width:auto; white-space:nowrap}
 #komp-efekt-karta .fx-cialo{margin-top:8px}
+
+/* kadrowanie: ramka nad podglądem, reszta przygaszona */
+.kadr{position:absolute; border:1px solid #fff; outline:1px dashed #000; box-shadow:0 0 0 9999px rgba(0,0,0,.5); cursor:move; touch-action:none; z-index:5}
+.kadr i{position:absolute; width:12px; height:12px; background:#fff; border:1px solid #000}
+.kadr i[data-r=nw]{left:-7px; top:-7px; cursor:nwse-resize}
+.kadr i[data-r=ne]{right:-7px; top:-7px; cursor:nesw-resize}
+.kadr i[data-r=sw]{left:-7px; bottom:-7px; cursor:nesw-resize}
+.kadr i[data-r=se]{right:-7px; bottom:-7px; cursor:nwse-resize}

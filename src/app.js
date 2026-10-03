@@ -12,6 +12,7 @@ import { tekstAscii, ZESTAWY } from "./ascii.js";
 import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, przelacz as przelaczEfekt, przesun as przesunEfekt,
          baza as bazaEfektu, kopie as kopieEfektow, ustawParametrKopii, czyMoznaDodac } from "./stos.js";
 import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
+import { normalizujKsztalt, biezacyQR } from "./siatki.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
 import { fit } from "./image.js";
 import { W, otworz as otworzWideo, zamknij as zamknijWideo, idzDo, graj, pauza, ustawTempo,
@@ -46,10 +47,59 @@ async function render(){
   out.dataset.nr = String((+out.dataset.nr || 0) + 1);
 }
 function schedule(){
+  zapamietajStan();
   if(queued) return;
   queued=true;
   requestAnimationFrame(()=>{ queued=false; render(); });
 }
+/* ---------- cofnij / ponów ----------
+   Historia wyglądu: migawki kluczy LOOK (to samo, co idzie do presetu), bez
+   parametrów animowanych — tymi rządzi oś czasu. Migawka 0,4 s po ostatniej
+   zmianie, więc całe przeciągnięcie suwaka to jeden krok; najwyżej 100.
+   Materiały (obraz, warstwy, paleta własna, klatki kluczowe) — poza historią.
+   Wołane z schedule(), więc każda zmiana panelu trafia tu sama. */
+/* stan kadrowania — tu, wysoko: kompUI() woła kadrUI() już przy starcie (TDZ) */
+const KADR = {aktywny: false, x: 0, y: 0, w: 0, h: 0, oryginal: null, ruch: null};
+const HIST = {stos: [], poz: -1, wstrzymaj: false, timer: 0};
+const MAX_HIST = 100;
+function migawkaWygladu(){
+  const o = {};
+  for(const k of LOOK) if(!czyAnimowany(k)) o[k] = S[k];
+  return JSON.stringify(o);
+}
+function zapamietajStan(){
+  if(HIST.wstrzymaj || W.gra || wTrakcie) return;
+  clearTimeout(HIST.timer);
+  HIST.timer = setTimeout(()=>{
+    const m = migawkaWygladu();
+    if(HIST.stos[HIST.poz] === m) return;
+    HIST.stos.splice(HIST.poz + 1);
+    HIST.stos.push(m);
+    if(HIST.stos.length > MAX_HIST) HIST.stos.shift();
+    HIST.poz = HIST.stos.length - 1;
+    historiaUI();
+  }, 400);
+}
+function historiaUI(){
+  $("#cofnij").disabled = HIST.poz <= 0;
+  $("#ponow").disabled = HIST.poz >= HIST.stos.length - 1;
+}
+function krokHistorii(o){
+  /* niezapisana jeszcze zmiana (w ciągu 0,4 s) — najpierw ją zapisz */
+  clearTimeout(HIST.timer);
+  const teraz = migawkaWygladu();
+  if(HIST.stos[HIST.poz] !== teraz){ HIST.stos.splice(HIST.poz + 1); HIST.stos.push(teraz); HIST.poz = HIST.stos.length - 1; }
+  const p = HIST.poz + o;
+  if(p < 0 || p >= HIST.stos.length) return;
+  HIST.poz = p;
+  HIST.wstrzymaj = true;
+  Object.assign(S, JSON.parse(HIST.stos[p]));
+  syncUI();
+  schedule();
+  HIST.wstrzymaj = false;
+  historiaUI();
+}
+
 /* ---------- kontrolki ----------
    Jedna tabela zamiast rozsypanych wywołań. Dzięki niej syncUI() potrafi
    odtworzyć cały panel ze stanu, a presety — te wbudowane i te z pliku — nie
@@ -157,12 +207,34 @@ let farbaRiso = 1;
     {id: "liniaMin", key: "liniaMin", opis: v => v + "%"}, {id: "liniaMax", key: "liniaMax", opis: v => v + "%"},
     {id: "walek", key: "walek", opis: v => v ? v + "%" : "brak"},
     {id: "papierSila", key: "papierSila", opis: v => v + "%"},
+    {id: "zlewanie", key: "zlewanie", opis: v => v ? v + "%" : "brak"},
+    {id: "scalanie", key: "scalanie", opis: v => v ? v + "%" : "brak"},
+    {id: "zaokraglenie", key: "zaokraglenie", opis: v => v ? v + "%" : "brak"},
+    {id: "stipIter", key: "stipIter", opis: v => String(v)},
+    {id: "qrWersja", key: "qrWersja", opis: v => v > 1 ? "wersja " + v + "+" : "najmniejsza"}, {id: "qrRozmiar", key: "qrRozmiar", opis: v => v + "%"},
+    {id: "boki", key: "boki", opis: v => String(v)}, {id: "wciecie", key: "wciecie", opis: v => v ? v + "%" : "brak"},
+    {id: "wykladnik", key: "wykladnik", opis: v => (v/10).toFixed(1).replace(".", ",")},
+    {id: "obrys", key: "obrys", opis: v => v ? (v/10).toFixed(1).replace(".", ",") + " px" : "brak"},
+    {id: "tonPowt", key: "tonPowt", opis: v => v > 1 ? "×" + v : "brak"}, {id: "tonPrzes", key: "tonPrzes", opis: v => v + "%"},
+    {id: "odpowiedz", key: "odpowiedz", opis: v => (v/100).toFixed(2).replace(".", ","), zS: v => v, naS: v => v},
+    {id: "minPunkt", key: "minPunkt", opis: v => v + "%"},
+    {id: "odksztalcenie", key: "odksztalcenie", opis: v => v ? v + "%" : "brak"}, {id: "odksztSkala", key: "odksztSkala", opis: v => v + " px"},
+    {id: "odksztPrzes", key: "odksztPrzes", opis: v => String(v)},
+    {id: "rozciag", key: "rozciag", opis: v => v + "%"}, {id: "pochyl", key: "pochyl", opis: v => v + "°"},
     {id: "chmury", key: "chmury", opis: v => v ? v + "%" : "brak"}, {id: "nierowne", key: "nierowne", opis: v => v ? v + "%" : "brak"},
     {id: "drganie", key: "drganie", opis: v => v ? v + "%" : "brak"}, {id: "postrzep", key: "postrzep", opis: v => v ? v + "%" : "brak"},
     {id: "risoLos", key: "risoLos", opis: v => v ? v + "%" : "brak"}, {id: "risoWariant", key: "risoWariant", opis: v => String(v)},
     {id: "szorstkosc", key: "szorstkosc", opis: v => v ? v + "%" : "brak"}, {id: "rozlanie", key: "rozlanie", opis: v => v ? v + "%" : "brak"},
     {id: "plamy", key: "plamy", opis: v => v ? v + "%" : "brak"}, {id: "dziury", key: "dziury", opis: v => v ? v + "%" : "brak"});
-  LISTY.push("siatka", "papierRodzaj");
+  LISTY.push("siatka", "papierRodzaj", "rasterGrad", "tonRodzaj", "qrKorekcja");
+  PTASZKI.push("gradOdwroc", "rozmiarJasnosc", "pustePrzezr", "obrotZSiatka");
+  /* gradienty do mapy w rastrze: palety „według jasności" z biblioteki */
+  const sel = document.querySelector("#rasterGrad");
+  let grupa = null, nazwa = "";
+  for(const p of BIBLIOTEKA) if(p.mapa === "jasnosc" && p.kolory.length >= 2){
+    if(p.kat !== nazwa){ grupa = document.createElement("optgroup"); grupa.label = nazwa = p.kat; sel.appendChild(grupa); }
+    const o = document.createElement("option"); o.value = p.id; o.textContent = p.nazwa; grupa.appendChild(o);
+  }
 })();
 /* widoczność: farby riso, zakładki tylko do liczby farb, środek przy okręgach
    i spirali, odkształcenie przy liniach (także na którejkolwiek farbie riso) */
@@ -182,12 +254,79 @@ function risoUI(){
   document.querySelector("#srodek-opcje").classList.toggle("hidden", !(S.siatka === "okregi" || S.siatka === "spirala" || S.siatka === "promienie"));
   document.querySelector("#riso-wariant-opcje").classList.toggle("hidden", !(S.risoLos > 0));
   document.querySelector("#papier-opcje").classList.toggle("hidden", S.papierRodzaj === "gladki");
+  document.querySelector("#ton-opcje").classList.toggle("hidden", !(S.tonPowt > 1 || S.tonPrzes > 0));
+  const ksz = riso ? [S.shape, ...[1, 2, 3, 4].slice(0, ile).map(i => S["risoS" + i])] : [S.shape];
+  document.querySelector("#wielokat-opcje").classList.toggle("hidden", !ksz.includes("wielokat"));
+  document.querySelector("#superelipsa-opcje").classList.toggle("hidden", !ksz.includes("superelipsa"));
+  document.querySelector("#znak-opcje").classList.toggle("hidden", !ksz.includes("znak"));
+  document.querySelector("#wlasny-opcje").classList.toggle("hidden", !ksz.includes("wlasny"));
+  document.querySelector("#znak").value = S.znak;
+  document.querySelector("#odkszt-opcje").classList.toggle("hidden", !(S.odksztalcenie > 0));
+  document.querySelector("#stipple-opcje").classList.toggle("hidden", S.siatka !== "stipple");
+  document.querySelector("#qr-opcje").classList.toggle("hidden", S.siatka !== "qr");
+  if(S.siatka === "qr"){
+    document.querySelector("#qrTekst").value = S.qrTekst;
+    const q = biezacyQR();
+    document.querySelector("#qr-info").textContent = q
+      ? "Wersja " + q.wersja + " — " + q.rozmiar + "×" + q.rozmiar + " modułów. Środek każdego modułu niesie kod, reszta to raster obrazu. Sprawdź telefonem przed drukiem."
+      : "Za dużo tekstu na kod QR — skróć treść albo wybierz mniejszą odporność.";
+  }
+  document.querySelector("#scalanie-hint").classList.toggle("hidden", !(S.scalanie > 0 && (S.siatka !== "kwadrat" || S.rozciag !== 100 || S.pochyl !== 0)));
+  const barwne = S.inkmode === "obraz" || S.inkmode === "gradient";
+  document.querySelector("#barwne-opcje").classList.toggle("hidden", !barwne);
+  document.querySelector("#grad-opcje").classList.toggle("hidden", S.inkmode !== "gradient");
   /* tusz: pokaż nazwę, jeśli kolor farby jest z biblioteki */
   for(let i=1; i<=4; i++){
     const t = document.querySelector("#risoT" + i), k = String(S["risoK" + i]).toLowerCase();
     t.value = TUSZE_RISO.some(([, h]) => h === k) ? k : "";
   }
 }
+
+/* Własny kształt: plik SVG wstawiony na chwilę do strony (niewidoczny), żeby
+   przeglądarka sama policzyła geometrię — krzywe, łuki, przekształcenia.
+   Każdy kształt próbkowany po długości (getPointAtLength) w układzie
+   dokumentu (getCTM); skok między próbkami = nowy podkontur (polecenie M). */
+async function wczytajKsztaltSVG(f){
+  const tekst = await f.text();
+  const doc = new DOMParser().parseFromString(tekst, "image/svg+xml");
+  const svg = doc.querySelector("svg");
+  const info = document.querySelector("#wlasny-info");
+  if(!svg){ info.textContent = "To nie jest plik SVG."; return; }
+  const box = document.createElement("div");
+  box.style.cssText = "position:absolute; left:-10000px; top:0; width:400px; height:400px; visibility:hidden";
+  const kopia = document.importNode(svg, true);
+  for(const s of kopia.querySelectorAll("script, foreignObject")) s.remove();
+  box.appendChild(kopia); document.body.appendChild(box);
+  const kontury = [];
+  try{
+    for(const el of kopia.querySelectorAll("path, polygon, polyline, rect, circle, ellipse, line")){
+      if(!el.getTotalLength) continue;
+      const L = el.getTotalLength(), m = el.getCTM();
+      if(!(L > 0) || !m) continue;
+      const n = Math.min(4000, Math.max(64, Math.round(L))), krok = L/n;
+      let biezacy = [], pop = null;
+      for(let i=0; i<=n; i++){
+        const p = el.getPointAtLength(Math.min(L, i*krok)), x = m.a*p.x + m.c*p.y + m.e, y = m.b*p.x + m.d*p.y + m.f;
+        if(pop && Math.hypot(x - pop[0], y - pop[1]) > krok*3*Math.hypot(m.a, m.b)){ if(biezacy.length > 2) kontury.push(biezacy); biezacy = []; }
+        biezacy.push([x, y]); pop = [x, y];
+      }
+      if(biezacy.length > 2) kontury.push(biezacy);
+    }
+  } finally { box.remove(); }
+  const k = normalizujKsztalt(kontury);
+  if(!k){ info.textContent = "Nie znalazłam w pliku zamkniętych kształtów."; return; }
+  S.ksztaltWlasny = JSON.stringify(k);
+  info.textContent = "Kształt: " + f.name + " — " + k.length + " " + (k.length === 1 ? "kontur" : "kontury") + ".";
+  schedule();
+}
+document.querySelector("#wlasny-wczytaj").addEventListener("click", () => document.querySelector("#wlasny-plik").click());
+document.querySelector("#wlasny-plik").addEventListener("change", e => { if(e.target.files[0]) wczytajKsztaltSVG(e.target.files[0]); e.target.value = ""; });
+
+/* treść kodu QR — pole tekstowe; opis wersji odświeża risoUI() */
+document.querySelector("#qrTekst").addEventListener("input", e=>{ S.qrTekst = e.target.value; risoUI(); schedule(); });
+
+/* znaki punktów — pole tekstowe, poza tabelami kontrolek (jak własne znaki ASCII) */
+document.querySelector("#znak").addEventListener("input", e=>{ S.znak = e.target.value; schedule(); });
 
 /* Lista palet budowana z biblioteki, w grupach według kategorii. Musi powstać
    przed pierwszym syncUI() — inaczej odrzuciłby pal z DEFAULTS jako nieznaną. */
@@ -638,7 +777,7 @@ for(const c of SUWAKI){
     S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
     if(c.key==="glebia") probkiUI();
-    if(c.key==="risoIle" || c.key==="risoLos") risoUI();
+    if(c.key==="risoIle" || c.key==="risoLos" || c.key==="tonPowt" || c.key==="tonPrzes" || c.key==="odksztalcenie" || c.key==="scalanie" || c.key==="rozciag" || c.key==="pochyl" || c.key==="qrWersja") risoUI();
     /* parametr już animowany: ruszenie suwaka ustawia klatkę w bieżącym miejscu osi */
     if(W.z && czyAnimowany(c.key)){ ustawKlucz(c.key, czasOd(W.biezaca), +el.value); kluczeUI(); }
     schedule();
@@ -684,7 +823,7 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="mapa") mapaUI();
   if(k==="sort") efektyUI();
   if(k==="asciiZestaw" || k==="asciiTryb" || k==="asciiKolor") asciiUI();
-  if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || /^risoS/.test(k)) risoUI();
+  if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k)) risoUI();
   schedule();
 });
 function koloryUI(){ for(const {id, key} of KOLORY) $("#"+id).value = S[key]; }
@@ -997,6 +1136,8 @@ function setImage(img, nazwa){
   /* w kompozycji każdy wczytany obraz (plik, przeciągnięcie, próbka) to nowa warstwa */
   if(K.aktywna && !W.z){ dodajWarstwe(img, nazwa); odswiezKomp(); kompUI(); komunikatWczytania(""); return; }
   nazwaObrazu = nazwa || "obraz";
+  /* nowy obraz: zapamiętany oryginał sprzed kadrowania już nie dotyczy */
+  KADR.oryginal = null; zakonczKadr();
   zamknijWideo();
   S.klatkaNr = 0;
   komunikatWczytania("");
@@ -1246,6 +1387,16 @@ $("#tempo").addEventListener("change", e=>{
   ustawTempo(+e.target.value);
   zakresUI();
 });
+$("#cofnij").addEventListener("click", ()=>krokHistorii(-1));
+$("#ponow").addEventListener("click", ()=>krokHistorii(1));
+/* Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y — poza polami tekstowymi, które mają własne cofanie */
+document.addEventListener("keydown", e=>{
+  if(!(e.ctrlKey || e.metaKey) || wTrakcie) return;
+  if(e.target.closest('input[type="text"], input[type="number"], textarea')) return;
+  const k = e.key.toLowerCase();
+  if(k === "z" && !e.shiftKey){ e.preventDefault(); krokHistorii(-1); }
+  else if((k === "z" && e.shiftKey) || k === "y"){ e.preventDefault(); krokHistorii(1); }
+});
 document.addEventListener("keydown", e=>{
   if(e.code !== "Space" || !W.z || wTrakcie) return;
   if(e.target.closest("input, select, textarea, button")) return;
@@ -1469,6 +1620,7 @@ const WL = [["komp-x", "x", v => Math.round(v) + " px"], ["komp-y", "y", v => Ma
 function kompUI(){
   const film = W.z && W.z.rodzaj !== "stopklatka";
   $("#komp-start").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
+  kadrUI();
   $("#usun-tlo").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
   $("#g-warstwy").classList.toggle("hidden", !K.aktywna || film);
   if(!K.aktywna) return;
@@ -1721,6 +1873,85 @@ $("#usun-tlo").addEventListener("click", async ()=>{
   kompUI();
   await usunTloAI(w);
 });
+
+/* ---------- kadrowanie ----------
+   Ramka w pikselach obrazu (S.img), rysowana nad podglądem (ten ma te same
+   proporcje co obraz). Zatwierdzenie podmienia S.img na wycinek — dalej jak
+   zwykły obraz; oryginał zostaje do „Przywróć cały obraz". Tylko zwykłe
+   obrazy: film ma własny zakres, kompozycja własne płótno. */
+const proporcja = () => +$("#kadr-proporcje").value || 0;
+function kadrUI(){
+  const mozna = !!S.img && !W.z && !K.aktywna && !wTrakcie;
+  $("#kadruj").classList.toggle("hidden", !mozna || KADR.aktywny);
+  $("#kadr-opcje").classList.toggle("hidden", !KADR.aktywny);
+  $("#kadr-oryginal").classList.toggle("hidden", !mozna || KADR.aktywny || !KADR.oryginal);
+  $("#kadr").classList.toggle("hidden", !KADR.aktywny);
+  if(KADR.aktywny) ustawRamke();
+}
+/* największa ramka o zadanych proporcjach, wokół środka (cx, cy), w granicach obrazu */
+function dopasujKadr(cx, cy){
+  const W0 = S.img.width, H0 = S.img.height, p = proporcja();
+  let w = KADR.w || W0, h = KADR.h || H0;
+  if(p){ w = Math.min(W0, H0*p); h = w/p; }
+  KADR.w = w; KADR.h = h;
+  KADR.x = Math.min(W0 - w, Math.max(0, cx - w/2)); KADR.y = Math.min(H0 - h, Math.max(0, cy - h/2));
+}
+function ustawRamke(){
+  const r = out.getBoundingClientRect(), s = stage.getBoundingClientRect(), k = r.width/S.img.width, el = $("#kadr");
+  el.style.left = (r.left - s.left + stage.scrollLeft + KADR.x*k) + "px"; el.style.top = (r.top - s.top + stage.scrollTop + KADR.y*k) + "px";
+  el.style.width = (KADR.w*k) + "px"; el.style.height = (KADR.h*k) + "px";
+}
+function zakonczKadr(){ KADR.aktywny = false; KADR.ruch = null; kadrUI(); }
+$("#kadruj").addEventListener("click", ()=>{
+  if(!S.img || W.z || K.aktywna) return;
+  KADR.aktywny = true; KADR.w = 0; KADR.h = 0;
+  dopasujKadr(S.img.width/2, S.img.height/2);
+  kadrUI();
+});
+$("#kadr-proporcje").addEventListener("change", ()=>{ dopasujKadr(KADR.x + KADR.w/2, KADR.y + KADR.h/2); ustawRamke(); });
+$("#kadr-anuluj").addEventListener("click", zakonczKadr);
+$("#kadr-ok").addEventListener("click", ()=>{
+  const x = Math.round(KADR.x), y = Math.round(KADR.y), w = Math.max(1, Math.round(KADR.w)), h = Math.max(1, Math.round(KADR.h));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(S.img, x, y, w, h, 0, 0, w, h);
+  if(!KADR.oryginal) KADR.oryginal = S.img;
+  zakonczKadr();
+  pokazObraz(c);
+  kadrUI();
+});
+$("#kadr-oryginal").addEventListener("click", ()=>{
+  if(!KADR.oryginal) return;
+  const o = KADR.oryginal; KADR.oryginal = null;
+  pokazObraz(o);
+  kadrUI();
+});
+/* przesuwanie ramki i zmiana rozmiaru rogiem (z zachowaniem proporcji);
+   przeciwległy róg stoi w miejscu */
+$("#kadr").addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  $("#kadr").setPointerCapture(e.pointerId);
+  KADR.ruch = {rog: e.target.dataset.r || null, sx: e.clientX, sy: e.clientY, x: KADR.x, y: KADR.y, w: KADR.w, h: KADR.h};
+});
+$("#kadr").addEventListener("pointermove", e=>{
+  const m = KADR.ruch; if(!m) return;
+  const k = out.getBoundingClientRect().width/S.img.width, dx = (e.clientX - m.sx)/k, dy = (e.clientY - m.sy)/k;
+  const W0 = S.img.width, H0 = S.img.height, p = proporcja(), MIN = 16;
+  if(!m.rog){
+    KADR.x = Math.min(W0 - m.w, Math.max(0, m.x + dx)); KADR.y = Math.min(H0 - m.h, Math.max(0, m.y + dy));
+  } else {
+    const lewy = m.rog[1] === "w", gora = m.rog[0] === "n";
+    const fx = lewy ? m.x + m.w : m.x, fy = gora ? m.y + m.h : m.y;          /* przeciwległy róg */
+    let w = Math.max(MIN, m.w + (lewy ? -dx : dx)), h = Math.max(MIN, m.h + (gora ? -dy : dy));
+    if(p){ if(w/h > p) h = w/p; else w = h*p; }
+    const maxW = lewy ? fx : W0 - fx, maxH = gora ? fy : H0 - fy;
+    if(w > maxW){ w = maxW; if(p) h = w/p; }
+    if(h > maxH){ h = maxH; if(p) w = h*p; }
+    KADR.w = w; KADR.h = h; KADR.x = lewy ? fx - w : fx; KADR.y = gora ? fy - h : fy;
+  }
+  ustawRamke();
+});
+for(const ev of ["pointerup", "pointercancel"]) $("#kadr").addEventListener(ev, ()=>{ KADR.ruch = null; });
+window.addEventListener("resize", ()=>{ if(KADR.aktywny) ustawRamke(); });
 
 /* przeciąganie warstwy po podglądzie: współrzędne ekranu → płótno kompozycji
    (podgląd to płótno pomniejszone z zachowaniem proporcji) */

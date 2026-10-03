@@ -345,6 +345,61 @@ izolacji: serwer.py i electron/main.js wysyłają COOP/COEP — nie dokładaj
 zasobów z innych domen bez CORP, bo przestaną się ładować. Maska AI to
 `w.maskaAI` (raz na warstwę), `w.tlo.sposob` przełącza między nią a kolorem.
 
+**Kolory punktów** (inkmode „obraz"/„gradient"): farba z `barwa(r,g,b)`
+w inkList; geometria dokłada kolor szóstym elementem punktu
+(`[x,y,r,kąt,id|-1,[r,g,b]]`) i czwartym elementem punktu linii. Rysowanie
+grupami po kolorze, linie przez `odcinkiBarwne()` (32 poziomy na kanał,
+zakładka o krok — przy samym styku antyaliasing zostawiał kreski). Taka farba
+kładzie się `source-over` (`ink.mieszanie`), nie mnożeniem.
+
+**Ton → pokrycie** (`przemianaTonu()` w siatki.js): fala tonu i krzywa
+wielkości opakowują `ink.cov` na wejściu `geometria()` — działa we
+wszystkich siatkach i w liniach bez dotykania ich kodu. Odkształcenie
+(`przesuniecie()`) przed próbką, w pikselach podglądu; rozciągnięcie
+i pochylenie — osobna gałąź pętli, żeby przy wartościach neutralnych zwykła
+gałąź liczyła co do bitu jak dawniej (porównanie 72 przypadków ze starą
+wersją). Rysowanie kształtów: `rysujGrupe()` w halftone.js i `svgGrupa()`
+w vector.js — te same rozgałęzienia (znak / ścieżka / wprost); `sciezkowy()`
+decyduje, kiedy dawne kształty idą konturami (obrys).
+
+**Stippling, zlewanie, scalanie** (siatki.js): stippling (`stipple()`) to
+Lloyd na siatce próbek, z pamięcią ostatnich 4 układów (klucz: odcisk
+pokrycia + parametry) — bez niej każdy render liczył relaksację od nowa.
+Zlewanie (`metaballe()`) zamienia punkty na `wyn.plamy` (kontury); warstwica
+liczona na −f^(−1/w), nie na f (na f plamy wychodziły o 70% za duże), a
+promień poprawiony o stratę pola wielokąta wpisanego (test: pojedynczy punkt
+≈ pole koła). Scalanie (`scal()`) tylko na zwykłej siatce kwadratowej;
+`dodaj()` zwraca indeks punktu, −1 (brak farby) albo −2 (poza kadrem —
+nie blokuje bloku). Własny kształt: `S.ksztaltWlasny` (JSON konturów
+znormalizowanych do pola π), czytany nieufnie przez `ksztaltWlasny()`;
+geometrię pliku SVG liczy przeglądarka (`getPointAtLength`, `getCTM`)
+w niewidocznym kontenerze (app.js, `wczytajKsztaltSVG`).
+
+**Kod QR** (`qr.js`, czysty): koder według standardu, tabele bloków
+korekcji z biblioteki Nayuki (MIT). Przy pisaniu sprawdzony dekoderem jsQR
+(48 kodów; raster QR na różnych obrazach — 24/24 po powiększeniu środka
+modułu do 0,45); `testy/qr.mjs` pilnuje tego odciskami i własnościami
+standardu, bez zależności. Ruszając koder albo `siatkaQR()`, sprawdź znowu
+dekoderem (jsQR w katalogu tymczasowym, nie w projekcie) i telefonem.
+Kwadraty kodu idą jako `wyn.dodatki` (kontury) obok punktów.
+
+**Zaokrąglanie rogów** (`zaokraglij()`): w `obrys()`, więc działa wszędzie,
+gdzie kształt idzie ścieżką; `sciezkowy()` przełącza dawne kształty na
+kontury, gdy zaokrąglenie > 0. Pole przywracane skalą.
+
+**Przezroczystość w rastrze**: `pokrycie()` mnoży przez alfę próbki
+(`S.pustePrzezr`, domyślnie tak). Obrazy nieprzezroczyste — co do bitu jak
+dawniej; obrazy z alfą zmieniły się celowo (wcześniej przezroczyste = czerń).
+
+**Kadrowanie** (app.js, `KADR` — zdefiniowane wysoko, bo `kompUI()` woła
+`kadrUI()` przy starcie): ramka w pikselach S.img nad podglądem;
+zatwierdzenie to `pokazObraz(wycinek)`, oryginał w `KADR.oryginal` do
+przywrócenia; `setImage()` go zapomina.
+
+**Cofnij / ponów** (app.js, `HIST`): migawki LOOK bez kluczy animowanych,
+wołane z `schedule()` z opóźnieniem 0,4 s. Nowa kontrolka wyglądu trafia do
+historii sama, jeśli jej zmiana woła `schedule()`.
+
 **Krzywa klatki** (animacja.js): `{t, v, k}` — `k` to przejście OD tej klatki
 do następnej, bez `k` krzywa ścieżki. W presecie trzeci element klatki.
 
@@ -450,7 +505,8 @@ contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.
 siatki.js i faktura-farby.js, `wycinanie` → wycinanie.js, `algorytmy` →
 wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
 `korekta` → image.js, głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
-ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js.
+ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js,
+`qr` → qr.js i siatka QR.
 Każdy kończy się kodem 0, gdy wszystko gra.
 
 `testy/przegladarka.mjs` to test całej ścieżki wideo w Chrome bez okna

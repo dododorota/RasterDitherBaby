@@ -68,7 +68,10 @@ z palety albo jeden. Zapis do PNG, SVG (znaki jako tekst) i TXT.
 z położeniem, skalą, obrotem, kryciem i trybem mieszania.
 
 Interfejs domyślnie ciemny; przełącznik jasny/ciemny w nagłówku, wybór
-zapamiętany. Grupy panelu zwijają się kliknięciem w nagłówek. Ponad 40 wbudowanych palet w kategoriach
+zapamiętany. **Cofnij / ponów** (↶ ↷ w nagłówku, Ctrl+Z, Ctrl+Shift+Z) —
+historia ustawień wyglądu, całe przeciągnięcie suwaka to jeden krok; poza
+historią są materiały (obraz, warstwy, paleta własna, klatki kluczowe)
+i parametry animowane. Grupy panelu zwijają się kliknięciem w nagłówek. Ponad 40 wbudowanych palet w kategoriach
 (retro sprzęt, monitory, gradienty, duotony, riso, neon), edytor kolorów, paleta
 wyciągana ze zdjęcia, a kolory przypisane albo jako najbliższe, albo według
 jasności — jak mapa gradientu. Opis niżej, w „Kolorach w ditheringu".
@@ -117,6 +120,7 @@ src/siatki.js     geometria rastra: siatki, kształty punktu, raster liniowy
 src/faktura-farby.js szorstkość, rozlanie, plamy i dziury farby
 src/wycinanie.js  usuwanie tła po kolorze (maska), bez DOM-u
 src/papier.js     faktura papieru pod farbą w rastrze
+src/qr.js         koder kodów QR (do siatki QR w rastrze), bez DOM-u
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
 src/contours.js   obrys konturowy: śledzenie brzegów i wygładzanie ścieżek
@@ -153,15 +157,53 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
 ## Raster i risograf
 
 - **Siatka** — kwadratowa (klasyczna), heksagonalna (punkty w trójkątach,
-  równe odstępy we wszystkich kierunkach), koncentryczne okręgi, spirala,
-  promienie (słońce) albo „wzdłuż kształtu"; okręgi, spirala i promienie od
+  równe odstępy we wszystkich kierunkach), trójkątna (punkty w trójkątach
+  na przemian w górę i w dół — trójkątny kształt składa się w mozaikę),
+  **stippling** (punkty jednej wielkości rozłożone gęstością — ważone
+  diagramy Woronoja, Secord 2002; suwak wyrównania rozkładu), koncentryczne
+  okręgi, spirala, promienie (słońce) albo „wzdłuż kształtu"; okręgi, spirala i promienie od
   środka przesuniętego suwakami.
 - **Wzdłuż kształtu** — równe linie pod kątem farby, które obraz wygina:
   zaginają się wokół form i zagęszczają na krawędziach, jak rytowane linie
   obchodzące policzek. Siłę ustawia „Odkształcenie", gładkość upraszcza
   linie do większych form. Działa też z punktami (punkty wzdłuż linii).
 - **Kształt punktu** — dawne (koło, kwadrat, romb, elipsa, linia, krzyżyk)
-  i nowe: gwiazdka, krzyżyk ukośny, pierścień, sześciokąt, elipsa pod kątem.
+  i nowe: gwiazdka, krzyżyk ukośny, pierścień, sześciokąt, elipsa pod kątem,
+  trójkąt, wielokąt o 3–12 bokach (z wcięciem — gwiazda), superelipsa (od
+  koła do kwadratu) i **znak** — litera, słowo albo emoji jako punkt (kilka
+  znaków idzie po kolei). Nowe kształty mają pole koła, więc zmiana kształtu
+  nie zmienia tonu. **Obrys zamiast wypełnienia** — dla każdego kształtu,
+  także w SVG. **Własny kształt z pliku SVG** — logo, ikona, rysunek
+  (wszystkie kontury pliku, z otworami, krzywe i przekształcenia); zapisuje
+  się w presecie. „Obracaj kształt z siatką" wyłączone — kształt stoi prosto.
+- **Zlewanie punktów** (metaballe) — sąsiednie punkty zlewają się w płynne
+  plamy; pojedynczy punkt zostaje swoim kołem, więc ton się nie zmienia.
+  Kontury, więc też w SVG.
+- **Zaokrąglenie rogów** — każdy kształt z rogami (kwadrat, romb, krzyż,
+  trójkąt, wielokąt, gwiazda, własny SVG) z łukami zamiast wierzchołków;
+  pole zostaje, więc ton się nie zmienia.
+- **Kod QR jako siatka** — raster, który da się zeskanować telefonem
+  (technika „halftone QR", Chu i in. 2013): środek każdego modułu niesie bit
+  kodu, reszta to raster obrazu; wzory w rogach pełne, wokół strefa ciszy.
+  Treść (adres, tekst, także polskie znaki i emoji), odporność L/M/Q/H,
+  gęstość i wielkość kodu. Koder własny (`src/qr.js`), sprawdzony niezależnym
+  dekoderem; zanim wydrukujesz — zeskanuj telefonem.
+- **Scalanie równych obszarów** — na siatce kwadratowej bloki 2×2, 4×4, 8×8
+  o równym tonie stają się jednym dużym punktem (pole = suma pól), drobny
+  raster zostaje w szczegółach.
+- **Przezroczyste miejsca obrazu jako papier** (domyślnie) — PNG z alfą
+  i kompozycja z przezroczystym tłem: tam nie ma farby. Wcześniej
+  przezroczystość liczyła się jak czerń.
+- **Kolory punktów** — „Kolory z obrazu" (każdy punkt w kolorze zdjęcia
+  w swoim miejscu) i „Mapa gradientu" (ton → kolor z gradientu biblioteki,
+  przejścia w Oklab, z odwróceniem); „rozmiar z jasności" na ciemny papier.
+  Działa z punktami, liniami i SVG (linie — odcinkami jednego koloru).
+- **Ton i wielkość punktu** — fala tonu (piła albo trójkąt, powtórzenia,
+  przesunięcie): ton zawijany w pasy, z gładkiego zdjęcia robią się obwódki;
+  krzywa wielkości (ton → rozmiar) i najmniejszy punkt.
+- **Odkształcenie siatki** — płynięcie: punkty i linie przesunięte gładkim
+  polem szumu (siła, wielkość wirów, przesunięcie pola — da się animować);
+  rozciągnięcie i pochylenie siatki kwadratowej i heksagonalnej.
 - **Linie — raster liniowy**: zamiast punktów ciągłe linie wzdłuż siatki,
   grubsze w ciemnych miejscach. „Odkształcenie" przesuwa linię w bok o jasność
   obrazu — z prostych pasów robią się fale, jak w grafice rytowanej; na siatce
@@ -541,6 +583,11 @@ w Illustratorze), TXT (sam tekst).
 
 ## Warstwy
 
+**Kadruj** (grupa *Obraz*) — ramka nad podglądem: przesuwasz ją, rogami
+zmieniasz rozmiar, proporcje do wyboru (swobodnie, 1:1, 4:5, 9:16, 16:9, 3:2,
+2:3, A4). „Zatwierdź" podmienia obraz na wycinek, „Przywróć cały obraz" wraca
+do oryginału. Tylko zwykłe obrazy (nie film, nie kompozycja).
+
 „Kompozycja z warstw" w grupie *Obraz* robi z bieżącego obrazu pierwszą
 warstwę płótna. „Usuń tło i podłóż kolor" robi to samo, od razu z wyciętym
 tłem i płótnem w kolorze papieru — wystarczy zmienić kolor tła płótna. Dalej:
@@ -674,34 +721,10 @@ Porównanie z Dither Boyem (studioaaa.com): wszystko z listy jest, poza
 wariantem Riemersmy z rozkładem przestrzennym (brak źródła).
 
 Porównanie rastra z **Halftone Maker** (halftonemaker.com) i **Vector
-Halftone Maker** (halftone.xoihazard.com) — czego u nas nie ma, od
-najciekawszych:
-
-- **kolor punktów z obrazu i mapa gradientu** — punkty w kolorach zdjęcia
-  albo barwione tonem przez gradient (presety, OKLCH); u nas raster ma farby,
-  nie kolory źródła;
-- **fala tonu** (sawtooth / triangle / przesunięcie) — ton zawijany
-  cyklicznie, z gładkiego zdjęcia robią się koncentryczne pasy jak warstwice;
-- **odkształcenie siatki szumem** (Perlin: siła, skala, wir, przesunięcie)
-  oraz **rozciągnięcie i pochylenie** siatki — u nas siatkę można tylko
-  obrócić, a drganie punktów jest losowe, nie płynne;
-- **kształty**: trójkąt, wielokąt o N bokach i gwiazda z regulowanym
-  wcięciem, superelipsa (od koła do kwadratu), znak / litera / emoji jako
-  punkt, własny kształt z pliku SVG, zaokrąglanie rogów, **obrys zamiast
-  wypełnienia**;
-- **krzywa wielkości punktu** — odpowiedź ton → rozmiar (wykładnik),
-  minimalny rozmiar punktu (dla punktów, linie już mają);
-- **metaballe / „liquid"** — punkty zlewające się w płynne plamy z progiem,
-  i **blob** — mostki między sąsiednimi punktami;
-- **stippling** — punkty rozmieszczone gęstością (relaksacja Lloyda), bez
-  siatki; **scalanie regionów** — jednolite obszary jako większe punkty
-  (zachłannie albo fraktalnie, jak drzewo czwórkowe);
-- **siatka trójkątna** i siatka z kodu QR (ciekawostka);
-- **kadrowanie** obrazu z proporcjami i automatyczne dopasowanie do obiektu;
-- **„wyrzuć przezroczyste"** — PNG z alfą: tło przezroczyste zostaje puste
-  zamiast liczyć się jako biel; próbkowanie kanału alfa;
-- **SVG: scalenie kształtów** w jedną ścieżkę (unia) i dokładność liczb;
-- **cofnij / ponów**.
+Halftone Maker** (halftone.xoihazard.com): wszystko zrobione poza
+**scaleniem SVG w jedną ścieżkę** (unia kształtów) — wymaga biblioteki
+operacji na wielokątach; nakładające się kształty w SVG wyglądają tak samo,
+inaczej tylko się je edytuje.
 
 U nas jest, a tam nie: risograf z farbami i fakturą, raster liniowy
 z falami i „wzdłuż kształtu", faktura papieru, nierówny raster, kompozycja

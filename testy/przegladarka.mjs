@@ -876,6 +876,95 @@ try{
   sprawdz(pap.opcje && pap.zmiana > 0.02 && pap.powtorka < 0.002 && pap.powrot < 0.002,
           `faktura papieru: zmienia ${(pap.zmiana*100).toFixed(1)}% pikseli, powtórka ${(pap.powtorka*100).toFixed(2)}%, „Gładki” wraca (${(pap.powrot*100).toFixed(2)}%)`);
 
+  console.log("--- własny kształt SVG ---");
+  const ksz = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const stary = S.img; $("#sample").click(); await czekaj(() => S.img !== stary);
+    $("#tab-half").click();
+    const sel = $("#shape"); sel.value = "wlasny"; sel.dispatchEvent(new Event("change"));
+    /* serce z krzywych + kółko z przekształceniem i dziurą (evenodd) */
+    const plik = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <path d="M50 85 C 10 55, 10 20, 35 20 C 45 20, 50 30, 50 35 C 50 30, 55 20, 65 20 C 90 20, 90 55, 50 85 Z"/>
+      <g transform="translate(200 0) scale(2)"><path fill-rule="evenodd" d="M0 0 H20 V20 H0 Z M5 5 V15 H15 V5 Z"/></g></svg>`;
+    const dt = new DataTransfer(); dt.items.add(new File([plik], "serce.svg", {type: "image/svg+xml"}));
+    const inp = $("#wlasny-plik"); inp.files = dt.files; inp.dispatchEvent(new Event("change"));
+    await czekaj(() => S.ksztaltWlasny !== "", 5000);
+    const k = JSON.parse(S.ksztaltWlasny);
+    const wyn = {opcje: !$("#wlasny-opcje").classList.contains("hidden"), kontury: k.length, info: $("#wlasny-info").textContent,
+      szer: Math.max(...k.flat().map(p => p[0])) - Math.min(...k.flat().map(p => p[0]))};
+    sel.value = "circle"; sel.dispatchEvent(new Event("change"));
+    S.ksztaltWlasny = "";
+    $("#tab-dither").click();
+    return wyn;
+  });
+  sprawdz(ksz.opcje && ksz.kontury === 3 && /serce\.svg — 3 kontury/.test(ksz.info) && ksz.szer > 2,
+          `plik SVG → ${ksz.kontury} kontury (serce z krzywych, kwadrat i dziura po przekształceniu): ${ksz.info}`);
+
+  console.log("--- kadrowanie ---");
+  const kad = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const c = document.createElement("canvas"); c.width = 400; c.height = 300;
+    const x = c.getContext("2d"); x.fillStyle = "#ff0000"; x.fillRect(0, 0, 200, 300); x.fillStyle = "#0000ff"; x.fillRect(200, 0, 200, 300);
+    const stary = S.img;
+    upusc(new File([await new Promise(r => c.toBlob(r, "image/png"))], "pol.png", {type: "image/png"}));
+    await czekaj(() => S.img !== stary && S.img.width === 400);
+    await new Promise(r => setTimeout(r, 300));
+    $("#kadruj").click();
+    const sel = $("#kadr-proporcje"); sel.value = "1"; sel.dispatchEvent(new Event("change"));
+    const ramka = $("#kadr"), wyn = {widac: !ramka.classList.contains("hidden")};
+    /* przeciągnięcie ramki maksymalnie w prawo (300×300 → x od 100) */
+    const r = ramka.getBoundingClientRect(), k = $("#out").getBoundingClientRect().width/400;
+    const zd = (el, typ, px, py) => el.dispatchEvent(new PointerEvent(typ, {clientX: px, clientY: py, pointerId: 1, bubbles: true}));
+    zd(ramka, "pointerdown", r.left + 20, r.top + 20); zd(ramka, "pointermove", r.left + 20 + 300*k, r.top + 20); zd(ramka, "pointerup", r.left + 20 + 300*k, r.top + 20);
+    /* róg: lewy górny do środka — kwadrat mniejszy, prawy dolny róg stoi */
+    const rog = ramka.querySelector('[data-r="nw"]'), r2 = ramka.getBoundingClientRect();
+    zd(rog, "pointerdown", r2.left, r2.top); zd(rog, "pointermove", r2.left + 100*k, r2.top + 100*k); zd(rog, "pointerup", r2.left + 100*k, r2.top + 100*k);
+    $("#kadr-ok").click();
+    await new Promise(r => setTimeout(r, 300));
+    const piksel = (px, py) => [...S.img.getContext("2d").getImageData(px, py, 1, 1).data].slice(0, 3).join();
+    wyn.po = [S.img.width, S.img.height, piksel(1, 1), piksel(S.img.width - 2, S.img.height - 2), !$("#kadr-oryginal").classList.contains("hidden"), ramka.classList.contains("hidden")];
+    $("#kadr-oryginal").click();
+    await new Promise(r => setTimeout(r, 200));
+    wyn.oryginal = [S.img.width, S.img.height, $("#kadr-oryginal").classList.contains("hidden")];
+    /* następne testy liczą na próbkę */
+    const ten = S.img; $("#sample").click(); await czekaj(() => S.img !== ten);
+    return wyn;
+  });
+  sprawdz(kad.widac && kad.po.slice(0, 2).join() === "200,200" && kad.po[2] === "0,0,255" && kad.po[3] === "0,0,255" && kad.po[4] && kad.po[5],
+          `kadr 1:1, przesunięty w prawo i zmniejszony rogiem: ${kad.po[0]}×${kad.po[1]}, sam niebieski — ${kad.po.slice(2, 4).join(" / ")}`);
+  sprawdz(kad.oryginal.join() === "400,300,true", "„Przywróć cały obraz”: wraca 400×300");
+
+  console.log("--- cofnij / ponów ---");
+  const hist = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const pauza = ms => new Promise(r => setTimeout(r, ms));
+    const ust = (id, v) => { const el = $("#" + id); el.value = v; el.dispatchEvent(new Event("input")); };
+    const klawisz = (key, shift) => document.body.dispatchEvent(new KeyboardEvent("keydown", {key, ctrlKey: true, shiftKey: !!shift, bubbles: true}));
+    /* parametr nieanimowany — animowane (np. jasność z wcześniejszego testu) są poza historią */
+    const start = S.nasycenie;
+    ust("nasycenie", 20); await pauza(600);
+    /* przeciągnięcie suwaka: wiele zmian w krótkim czasie = jeden krok */
+    for(const v of [25, 30, 35, 40]) ust("nasycenie", v);
+    await pauza(600);
+    const wyn = {przed: [S.nasycenie, $("#cofnij").disabled]};
+    klawisz("z"); wyn.cofnij1 = [S.nasycenie, +$("#nasycenie").value];
+    klawisz("z"); wyn.cofnij2 = S.nasycenie;
+    klawisz("z", true); wyn.ponow = [S.nasycenie, $("#ponow").disabled];
+    $("#cofnij").click(); wyn.przycisk = S.nasycenie;
+    /* zmiana tuż przed cofnięciem (jeszcze niezapisana) też się cofa */
+    ust("con", 33); klawisz("z"); wyn.niezapisana = S.con;
+    $("#ponow").click(); wyn.ponowNiezap = S.con;
+    ust("nasycenie", start); ust("con", 0); await pauza(600);
+    return wyn;
+  });
+  sprawdz(hist.przed.join() === "40,false" && hist.cofnij1.join() === "20,20" && hist.cofnij2 !== 20 && hist.ponow[0] === 20,
+          `Ctrl+Z: 40 → ${hist.cofnij1[0]} (całe przeciągnięcie jednym krokiem) → ${hist.cofnij2}; Ctrl+Shift+Z → ${hist.ponow[0]}; suwak za stanem`);
+  sprawdz(hist.przycisk === hist.cofnij2, "przycisk ↶ cofa jak Ctrl+Z");
+  sprawdz(hist.niezapisana === 0 && hist.ponowNiezap === 33, "zmiana sprzed chwili (niezapisana) też się cofa i ponawia");
+
   console.log("--- przezroczyste tło w PNG ---");
   const przezr = await wykonaj(async () => {
     const { S } = await import("/src/state.js");

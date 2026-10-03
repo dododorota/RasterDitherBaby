@@ -301,3 +301,27 @@ export const TUSZE_RISO = [
   ["Melon", "#ffae3b"], ["Brązowy", "#925f52"], ["Płaskie złoto", "#bb8b41"], ["Gumy balonowej", "#f984ca"],
   ["Lawendowy", "#9d7ad2"], ["Śliwkowy", "#845991"], ["Jasnoszary", "#88898a"], ["Grafit", "#70747c"]
 ];
+
+/* Oklab → sRGB 0–255 (odwrotność oklab()), przycięte do zakresu */
+const nielin = v => { v = v <= 0.0031308 ? 12.92*v : 1.055*Math.pow(v, 1/2.4) - 0.055; return Math.max(0, Math.min(255, Math.round(v*255))); };
+export function zOklab(L, a, b){
+  const l = Math.pow(L + 0.3963377774*a + 0.2158037573*b, 3);
+  const m = Math.pow(L - 0.1055613458*a - 0.0638541728*b, 3);
+  const s = Math.pow(L - 0.0894841775*a - 1.2914855480*b, 3);
+  return [nielin( 4.0767416621*l - 3.3077115913*m + 0.2309699292*s),
+          nielin(-1.2684380046*l + 2.6097574011*m - 0.3413193965*s),
+          nielin(-0.0041960863*l - 0.7034186147*m + 1.7076147010*s)];
+}
+/* Ciągły gradient z kolorów palety (od cieni do świateł): 256 kolorów,
+   przejścia w Oklab, więc środek między niebieskim a żółtym nie szarzeje.
+   Do mapy gradientu w rastrze. */
+export function gradientLUT(kolory, odwroc){
+  const L = (odwroc ? [...kolory].reverse() : kolory).map(h => oklab(...hex2rgb(h)));
+  const lut = [];
+  for(let i=0; i<256; i++){
+    const t = i/255*(L.length - 1), k = Math.min(L.length - 2, Math.floor(t)), f = t - k;
+    if(L.length === 1){ lut.push(zOklab(...L[0])); continue; }
+    lut.push(zOklab(L[k][0] + (L[k+1][0] - L[k][0])*f, L[k][1] + (L[k+1][1] - L[k][1])*f, L[k][2] + (L[k+1][2] - L[k][2])*f));
+  }
+  return lut;
+}

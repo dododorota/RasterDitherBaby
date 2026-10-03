@@ -1,10 +1,10 @@
 import { S, MAX } from "./state.js";
-import { hex2rgb } from "./palettes.js";
+import { hex2rgb, wpisPalety, gradientLUT } from "./palettes.js";
 import { out, octx } from "./dom.js";
 import { adjust, fit, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomWSkali, zmiennoscCzynna } from "./stos.js";
 import { zmiennoscPrzed } from "./fx.js";
-import { geometria, obrys, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
+import { geometria, obrys, konturLinii, odcinkiBarwne, kolorCSS, sciezkowy, grubostObrysu, znakPunktu } from "./siatki.js";
 import { fakturaFarby } from "./faktura-farby.js";
 import { skrot } from "./fx.js";
 import { papier } from "./papier.js";
@@ -77,43 +77,75 @@ function drawScreen(target, smp, W,H, ink, z){
   const c=document.createElement("canvas"); c.width=W*z; c.height=H*z;
   const x=c.getContext("2d");
   x.fillStyle=ink.color; x.strokeStyle=ink.color;
-  if(g.linie){
-    x.beginPath();
-    for(const l of g.linie){
-      const k = konturLinii(l);
-      x.moveTo(k[0][0], k[0][1]);
-      for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]);
-      x.closePath();
-    }
-    x.fill();
-  } else if(NOWE_KSZTALTY.includes(ksztalt) || g.postrzep){
-    x.beginPath();
-    for(const kr of g.kropki) for(const k of obrys(ksztalt, kr, g.postrzep)){
-      x.moveTo(k[0][0], k[0][1]);
-      for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]);
-      x.closePath();
-    }
-    x.fill("evenodd");
-  } else {
-    const cell = g.cell;
-    for(const [px,py,r,kat] of g.kropki){
-      x.save(); x.translate(px,py); x.rotate(kat);
-      switch(ksztalt){
-        case "square": x.fillRect(-r,-r,r*2,r*2); break;
-        case "diamond": x.beginPath(); x.moveTo(0,-r*1.3); x.lineTo(r*1.3,0); x.lineTo(0,r*1.3); x.lineTo(-r*1.3,0); x.closePath(); x.fill(); break;
-        case "line": x.fillRect(-cell*0.75, -r*0.9, cell*1.5, r*1.8); break;
-        case "cross": x.fillRect(-r*1.5,-r*0.45,r*3,r*0.9); x.fillRect(-r*0.45,-r*1.5,r*0.9,r*3); break;
-        default: x.beginPath(); x.arc(0,0,r,0,6.2832); x.fill();
-      }
-      x.restore();
-    }
-  }
+  x.lineWidth = grubostObrysu()*z; x.lineJoin = "round";
+  /* kwadraty kodu QR: kolor farby (przy kolorowych punktach — farba z panelu) */
+  if(g.dodatki){ x.save(); x.fillStyle = ink.barwa ? S.ink : ink.color; x.beginPath(); for(const k of g.dodatki) sciezka(x, k); x.fill(); x.restore(); }
+  if(ink.barwa) rysujBarwne(x, g, ksztalt);
+  else if(g.plamy){ x.beginPath(); for(const k of g.plamy) sciezka(x, k); if(grubostObrysu() > 0) x.stroke(); else x.fill("evenodd"); }
+  else if(g.linie) rysujLinie(x, g.linie);
+  else rysujGrupe(x, g.kropki, g, ksztalt);
   fakturaFarby(c, W, H, z, ink.color);
   target.save();
-  target.globalCompositeOperation="multiply";
+  target.globalCompositeOperation = ink.mieszanie || "multiply";
   if(ink.krycie !== undefined && ink.krycie < 1) target.globalAlpha = ink.krycie;
   target.drawImage(c,0,0);
   target.restore();
+}
+/* Grupa punktów jednego koloru (fillStyle/strokeStyle już ustawione):
+   znaki tekstem, kształty ścieżką (nowe, postrzępione, obrys) albo wprost
+   (dawne — co do piksela jak przed dodaniem ścieżek). */
+const sciezka = (x, k) => { x.moveTo(k[0][0], k[0][1]); for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]); x.closePath(); };
+function rysujGrupe(x, kropki, g, ksztalt, numery){
+  const obr = grubostObrysu() > 0;
+  if(ksztalt === "znak"){
+    x.textAlign = "center"; x.textBaseline = "middle";
+    kropki.forEach((kr, i) => {
+      const [px, py, r, kat] = kr;
+      x.save(); x.translate(px, py); x.rotate(kat);
+      x.font = '700 ' + (r*2.6).toFixed(2) + 'px Archivo, "Segoe UI Emoji", sans-serif';
+      const z = znakPunktu(numery ? numery.get(kr) : i);
+      if(obr) x.strokeText(z, 0, 0); else x.fillText(z, 0, 0);
+      x.restore();
+    });
+    return;
+  }
+  if(sciezkowy(ksztalt, g)){
+    x.beginPath();
+    for(const kr of kropki) for(const k of obrys(ksztalt, kr, g.postrzep, g.cell)) sciezka(x, k);
+    if(obr) x.stroke(); else x.fill("evenodd");
+    return;
+  }
+  const cell = g.cell;
+  for(const [px,py,r,kat] of kropki){
+    x.save(); x.translate(px,py); x.rotate(kat);
+    switch(ksztalt){
+      case "square": x.fillRect(-r,-r,r*2,r*2); break;
+      case "diamond": x.beginPath(); x.moveTo(0,-r*1.3); x.lineTo(r*1.3,0); x.lineTo(0,r*1.3); x.lineTo(-r*1.3,0); x.closePath(); x.fill(); break;
+      case "line": x.fillRect(-cell*0.75, -r*0.9, cell*1.5, r*1.8); break;
+      case "cross": x.fillRect(-r*1.5,-r*0.45,r*3,r*0.9); x.fillRect(-r*0.45,-r*1.5,r*0.9,r*3); break;
+      default: x.beginPath(); x.arc(0,0,r,0,6.2832); x.fill();
+    }
+    x.restore();
+  }
+}
+function rysujLinie(x, linie){
+  x.beginPath();
+  for(const l of linie) sciezka(x, konturLinii(l));
+  if(grubostObrysu() > 0) x.stroke(); else x.fill();
+}
+/* Punkty i linie z własnym kolorem: grupy po kolorze, linie odcinkami
+   jednego koloru (odcinkiBarwne). Znaki zachowują kolejność z całej siatki. */
+function rysujBarwne(x, g, ksztalt){
+  const obr = grubostObrysu() > 0;
+  if(g.linie){
+    for(const l of g.linie) for(const [odc, kolor] of odcinkiBarwne(l)){
+      x.fillStyle = x.strokeStyle = kolor; x.beginPath(); sciezka(x, konturLinii(odc)); if(obr) x.stroke(); else x.fill();
+    }
+    return;
+  }
+  const grupy = new Map(), numery = new Map();
+  g.kropki.forEach((kr, i) => { numery.set(kr, i); const k = kolorCSS(kr[5]); let gr = grupy.get(k); if(!gr) grupy.set(k, gr = []); gr.push(kr); });
+  for(const [kolor, kropki] of grupy){ x.fillStyle = x.strokeStyle = kolor; rysujGrupe(x, kropki, g, ksztalt, numery); }
 }
 export function inkList(){
   const lum = (r,g,b) => (0.299*r+0.587*g+0.114*b)/255;
@@ -123,6 +155,21 @@ export function inkList(){
 
   if(S.inkmode==="mono")
     return [{color:S.ink, ang:S.ang, cov:(r,g,b)=>1-lum(r,g,b), off:[0,0], name:"farba"}];
+
+  /* Jedna siatka, ale każdy punkt ma własny kolor: z obrazu albo z mapy
+     gradientu (ton → kolor). Rozmiar z ciemności — albo z jasności, na
+     ciemny papier. Kładzione zwyczajnie (source-over), nie mnożeniem —
+     to kolory, nie farby. */
+  if(S.inkmode==="obraz" || S.inkmode==="gradient"){
+    const cov = S.rozmiarJasnosc ? (r,g,b)=>lum(r,g,b) : (r,g,b)=>1-lum(r,g,b);
+    let barwa;
+    if(S.inkmode==="obraz") barwa = (r,g,b) => [r, g, b];
+    else {
+      const wpis = wpisPalety(S.rasterGrad) || wpisPalety("g-zachod"), lut = gradientLUT(wpis.kolory, S.gradOdwroc);
+      barwa = (r,g,b) => lut[Math.max(0, Math.min(255, Math.round(lum(r,g,b)*255)))];
+    }
+    return [{color:"#000000", ang:S.ang, cov, barwa, mieszanie:"source-over", off:[0,0], name:"kolory"}];
+  }
 
   if(S.inkmode==="duo")
     return [

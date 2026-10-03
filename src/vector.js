@@ -3,7 +3,7 @@ import { $ } from "./dom.js";
 import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
 import { sampler, inkList } from "./halftone.js";
-import { geometria, obrys, konturLinii, NOWE_KSZTALTY } from "./siatki.js";
+import { geometria, obrys, konturLinii, odcinkiBarwne, kolorCSS, sciezkowy, grubostObrysu, znakPunktu } from "./siatki.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
 import { czynne, wpisEfektu } from "./stos.js";
 import { svgAscii } from "./ascii.js";
@@ -109,6 +109,18 @@ function svgShape(x,y,r,deg,cell,ksztalt){
     default: return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r)}"/>`;
   }
 }
+/* punkty jednej grupy jako SVG — te same rozgałęzienia co rysujGrupe() w halftone.js */
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function svgGrupa(kropki, g, ksztalt, kontur, numery){
+  if(ksztalt === "znak") return kropki.map((kr, i) => { const [x, y, r, kat] = kr;
+    return `<text x="${n2(x)}" y="${n2(y)}" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`; }).join("");
+  if(sciezkowy(ksztalt, g)) return `<path fill-rule="evenodd" d="${kropki.map(k => obrys(ksztalt, k, g.postrzep, g.cell).map(kontur).join("")).join("")}"/>`;
+  return kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt)).join("");
+}
+/* wypełnienie albo obrys (fill="none" + stroke) — atrybuty grupy */
+const malowanie = kolor => grubostObrysu() > 0
+  ? `fill="none" stroke="${kolor}" stroke-width="${n2(grubostObrysu())}" stroke-linejoin="round"`
+  : `fill="${kolor}"`;
 export function svgHalftone(){
   const [W,H] = fit(S.img.width, S.img.height, MAX);
   const farby = inkList();
@@ -122,18 +134,34 @@ export function svgHalftone(){
     const g = geometria(smp, W, H, ink, 1), ksztalt = ink.ksztalt || S.shape;
     const krycie = ink.krycie !== undefined && ink.krycie < 1 ? ` opacity="${n2(ink.krycie)}"` : "";
     let body;
-    if(g.linie){
+    /* kwadraty kodu QR — jedna ścieżka */
+    if(g.dodatki) parts.push(`<path id="${ink.name}-qr" fill="${ink.barwa ? S.ink : ink.color}" d="${g.dodatki.map(kontur).join("")}"/>`);
+    if(ink.barwa){
+      /* kolor na punkt: grupy <g fill> po kolorze, linie odcinkami */
+      if(g.linie){
+        body = g.linie.flatMap(l => odcinkiBarwne(l).map(([odc, kolor]) => `<path ${malowanie(kolor)} d="${kontur(konturLinii(odc))}"/>`));
+        count += g.linie.length;
+      } else {
+        const grupy = new Map(), numery = new Map();
+        g.kropki.forEach((kr, i) => { numery.set(kr, i); const k = kolorCSS(kr[5]); let gr = grupy.get(k); if(!gr) grupy.set(k, gr = []); gr.push(kr); });
+        body = [...grupy].map(([kolor, kr]) => `<g ${malowanie(kolor)}>${svgGrupa(kr, g, ksztalt, kontur, numery)}</g>`);
+        count += g.kropki.length;
+      }
+      parts.push(`<g id="${ink.name}">${body.join("")}</g>`);
+      continue;
+    } else if(g.plamy){
+      /* zlewanie punktów: wszystkie plamy jedną ścieżką (dziury — evenodd) */
+      body = [`<path fill-rule="evenodd" d="${g.plamy.map(kontur).join("")}"/>`];
+      count += g.plamy.length;
+    } else if(g.linie){
       /* raster liniowy: każda linia to jedna ścieżka o zmiennej grubości */
       body = g.linie.map(l => `<path d="${kontur(konturLinii(l))}"/>`);
       count += g.linie.length;
-    } else if(NOWE_KSZTALTY.includes(ksztalt) || g.postrzep){
-      body = [`<path fill-rule="evenodd" d="${g.kropki.map(kr => obrys(ksztalt, kr, g.postrzep).map(kontur).join("")).join("")}"/>`];
-      count += g.kropki.length;
     } else {
-      body = g.kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt));
+      body = [svgGrupa(g.kropki, g, ksztalt, kontur)];
       count += g.kropki.length;
     }
-    parts.push(`<g id="${ink.name}" fill="${ink.color}"${krycie} style="mix-blend-mode:multiply">${body.join("")}</g>`);
+    parts.push(`<g id="${ink.name}" ${malowanie(ink.color)}${krycie} style="mix-blend-mode:multiply">${body.join("")}</g>`);
   }
   parts.push("</svg>");
   return {svg:parts.join("\n"), count};

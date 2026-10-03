@@ -120,6 +120,16 @@ to przegląd bez zmian w kodzie.
     (zgoda użytkowniczki na model z sieci), WebGPU albo WASM, izolacja
     COOP/COEP dla wątków. Porównanie z halftonemaker.com i
     halftone.xoihazard.com — lista braków w README.
+23. **Raster jak w Halftone Makerze** (3.10) — kolory punktów z obrazu
+    i mapa gradientu, fala tonu, krzywa wielkości i najmniejszy punkt,
+    płynięcie / rozciągnięcie / pochylenie siatki, trójkąt / wielokąt /
+    gwiazda / superelipsa / znak, obrys; cofnij / ponów.
+24. **Reszta porównania z Halftone Makerem** (3.10) — siatka trójkątna,
+    stippling (Secord), zlewanie punktów (metaballe), scalanie równych
+    obszarów, własny kształt z pliku SVG, obrót kształtu z siatką albo
+    prosto, przezroczyste miejsca jako papier, kadrowanie; potem
+    zaokrąglanie rogów i kod QR jako siatka (koder własny, sprawdzony
+    dekoderem jsQR). Zostało: unia SVG (wymaga biblioteki).
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -139,6 +149,15 @@ Pułapki, na które nadziałem się przy testowaniu, są opisane w `CLAUDE.md`:
 cache przeglądarki, niedeterministyczna rasteryzacja płótna przy gęstych
 siatkach, zawieszanie karty przez ciężkie skrypty, generator liczb losowych
 w testach, systemowy `unzip` na macOS.
+
+## Niestabilny test
+
+- `testy/przegladarka.mjs` raz na kilka uruchomień zgłasza w konsoli
+  „EncodingError: Unable to decode audio data" (sprawdzenie „bez błędów
+  w konsoli"). Nie udało się ustalić źródła: wszystkie wywołania
+  `decodeAudioData`, które mogą zawieść, mają już pusty callback błędu
+  i są łapane. Pozostałe sprawdzenia przechodzą; powtórne uruchomienie
+  zwykle jest czyste.
 
 ## Czego nie sprawdzono
 
@@ -206,6 +225,7 @@ node testy/ascii.mjs
 node testy/stabilizacja.mjs
 node testy/siatki.mjs
 node testy/wycinanie.mjs
+node testy/qr.mjs
 npm run modele                  # raz: model do automatycznego usuwania tła
 node testy/przegladarka.mjs     # wymaga serwer.py i Chrome
 ```
