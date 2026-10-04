@@ -114,7 +114,8 @@ const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&
 function svgGrupa(kropki, g, ksztalt, kontur, numery){
   if(ksztalt === "znak") return kropki.map((kr, i) => { const [x, y, r, kat] = kr;
     return `<text x="${n2(x)}" y="${n2(y)}" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`; }).join("");
-  if(sciezkowy(ksztalt, g)) return `<path fill-rule="evenodd" d="${kropki.map(k => obrys(ksztalt, k, g.postrzep, g.cell).map(kontur).join("")).join("")}"/>`;
+  /* reguła nonzero (domyślna) — nakładające się punkty zostają zamalowane, otwory mają odwrotny obieg */
+  if(sciezkowy(ksztalt, g)) return `<path d="${kropki.map(k => obrys(ksztalt, k, g.postrzep, g.cell).map(kontur).join("")).join("")}"/>`;
   return kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt)).join("");
 }
 /* wypełnienie albo obrys (fill="none" + stroke) — atrybuty grupy */

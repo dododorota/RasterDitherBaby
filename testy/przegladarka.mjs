@@ -965,6 +965,55 @@ try{
   sprawdz(hist.przycisk === hist.cofnij2, "przycisk ↶ cofa jak Ctrl+Z");
   sprawdz(hist.niezapisana === 0 && hist.ponowNiezap === 33, "zmiana sprzed chwili (niezapisana) też się cofa i ponawia");
 
+  console.log("--- presety: podświetlenie, szybkość „Skan” ---");
+  const pres = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { renderuj } = await import("/src/render.js");
+    const $ = s => document.querySelector(s);
+    $("#tab-half").click();
+    await new Promise(r => setTimeout(r, 300));
+    const przycisk = n => [...document.querySelectorAll("#presets .btn")].find(b => b.textContent.trim() === n);
+    const wyn = {};
+    przycisk("Skan").click();
+    wyn.wcisniety = [przycisk("Skan").getAttribute("aria-pressed"), przycisk("Offset").getAttribute("aria-pressed")];
+    /* „Skan” na zdjęciu: postrzępione brzegi i chmury — dawniej kilka sekund (jedna ścieżka evenodd) */
+    const t0 = performance.now(); await renderuj(1); wyn.czas = Math.round(performance.now() - t0);
+    const el = $("#cell"); el.value = 12; el.dispatchEvent(new Event("input"));
+    wyn.poZmianie = przycisk("Skan").getAttribute("aria-pressed");
+    await new Promise(r => setTimeout(r, 600));
+    document.body.dispatchEvent(new KeyboardEvent("keydown", {key: "z", ctrlKey: true, bubbles: true}));
+    wyn.poCofnieciu = przycisk("Skan").getAttribute("aria-pressed");
+    $("#tab-dither").click();
+    return wyn;
+  });
+  sprawdz(pres.wcisniety.join() === "true,false" && pres.poZmianie === "false" && pres.poCofnieciu === "true",
+          "preset podświetlony po kliknięciu, gaśnie po ruszeniu suwaka, wraca po Ctrl+Z: " + JSON.stringify(pres));
+  sprawdz(pres.czas < 2000, `„Skan” renderuje się w ${pres.czas} ms (dawniej kilka sekund)`);
+
+  console.log("--- sekcje rastra ---");
+  const sek = await wykonaj(async () => {
+    const { S, DEFAULTS } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    $("#tab-half").click();
+    const d = $('details.pod[data-pod="nierowny"]'), kropka = () => d.querySelector(".zmiana").classList.contains("widac");
+    d.querySelector(".pod-reset").click();          /* poprzednie testy zostawiają „Skan” */
+    const wyn = {przed: kropka()};
+    const el = $("#chmury"); el.value = 50; el.dispatchEvent(new Event("input"));
+    const el2 = $("#drganie"); el2.value = 30; el2.dispatchEvent(new Event("input"));
+    wyn.zmiana = [kropka(), S.chmury, S.drganie];
+    d.querySelector(".pod-reset").click();
+    wyn.reset = [kropka(), S.chmury === DEFAULTS.chmury, S.drganie === DEFAULTS.drganie, +$("#chmury").value];
+    /* pamięć otwartych sekcji */
+    d.open = true; await new Promise(r => setTimeout(r, 50));
+    let zapis = {}; try{ zapis = JSON.parse(localStorage.getItem("raster.sekcje") || "{}"); }catch{}
+    wyn.pamiec = zapis.nierowny === true;
+    d.open = false; await new Promise(r => setTimeout(r, 50));
+    $("#tab-dither").click();
+    return wyn;
+  });
+  sprawdz(!sek.przed && sek.zmiana.join() === "true,50,30" && sek.reset.join() === "false,true,true,0" && sek.pamiec,
+          "sekcja rastra: kropka przy zmianie, „Przywróć domyślne w tej sekcji” cofa tylko jej suwaki, otwarcie zapamiętane");
+
   console.log("--- przezroczyste tło w PNG ---");
   const przezr = await wykonaj(async () => {
     const { S } = await import("/src/state.js");

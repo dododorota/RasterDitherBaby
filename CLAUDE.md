@@ -396,9 +396,26 @@ dawniej; obrazy z alfą zmieniły się celowo (wcześniej przezroczyste = czerń
 zatwierdzenie to `pokazObraz(wycinek)`, oryginał w `KADR.oryginal` do
 przywrócenia; `setImage()` go zapomina.
 
+**Reguła wypełniania punktów**: kształty ścieżką (`rysujGrupe()`, `svgGrupa()`)
+— **nonzero**, porcjami po 300 punktów. Evenodd robiło dziurę w części
+wspólnej nakładających się punktów (białe plamki w cieniach) i jedna ścieżka
+z kilkudziesięcioma tysiącami kształtów wypełniała się w Chrome 8 s (preset
+„Skan"). Otwory działają przez odwrotny obieg: pierścień ma odwrócony
+wewnętrzny kontur, własny SVG poprawia `orientuj()`. Evenodd zostaje tylko
+dla plam zlewania (kontury z marching squares, nie nakładają się).
+
 **Cofnij / ponów** (app.js, `HIST`): migawki LOOK bez kluczy animowanych,
-wołane z `schedule()` z opóźnieniem 0,4 s. Nowa kontrolka wyglądu trafia do
-historii sama, jeśli jej zmiana woła `schedule()`.
+wołane z `schedule()` z opóźnieniem 0,4 s; preset (wbudowany, własny, z pliku)
+to osobny krok — `utrwalStan()` przed i po. Nowa kontrolka wyglądu trafia do
+historii sama, jeśli jej zmiana woła `schedule()`. Podświetlenie presetu
+(`podswietlPresety()`, też z `schedule()`): wszystkie klucze presetu równe S.
+
+**Sekcje rastra** (`details.pod` w g-half): klucze sekcji zbierane raz,
+na końcu app.js, z jej kontrolek przez `opisKontrolki()` — nowa kontrolka
+wewnątrz sekcji trafia do kropki „zmienione" i do przycisku przywracania
+sama. `SEKCJE` to `let` wysoko w pliku, bo `schedule()` woła
+`znacznikiSekcji()` już przy starcie. Otwarte sekcje: `raster.sekcje`
+w localStorage (try/catch).
 
 **Krzywa klatki** (animacja.js): `{t, v, k}` — `k` to przejście OD tej klatki
 do następnej, bez `k` krzywa ścieżki. W presecie trzeci element klatki.

@@ -48,6 +48,8 @@ async function render(){
 }
 function schedule(){
   zapamietajStan();
+  podswietlPresety();
+  znacznikiSekcji();
   if(queued) return;
   queued=true;
   requestAnimationFrame(()=>{ queued=false; render(); });
@@ -59,6 +61,8 @@ function schedule(){
    Materiały (obraz, warstwy, paleta własna, klatki kluczowe) — poza historią.
    Wołane z schedule(), więc każda zmiana panelu trafia tu sama. */
 /* stan kadrowania — tu, wysoko: kompUI() woła kadrUI() już przy starcie (TDZ) */
+/* sekcje grupy rastra: [element, klucze S] — ustawiane na końcu pliku, czytane z schedule() */
+let SEKCJE = null;
 const KADR = {aktywny: false, x: 0, y: 0, w: 0, h: 0, oryginal: null, ruch: null};
 const HIST = {stos: [], poz: -1, wstrzymaj: false, timer: 0};
 const MAX_HIST = 100;
@@ -84,11 +88,18 @@ function historiaUI(){
   $("#cofnij").disabled = HIST.poz <= 0;
   $("#ponow").disabled = HIST.poz >= HIST.stos.length - 1;
 }
-function krokHistorii(o){
-  /* niezapisana jeszcze zmiana (w ciągu 0,4 s) — najpierw ją zapisz */
+/* zapis bieżącego stanu od razu, bez czekania 0,4 s — przed i po zmianach,
+   które mają być osobnym krokiem (preset) */
+function utrwalStan(){
+  if(HIST.wstrzymaj) return;
   clearTimeout(HIST.timer);
   const teraz = migawkaWygladu();
-  if(HIST.stos[HIST.poz] !== teraz){ HIST.stos.splice(HIST.poz + 1); HIST.stos.push(teraz); HIST.poz = HIST.stos.length - 1; }
+  if(HIST.stos[HIST.poz] !== teraz){ HIST.stos.splice(HIST.poz + 1); HIST.stos.push(teraz); if(HIST.stos.length > MAX_HIST) HIST.stos.shift(); HIST.poz = HIST.stos.length - 1; }
+  historiaUI();
+}
+function krokHistorii(o){
+  /* niezapisana jeszcze zmiana (w ciągu 0,4 s) — najpierw ją zapisz */
+  utrwalStan();
   const p = HIST.poz + o;
   if(p < 0 || p >= HIST.stos.length) return;
   HIST.poz = p;
@@ -863,27 +874,46 @@ function buildPresets(){
     const b=document.createElement("button");
     b.className="btn"; b.textContent=name;
     b.addEventListener("click", ()=>applyPreset(cfg));
+    /* pełny wygląd presetu (klucze spoza niego — domyślne), do podświetlenia */
+    b._wyglad = Object.fromEntries(LOOK.map(k => [k, k in cfg ? cfg[k] : DEFAULTS[k]]));
     box.appendChild(b);
   }
   for(const p of czytajMoje().filter(p=>p.tryb===S.mode)){
     const para=document.createElement("span"); para.className="moj";
     const b=document.createElement("button");
     b.className="btn"; b.textContent=p.nazwa; b.title="Własny preset zapamiętany w tej przeglądarce";
-    b.addEventListener("click", ()=>komunikat(zastosujPreset(p, "„"+p.nazwa+"”")));
+    b._wyglad = p.look;
+    b.addEventListener("click", ()=>{ utrwalStan(); komunikat(zastosujPreset(p, "„"+p.nazwa+"”")); utrwalStan(); });
     const x=document.createElement("button");
     x.className="btn usun"; x.textContent="×"; x.setAttribute("aria-label", "Usuń preset "+p.nazwa);
     x.addEventListener("click", ()=>usunMoj(p.nazwa, p.tryb));
     para.append(b, x);
     box.appendChild(para);
   }
+  podswietlPresety();
+}
+/* Podświetlenie presetu, którego wygląd jest teraz na ekranie: każdy klucz
+   z presetu równy bieżącemu (liczby z tolerancją — suwaki zaokrąglają).
+   Ruszenie czegokolwiek gasi podświetlenie, bo to już nie ten preset. Wołane
+   z schedule(), więc nadąża za suwakami, cofaniem i wczytaniem pliku. */
+function podswietlPresety(){
+  /* w środku funkcji, nie stałą obok — schedule() woła to już przy starcie (TDZ) */
+  const rowne = (a, b) => typeof a === "number" && typeof b === "number" ? Math.abs(a - b) < 1e-6 : a === b;
+  for(const b of document.querySelectorAll("#presets .btn:not(.usun)")){
+    if(!b._wyglad) continue;
+    const pasuje = Object.entries(b._wyglad).every(([k, v]) => !LOOK.includes(k) || czyAnimowany(k) || rowne(S[k], v));
+    b.setAttribute("aria-pressed", pasuje);
+  }
 }
 /* Preset to pełny opis wyglądu: klucze, których nie podaje, wracają do wartości
    domyślnych, zamiast zostawać po poprzednim presecie. Inaczej „Gazeta" po
    „Promo" dziedziczyła jego punkt bieli, a negatyw i wężyk nie wracały nigdy. */
 function applyPreset(cfg){
+  utrwalStan();                 /* preset to osobny krok historii */
   for(const k of LOOK) S[k] = (k in cfg) ? cfg[k] : DEFAULTS[k];
   syncUI();
   schedule();
+  utrwalStan();
 }
 /* ---------- presety w pliku i w przeglądarce ----------
    Jeden format na oba miejsca: to, co ląduje w pliku JSON, ląduje też w
@@ -971,7 +1001,7 @@ function wczytajPreset(f){
     let dane;
     try{ dane=JSON.parse(fr.result); }
     catch{ komunikat("To nie jest poprawny JSON."); return; }
-    komunikat(zastosujPreset(dane, "ustawienia z pliku"));
+    utrwalStan(); komunikat(zastosujPreset(dane, "ustawienia z pliku")); utrwalStan();
   };
   fr.readAsText(f);
 }
@@ -2078,3 +2108,34 @@ function zapamietajPalete(){
 $("#pal-zap").addEventListener("click", zapamietajPalete);
 $("#pal-zap-nazwa").addEventListener("keydown", e=>{ if(e.key === "Enter") zapamietajPalete(); });
 zapisanePaletyUI();
+
+/* ---------- zwijane sekcje rastra ----------
+   Każda sekcja zna klucze S swoich kontrolek (przez te same tabele co reszta
+   panelu — także farby risografu, generowane wcześniej), więc umie pokazać
+   kropkę „coś tu zmienione" i przywrócić swoje wartości domyślne. Które są
+   otwarte — pamięć przeglądarki (try/catch: tryb prywatny). */
+function znacznikiSekcji(){
+  if(!SEKCJE) return;
+  for(const [d, klucze] of SEKCJE)
+    d.querySelector(".zmiana").classList.toggle("widac", klucze.some(k => JSON.stringify(S[k]) !== JSON.stringify(DEFAULTS[k])));
+}
+(function sekcje(){
+  let otwarte = {};
+  try{ otwarte = JSON.parse(localStorage.getItem("raster.sekcje") || "{}") || {}; }catch{ otwarte = {}; }
+  SEKCJE = [];
+  for(const d of document.querySelectorAll("details.pod")){
+    const klucze = [...new Set([...d.querySelectorAll("input[id], select[id]")].map(el => opisKontrolki(el.id)).filter(o => o && o.key in DEFAULTS).map(o => o.key))];
+    SEKCJE.push([d, klucze]);
+    if(d.dataset.pod in otwarte) d.open = !!otwarte[d.dataset.pod];
+    d.addEventListener("toggle", () => {
+      otwarte[d.dataset.pod] = d.open;
+      try{ localStorage.setItem("raster.sekcje", JSON.stringify(otwarte)); }catch{}
+    });
+    d.querySelector(".pod-reset").addEventListener("click", () => {
+      utrwalStan();
+      for(const k of klucze) S[k] = DEFAULTS[k];
+      syncUI(); schedule(); utrwalStan();
+    });
+  }
+  znacznikiSekcji();
+})();

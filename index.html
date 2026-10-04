@@ -399,212 +399,248 @@
       <input type="range" id="ang" min="0" max="90" value="45">
       <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>
       <input type="range" id="dot" min="40" max="180" value="100">
-      <div class="row" style="margin-top:12px"><label for="shape">Kształt</label></div>
-      <select id="shape">
-        <option value="circle" selected>Punkt</option>
-        <option value="square">Kwadrat</option>
-        <option value="diamond">Romb</option>
-        <option value="line">Linia</option>
-        <option value="cross">Krzyż</option>
-        <option value="gwiazda">Gwiazdka</option>
-        <option value="krzyzUkos">Krzyżyk ukośny</option>
-        <option value="pierscien">Pierścień</option>
-        <option value="szesciokat">Sześciokąt</option>
-        <option value="elipsa">Elipsa</option>
-        <option value="trojkat">Trójkąt</option>
-        <option value="wielokat">Wielokąt / gwiazda</option>
-        <option value="superelipsa">Superelipsa</option>
-        <option value="znak">Znak — litera, emoji</option>
-        <option value="wlasny">Własny kształt z pliku SVG</option>
-        <option value="pasy">Linie — raster liniowy</option>
-      </select>
-      <div id="wielokat-opcje" class="hidden">
-        <div class="row" style="margin-top:10px"><label for="boki">Boki</label><span class="val" id="boki-v">5</span></div>
-        <input type="range" id="boki" min="3" max="12" value="5">
-        <div class="row"><label for="wciecie">Wcięcie (gwiazda)</label><span class="val" id="wciecie-v">brak</span></div>
-        <input type="range" id="wciecie" min="0" max="100" value="0">
-      </div>
-      <div id="superelipsa-opcje" class="hidden">
-        <div class="row" style="margin-top:10px"><label for="wykladnik">Od koła do kwadratu</label><span class="val" id="wykladnik-v">4,0</span></div>
-        <input type="range" id="wykladnik" min="6" max="120" value="40">
-      </div>
-      <div id="wlasny-opcje" class="hidden">
-        <button class="btn" id="wlasny-wczytaj" style="margin-top:10px">Wczytaj kształt SVG…</button>
-        <input type="file" id="wlasny-plik" accept=".svg,image/svg+xml" class="hidden">
-        <p class="hint" id="wlasny-info">Logo, ikona, rysunek — każdy punkt rastra przyjmie ten kształt (wszystkie kontury pliku, z otworami). Kolory pliku nie mają znaczenia.</p>
-      </div>
-      <div id="znak-opcje" class="hidden">
-        <div class="row" style="margin-top:10px"><label for="znak">Znaki</label></div>
-        <input type="text" id="znak" value="★" maxlength="40" aria-label="Znaki punktów">
-        <p class="hint">Kilka znaków — idą po kolei, punkt po punkcie. Emoji działają, ale mają własne kolory.</p>
-      </div>
-      <div class="row" style="margin-top:10px"><label for="zaokraglenie">Zaokrąglenie rogów</label><span class="val" id="zaokraglenie-v">brak</span></div>
-      <input type="range" id="zaokraglenie" min="0" max="100" value="0">
-      <label class="check" style="margin-top:10px"><input type="checkbox" id="obrotZSiatka" checked> Obracaj kształt z siatką</label>
-      <div class="row" style="margin-top:10px"><label for="scalanie">Scalanie równych obszarów</label><span class="val" id="scalanie-v">brak</span></div>
-      <input type="range" id="scalanie" min="0" max="100" value="0">
-      <p class="hint hidden" id="scalanie-hint">Działa na siatce kwadratowej (bez rozciągnięcia i pochylenia).</p>
-      <div class="row" style="margin-top:10px"><label for="zlewanie">Zlewanie punktów</label><span class="val" id="zlewanie-v">brak</span></div>
-      <input type="range" id="zlewanie" min="0" max="100" value="0">
-      <div class="row" style="margin-top:10px"><label for="obrys">Obrys zamiast wypełnienia</label><span class="val" id="obrys-v">brak</span></div>
-      <input type="range" id="obrys" min="0" max="40" value="0">
-      <div class="row" style="margin-top:12px"><label for="siatka">Siatka</label></div>
-      <select id="siatka">
-        <option value="kwadrat" selected>Kwadratowa</option>
-        <option value="heks">Heksagonalna</option>
-        <option value="trojkatna">Trójkątna</option>
-        <option value="stipple">Stippling — punkty wg gęstości</option>
-        <option value="qr">Kod QR — skanowalny raster</option>
-        <option value="okregi">Okręgi — obręcze</option>
-        <option value="spirala">Spirala</option>
-        <option value="promienie">Promienie</option>
-        <option value="warstwice">Wzdłuż kształtu — warstwice</option>
-      </select>
-      <div id="qr-opcje" class="hidden">
-        <div class="row" style="margin-top:12px"><label for="qrTekst">Treść kodu (adres, tekst)</label></div>
-        <input type="text" id="qrTekst" value="https://" maxlength="1200">
-        <div class="row" style="margin-top:10px"><label for="qrKorekcja">Odporność kodu</label></div>
-        <select id="qrKorekcja">
-          <option value="L">L — 7% (rzadszy kod, więcej obrazu)</option>
-          <option value="M">M — 15%</option>
-          <option value="Q">Q — 25%</option>
-          <option value="H" selected>H — 30% (najpewniej się skanuje)</option>
+      <details class="pod" data-pod="ksztalt" open>
+        <summary>Kształt punktu<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="shape">Kształt</label></div>
+        <select id="shape">
+          <option value="circle" selected>Punkt</option>
+          <option value="square">Kwadrat</option>
+          <option value="diamond">Romb</option>
+          <option value="line">Linia</option>
+          <option value="cross">Krzyż</option>
+          <option value="gwiazda">Gwiazdka</option>
+          <option value="krzyzUkos">Krzyżyk ukośny</option>
+          <option value="pierscien">Pierścień</option>
+          <option value="szesciokat">Sześciokąt</option>
+          <option value="elipsa">Elipsa</option>
+          <option value="trojkat">Trójkąt</option>
+          <option value="wielokat">Wielokąt / gwiazda</option>
+          <option value="superelipsa">Superelipsa</option>
+          <option value="znak">Znak — litera, emoji</option>
+          <option value="wlasny">Własny kształt z pliku SVG</option>
+          <option value="pasy">Linie — raster liniowy</option>
         </select>
-        <div class="row" style="margin-top:10px"><label for="qrWersja">Gęstość kodu</label><span class="val" id="qrWersja-v">najmniejsza</span></div>
-        <input type="range" id="qrWersja" min="1" max="20" value="1">
-        <div class="row"><label for="qrRozmiar">Wielkość kodu</label><span class="val" id="qrRozmiar-v">80%</span></div>
-        <input type="range" id="qrRozmiar" min="20" max="100" value="80">
-        <p class="hint" id="qr-info">Środek każdego modułu niesie kod, reszta to raster obrazu. Sprawdź telefonem przed drukiem — przy jasnym obrazie i małym kodzie skanuje się najpewniej.</p>
-      </div>
-      <div id="stipple-opcje" class="hidden">
-        <div class="row" style="margin-top:12px"><label for="stipIter">Wyrównanie rozkładu</label><span class="val" id="stipIter-v">8</span></div>
-        <input type="range" id="stipIter" min="0" max="30" value="8">
-        <p class="hint">Punkty jednej wielkości, ton z ich gęstości. 0 — losowo, więcej — równo, bez zlepków (dłużej liczy).</p>
-      </div>
-      <div id="srodek-opcje" class="hidden">
-        <div class="row" style="margin-top:12px"><label for="srodekX">Środek — poziomo</label><span class="val" id="srodekX-v">0%</span></div>
-        <input type="range" id="srodekX" min="-100" max="100" value="0">
-        <div class="row"><label for="srodekY">Środek — pionowo</label><span class="val" id="srodekY-v">0%</span></div>
-        <input type="range" id="srodekY" min="-100" max="100" value="0">
-      </div>
-      <div id="fala-opcje" class="hidden">
-        <div class="row" style="margin-top:12px"><label for="fala">Odkształcenie linii</label><span class="val" id="fala-v">brak</span></div>
-        <input type="range" id="fala" min="0" max="100" value="0">
-        <div class="row"><label for="gladkosc">Gładkość</label><span class="val" id="gladkosc-v">brak</span></div>
-        <input type="range" id="gladkosc" min="0" max="100" value="0">
-        <div class="row"><label for="liniaMin">Grubość najmniejsza</label><span class="val" id="liniaMin-v">0%</span></div>
-        <input type="range" id="liniaMin" min="0" max="100" value="0">
-        <div class="row"><label for="liniaMax">Grubość największa</label><span class="val" id="liniaMax-v">100%</span></div>
-        <input type="range" id="liniaMax" min="0" max="150" value="100">
-        <p class="hint">Linie grubieją w ciemnych miejscach i wyginają się według obrazu. Gładkość uśrednia wygięcie (przy warstwicach — upraszcza ich kształt). Najmniejsza grubość większa od zera zostawia linię także w światłach.</p>
-      </div>
-      <div class="row" style="margin-top:12px"><label for="inkmode">Farby</label></div>
-      <select id="inkmode">
-        <option value="mono" selected>Jedna farba</option>
-        <option value="duo">Duotone (czarny + akcent)</option>
-        <option value="cmyk">CMYK — cztery siatki</option>
-        <option value="riso">Risograf — własne farby</option>
-        <option value="obraz">Kolory z obrazu</option>
-        <option value="gradient">Mapa gradientu</option>
-      </select>
-      <div id="barwne-opcje" class="hidden">
-        <div id="grad-opcje">
-          <div class="row" style="margin-top:12px"><label for="rasterGrad">Gradient</label></div>
-          <select id="rasterGrad"></select>
-          <label class="check"><input type="checkbox" id="gradOdwroc"> Odwróć gradient</label>
+        <div id="wielokat-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="boki">Boki</label><span class="val" id="boki-v">5</span></div>
+          <input type="range" id="boki" min="3" max="12" value="5">
+          <div class="row"><label for="wciecie">Wcięcie (gwiazda)</label><span class="val" id="wciecie-v">brak</span></div>
+          <input type="range" id="wciecie" min="0" max="100" value="0">
         </div>
-        <label class="check"><input type="checkbox" id="rozmiarJasnosc"> Rozmiar punktu z jasności (na ciemny papier)</label>
-        <p class="hint">Każdy punkt ma swój kolor — z obrazu albo z gradientu według tonu (od cieni do świateł). Kolory kładą się na papier zwyczajnie, nie mnożeniem.</p>
-      </div>
-      <div id="riso-opcje" class="hidden">
-        <div class="row" style="margin-top:12px"><label for="risoIle">Liczba farb</label><span class="val" id="risoIle-v">2</span></div>
-        <input type="range" id="risoIle" min="1" max="4" value="2">
-        <div class="row"><label for="risoLos">Losowe pasowanie</label><span class="val" id="risoLos-v">brak</span></div>
-        <input type="range" id="risoLos" min="0" max="100" value="0">
-        <div id="riso-wariant-opcje" class="hidden">
-          <div class="row"><label for="risoWariant">Wariant losowania</label><span class="val" id="risoWariant-v">1</span></div>
-          <input type="range" id="risoWariant" min="1" max="50" value="1">
+        <div id="superelipsa-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="wykladnik">Od koła do kwadratu</label><span class="val" id="wykladnik-v">4,0</span></div>
+          <input type="range" id="wykladnik" min="6" max="120" value="40">
         </div>
-        <div class="tabs riso-zakladki" role="tablist" id="riso-zakladki"></div>
-        <div id="riso-warstwy"></div>
-        <p class="hint">Każda farba to osobny raster nakładany mnożeniem — z różu i niebieskiego robi się fiolet. „Swój kolor” bierze z obrazu to, co ma kolor tej farby.</p>
-      </div>
-      <div class="row" style="margin-top:12px"><label>Farba (czarna) i papier</label></div>
-      <div class="swatches">
-        <input type="color" id="ink-r" value="#000000" aria-label="Kolor farby">
-        <input type="color" id="paper-r" value="#ffffff" aria-label="Kolor papieru">
-        <button class="btn" id="swap-r" style="width:auto; padding:6px 10px">Zamień</button>
-      </div>
-      <div class="row"><label for="mis">Pasowanie</label><span class="val" id="mis-v">0.0</span></div>
-      <input type="range" id="mis" min="0" max="60" value="0">
-      <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
-      <input type="range" id="grain" min="0" max="60" value="0">
-      <label class="check"><input type="checkbox" id="pustePrzezr" checked> Przezroczyste miejsca obrazu jako papier</label>
-      <div class="row"><label for="papierRodzaj">Faktura papieru</label></div>
-      <select id="papierRodzaj">
-        <option value="gladki" selected>Gładki</option>
-        <option value="wlokna">Włókna</option>
-        <option value="czerpany">Czerpany</option>
-        <option value="makulatura">Makulatura</option>
-      </select>
-      <div id="papier-opcje" class="hidden">
-        <div class="row" style="margin-top:10px"><label for="papierSila">Siła faktury papieru</label><span class="val" id="papierSila-v">50%</span></div>
-        <input type="range" id="papierSila" min="0" max="100" value="50">
-      </div>
-      <div class="row" style="margin-top:14px"><label><strong>Ton i wielkość punktu</strong></label></div>
-      <div class="row"><label for="tonPowt">Fala tonu — powtórzenia</label><span class="val" id="tonPowt-v">brak</span></div>
-      <input type="range" id="tonPowt" min="1" max="12" value="1">
-      <div id="ton-opcje" class="hidden">
-        <select id="tonRodzaj" aria-label="Kształt fali tonu">
-          <option value="pila" selected>Piła — przejście powtarzane</option>
-          <option value="trojkat">Trójkąt — tam i z powrotem</option>
+        <div id="wlasny-opcje" class="hidden">
+          <button class="btn" id="wlasny-wczytaj" style="margin-top:10px">Wczytaj kształt SVG…</button>
+          <input type="file" id="wlasny-plik" accept=".svg,image/svg+xml" class="hidden">
+          <p class="hint" id="wlasny-info">Logo, ikona, rysunek — każdy punkt rastra przyjmie ten kształt (wszystkie kontury pliku, z otworami). Kolory pliku nie mają znaczenia.</p>
+        </div>
+        <div id="znak-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="znak">Znaki</label></div>
+          <input type="text" id="znak" value="★" maxlength="40" aria-label="Znaki punktów">
+          <p class="hint">Kilka znaków — idą po kolei, punkt po punkcie. Emoji działają, ale mają własne kolory.</p>
+        </div>
+        <div class="row" style="margin-top:10px"><label for="zaokraglenie">Zaokrąglenie rogów</label><span class="val" id="zaokraglenie-v">brak</span></div>
+        <input type="range" id="zaokraglenie" min="0" max="100" value="0">
+        <label class="check" style="margin-top:10px"><input type="checkbox" id="obrotZSiatka" checked> Obracaj kształt z siatką</label>
+        <div class="row" style="margin-top:10px"><label for="scalanie">Scalanie równych obszarów</label><span class="val" id="scalanie-v">brak</span></div>
+        <input type="range" id="scalanie" min="0" max="100" value="0">
+        <p class="hint hidden" id="scalanie-hint">Działa na siatce kwadratowej (bez rozciągnięcia i pochylenia).</p>
+        <div class="row" style="margin-top:10px"><label for="zlewanie">Zlewanie punktów</label><span class="val" id="zlewanie-v">brak</span></div>
+        <input type="range" id="zlewanie" min="0" max="100" value="0">
+        <div class="row" style="margin-top:10px"><label for="obrys">Obrys zamiast wypełnienia</label><span class="val" id="obrys-v">brak</span></div>
+        <input type="range" id="obrys" min="0" max="40" value="0">
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="siatka" open>
+        <summary>Siatka<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="siatka">Układ punktów</label></div>
+        <select id="siatka">
+          <option value="kwadrat" selected>Kwadratowa</option>
+          <option value="heks">Heksagonalna</option>
+          <option value="trojkatna">Trójkątna</option>
+          <option value="stipple">Stippling — punkty wg gęstości</option>
+          <option value="qr">Kod QR — skanowalny raster</option>
+          <option value="okregi">Okręgi — obręcze</option>
+          <option value="spirala">Spirala</option>
+          <option value="promienie">Promienie</option>
+          <option value="warstwice">Wzdłuż kształtu — warstwice</option>
         </select>
-        <div class="row" style="margin-top:10px"><label for="tonPrzes">Przesunięcie fali</label><span class="val" id="tonPrzes-v">0%</span></div>
-        <input type="range" id="tonPrzes" min="0" max="100" value="0">
-      </div>
-      <div class="row"><label for="odpowiedz">Krzywa wielkości</label><span class="val" id="odpowiedz-v">1,00</span></div>
-      <input type="range" id="odpowiedz" min="25" max="300" value="100">
-      <div class="row"><label for="minPunkt">Najmniejszy punkt</label><span class="val" id="minPunkt-v">0%</span></div>
-      <input type="range" id="minPunkt" min="0" max="100" value="0">
-      <p class="hint">Fala tonu zawija jasność w pasy — z gradientu robią się obwódki jak warstwice. Krzywa powyżej 1: punkty rosną później, poniżej — szybciej.</p>
-
-      <div class="row" style="margin-top:14px"><label><strong>Odkształcenie siatki</strong></label></div>
-      <div class="row"><label for="odksztalcenie">Płynięcie (szum)</label><span class="val" id="odksztalcenie-v">brak</span></div>
-      <input type="range" id="odksztalcenie" min="0" max="100" value="0">
-      <div id="odkszt-opcje" class="hidden">
-        <div class="row"><label for="odksztSkala">Wielkość wirów</label><span class="val" id="odksztSkala-v">60 px</span></div>
-        <input type="range" id="odksztSkala" min="10" max="400" value="60">
-        <div class="row"><label for="odksztPrzes">Przesunięcie pola</label><span class="val" id="odksztPrzes-v">0</span></div>
-        <input type="range" id="odksztPrzes" min="0" max="100" value="0">
-      </div>
-      <div class="row"><label for="rozciag">Rozciągnięcie siatki</label><span class="val" id="rozciag-v">100%</span></div>
-      <input type="range" id="rozciag" min="30" max="300" value="100">
-      <div class="row"><label for="pochyl">Pochylenie siatki</label><span class="val" id="pochyl-v">0°</span></div>
-      <input type="range" id="pochyl" min="-60" max="60" value="0">
-      <p class="hint">Płynięcie przesuwa punkty i linie gładkim polem — wiry zamiast losowego drgania. Rozciągnięcie i pochylenie: siatki kwadratowa i heksagonalna (w kierunku kąta).</p>
-
-      <div class="row" style="margin-top:14px"><label><strong>Nierówny raster</strong></label></div>
-      <div class="row"><label for="chmury">Chmury krycia</label><span class="val" id="chmury-v">brak</span></div>
-      <input type="range" id="chmury" min="0" max="100" value="0">
-      <div class="row"><label for="nierowne">Nierówne punkty</label><span class="val" id="nierowne-v">brak</span></div>
-      <input type="range" id="nierowne" min="0" max="100" value="0">
-      <div class="row"><label for="drganie">Drganie punktów</label><span class="val" id="drganie-v">brak</span></div>
-      <input type="range" id="drganie" min="0" max="100" value="0">
-      <div class="row"><label for="postrzep">Postrzępione brzegi</label><span class="val" id="postrzep-v">brak</span></div>
-      <input type="range" id="postrzep" min="0" max="100" value="0">
-      <p class="hint">Jak zeskanowany odbity raster — w geometrii punktów, więc też w SVG. Postrzępione brzegi działają na punkty okrągłe.</p>
-      <div class="row" style="margin-top:14px"><label><strong>Faktura farby</strong></label></div>
-      <div class="row"><label for="szorstkosc">Szorstkie krawędzie</label><span class="val" id="szorstkosc-v">brak</span></div>
-      <input type="range" id="szorstkosc" min="0" max="100" value="0">
-      <div class="row"><label for="rozlanie">Rozlanie farby</label><span class="val" id="rozlanie-v">brak</span></div>
-      <input type="range" id="rozlanie" min="0" max="100" value="0">
-      <div class="row"><label for="plamy">Nierówne krycie</label><span class="val" id="plamy-v">brak</span></div>
-      <input type="range" id="plamy" min="0" max="100" value="0">
-      <div class="row"><label for="dziury">Dziury w farbie</label><span class="val" id="dziury-v">brak</span></div>
-      <input type="range" id="dziury" min="0" max="100" value="0">
-      <div class="row"><label for="walek">Ślady wałka</label><span class="val" id="walek-v">brak</span></div>
-      <input type="range" id="walek" min="0" max="100" value="0">
-      <p class="hint">Jak druk riso i sitodruk — tylko w PNG (SVG to czysta geometria).</p>
+        <div id="qr-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="qrTekst">Treść kodu (adres, tekst)</label></div>
+          <input type="text" id="qrTekst" value="https://" maxlength="1200">
+          <div class="row" style="margin-top:10px"><label for="qrKorekcja">Odporność kodu</label></div>
+          <select id="qrKorekcja">
+            <option value="L">L — 7% (rzadszy kod, więcej obrazu)</option>
+            <option value="M">M — 15%</option>
+            <option value="Q">Q — 25%</option>
+            <option value="H" selected>H — 30% (najpewniej się skanuje)</option>
+          </select>
+          <div class="row" style="margin-top:10px"><label for="qrWersja">Gęstość kodu</label><span class="val" id="qrWersja-v">najmniejsza</span></div>
+          <input type="range" id="qrWersja" min="1" max="20" value="1">
+          <div class="row"><label for="qrRozmiar">Wielkość kodu</label><span class="val" id="qrRozmiar-v">80%</span></div>
+          <input type="range" id="qrRozmiar" min="20" max="100" value="80">
+          <p class="hint" id="qr-info">Środek każdego modułu niesie kod, reszta to raster obrazu. Sprawdź telefonem przed drukiem — przy jasnym obrazie i małym kodzie skanuje się najpewniej.</p>
+        </div>
+        <div id="stipple-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="stipIter">Wyrównanie rozkładu</label><span class="val" id="stipIter-v">8</span></div>
+          <input type="range" id="stipIter" min="0" max="30" value="8">
+          <p class="hint">Punkty jednej wielkości, ton z ich gęstości. 0 — losowo, więcej — równo, bez zlepków (dłużej liczy).</p>
+        </div>
+        <div id="srodek-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="srodekX">Środek — poziomo</label><span class="val" id="srodekX-v">0%</span></div>
+          <input type="range" id="srodekX" min="-100" max="100" value="0">
+          <div class="row"><label for="srodekY">Środek — pionowo</label><span class="val" id="srodekY-v">0%</span></div>
+          <input type="range" id="srodekY" min="-100" max="100" value="0">
+        </div>
+        <div id="fala-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="fala">Odkształcenie linii</label><span class="val" id="fala-v">brak</span></div>
+          <input type="range" id="fala" min="0" max="100" value="0">
+          <div class="row"><label for="gladkosc">Gładkość</label><span class="val" id="gladkosc-v">brak</span></div>
+          <input type="range" id="gladkosc" min="0" max="100" value="0">
+          <div class="row"><label for="liniaMin">Grubość najmniejsza</label><span class="val" id="liniaMin-v">0%</span></div>
+          <input type="range" id="liniaMin" min="0" max="100" value="0">
+          <div class="row"><label for="liniaMax">Grubość największa</label><span class="val" id="liniaMax-v">100%</span></div>
+          <input type="range" id="liniaMax" min="0" max="150" value="100">
+          <p class="hint">Linie grubieją w ciemnych miejscach i wyginają się według obrazu. Gładkość uśrednia wygięcie (przy warstwicach — upraszcza ich kształt). Najmniejsza grubość większa od zera zostawia linię także w światłach.</p>
+        </div>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="farby" open>
+        <summary>Farby i papier<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="inkmode">Farby</label></div>
+        <select id="inkmode">
+          <option value="mono" selected>Jedna farba</option>
+          <option value="duo">Duotone (czarny + akcent)</option>
+          <option value="cmyk">CMYK — cztery siatki</option>
+          <option value="riso">Risograf — własne farby</option>
+          <option value="obraz">Kolory z obrazu</option>
+          <option value="gradient">Mapa gradientu</option>
+        </select>
+        <div id="barwne-opcje" class="hidden">
+          <div id="grad-opcje">
+            <div class="row" style="margin-top:12px"><label for="rasterGrad">Gradient</label></div>
+            <select id="rasterGrad"></select>
+            <label class="check"><input type="checkbox" id="gradOdwroc"> Odwróć gradient</label>
+          </div>
+          <label class="check"><input type="checkbox" id="rozmiarJasnosc"> Rozmiar punktu z jasności (na ciemny papier)</label>
+          <p class="hint">Każdy punkt ma swój kolor — z obrazu albo z gradientu według tonu (od cieni do świateł). Kolory kładą się na papier zwyczajnie, nie mnożeniem.</p>
+        </div>
+        <div id="riso-opcje" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="risoIle">Liczba farb</label><span class="val" id="risoIle-v">2</span></div>
+          <input type="range" id="risoIle" min="1" max="4" value="2">
+          <div class="row"><label for="risoLos">Losowe pasowanie</label><span class="val" id="risoLos-v">brak</span></div>
+          <input type="range" id="risoLos" min="0" max="100" value="0">
+          <div id="riso-wariant-opcje" class="hidden">
+            <div class="row"><label for="risoWariant">Wariant losowania</label><span class="val" id="risoWariant-v">1</span></div>
+            <input type="range" id="risoWariant" min="1" max="50" value="1">
+          </div>
+          <div class="tabs riso-zakladki" role="tablist" id="riso-zakladki"></div>
+          <div id="riso-warstwy"></div>
+          <p class="hint">Każda farba to osobny raster nakładany mnożeniem — z różu i niebieskiego robi się fiolet. „Swój kolor” bierze z obrazu to, co ma kolor tej farby.</p>
+        </div>
+        <div class="row" style="margin-top:12px"><label>Farba (czarna) i papier</label></div>
+        <div class="swatches">
+          <input type="color" id="ink-r" value="#000000" aria-label="Kolor farby">
+          <input type="color" id="paper-r" value="#ffffff" aria-label="Kolor papieru">
+          <button class="btn" id="swap-r" style="width:auto; padding:6px 10px">Zamień</button>
+        </div>
+        <div class="row"><label for="mis">Pasowanie</label><span class="val" id="mis-v">0.0</span></div>
+        <input type="range" id="mis" min="0" max="60" value="0">
+        <div class="row"><label for="grain">Ziarno papieru</label><span class="val" id="grain-v">0</span></div>
+        <input type="range" id="grain" min="0" max="60" value="0">
+        <label class="check"><input type="checkbox" id="pustePrzezr" checked> Przezroczyste miejsca obrazu jako papier</label>
+        <div class="row"><label for="papierRodzaj">Faktura papieru</label></div>
+        <select id="papierRodzaj">
+          <option value="gladki" selected>Gładki</option>
+          <option value="wlokna">Włókna</option>
+          <option value="czerpany">Czerpany</option>
+          <option value="makulatura">Makulatura</option>
+        </select>
+        <div id="papier-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="papierSila">Siła faktury papieru</label><span class="val" id="papierSila-v">50%</span></div>
+          <input type="range" id="papierSila" min="0" max="100" value="50">
+        </div>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="ton">
+        <summary>Ton i wielkość punktu<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="tonPowt">Fala tonu — powtórzenia</label><span class="val" id="tonPowt-v">brak</span></div>
+        <input type="range" id="tonPowt" min="1" max="12" value="1">
+        <div id="ton-opcje" class="hidden">
+          <select id="tonRodzaj" aria-label="Kształt fali tonu">
+            <option value="pila" selected>Piła — przejście powtarzane</option>
+            <option value="trojkat">Trójkąt — tam i z powrotem</option>
+          </select>
+          <div class="row" style="margin-top:10px"><label for="tonPrzes">Przesunięcie fali</label><span class="val" id="tonPrzes-v">0%</span></div>
+          <input type="range" id="tonPrzes" min="0" max="100" value="0">
+        </div>
+        <div class="row"><label for="odpowiedz">Krzywa wielkości</label><span class="val" id="odpowiedz-v">1,00</span></div>
+        <input type="range" id="odpowiedz" min="25" max="300" value="100">
+        <div class="row"><label for="minPunkt">Najmniejszy punkt</label><span class="val" id="minPunkt-v">0%</span></div>
+        <input type="range" id="minPunkt" min="0" max="100" value="0">
+        <p class="hint">Fala tonu zawija jasność w pasy — z gradientu robią się obwódki jak warstwice. Krzywa powyżej 1: punkty rosną później, poniżej — szybciej.</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="odksztalcenie">
+        <summary>Odkształcenie siatki<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="odksztalcenie">Płynięcie (szum)</label><span class="val" id="odksztalcenie-v">brak</span></div>
+        <input type="range" id="odksztalcenie" min="0" max="100" value="0">
+        <div id="odkszt-opcje" class="hidden">
+          <div class="row"><label for="odksztSkala">Wielkość wirów</label><span class="val" id="odksztSkala-v">60 px</span></div>
+          <input type="range" id="odksztSkala" min="10" max="400" value="60">
+          <div class="row"><label for="odksztPrzes">Przesunięcie pola</label><span class="val" id="odksztPrzes-v">0</span></div>
+          <input type="range" id="odksztPrzes" min="0" max="100" value="0">
+        </div>
+        <div class="row"><label for="rozciag">Rozciągnięcie siatki</label><span class="val" id="rozciag-v">100%</span></div>
+        <input type="range" id="rozciag" min="30" max="300" value="100">
+        <div class="row"><label for="pochyl">Pochylenie siatki</label><span class="val" id="pochyl-v">0°</span></div>
+        <input type="range" id="pochyl" min="-60" max="60" value="0">
+        <p class="hint">Płynięcie przesuwa punkty i linie gładkim polem — wiry zamiast losowego drgania. Rozciągnięcie i pochylenie: siatki kwadratowa i heksagonalna (w kierunku kąta).</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="nierowny">
+        <summary>Nierówny raster<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="chmury">Chmury krycia</label><span class="val" id="chmury-v">brak</span></div>
+        <input type="range" id="chmury" min="0" max="100" value="0">
+        <div class="row"><label for="nierowne">Nierówne punkty</label><span class="val" id="nierowne-v">brak</span></div>
+        <input type="range" id="nierowne" min="0" max="100" value="0">
+        <div class="row"><label for="drganie">Drganie punktów</label><span class="val" id="drganie-v">brak</span></div>
+        <input type="range" id="drganie" min="0" max="100" value="0">
+        <div class="row"><label for="postrzep">Postrzępione brzegi</label><span class="val" id="postrzep-v">brak</span></div>
+        <input type="range" id="postrzep" min="0" max="100" value="0">
+        <p class="hint">Jak zeskanowany odbity raster — w geometrii punktów, więc też w SVG. Postrzępione brzegi działają na punkty okrągłe.</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="faktura">
+        <summary>Faktura farby<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="szorstkosc">Szorstkie krawędzie</label><span class="val" id="szorstkosc-v">brak</span></div>
+        <input type="range" id="szorstkosc" min="0" max="100" value="0">
+        <div class="row"><label for="rozlanie">Rozlanie farby</label><span class="val" id="rozlanie-v">brak</span></div>
+        <input type="range" id="rozlanie" min="0" max="100" value="0">
+        <div class="row"><label for="plamy">Nierówne krycie</label><span class="val" id="plamy-v">brak</span></div>
+        <input type="range" id="plamy" min="0" max="100" value="0">
+        <div class="row"><label for="dziury">Dziury w farbie</label><span class="val" id="dziury-v">brak</span></div>
+        <input type="range" id="dziury" min="0" max="100" value="0">
+        <div class="row"><label for="walek">Ślady wałka</label><span class="val" id="walek-v">brak</span></div>
+        <input type="range" id="walek" min="0" max="100" value="0">
+        <p class="hint">Jak druk riso i sitodruk — tylko w PNG (SVG to czysta geometria).</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
     </div>
 
     <div class="group" id="g-fx">

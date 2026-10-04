@@ -120,6 +120,7 @@ select:focus-visible,.btn:focus-visible{outline:2px solid var(--magenta); outlin
 input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rule); background:none; cursor:pointer}
 
 .presets{display:flex; flex-wrap:wrap; gap:6px}
+.presets .btn[aria-pressed=true]{background:var(--ink); color:var(--paper)}
 .presets .btn{width:auto; flex:1 1 auto; padding:5px 9px; font-size:13px}
 .presets .moj{display:flex; flex:1 1 auto}
 .presets .moj .btn{border-style:dashed}
@@ -261,3 +262,15 @@ select option, select optgroup{background:var(--paper); color:var(--ink)}
 .kadr i[data-r=ne]{right:-7px; top:-7px; cursor:nesw-resize}
 .kadr i[data-r=sw]{left:-7px; bottom:-7px; cursor:nesw-resize}
 .kadr i[data-r=se]{right:-7px; bottom:-7px; cursor:nwse-resize}
+
+/* zwijane sekcje grupy rastra */
+details.pod{border-top:1px solid var(--rule); margin-top:14px}
+details.pod > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:10px 0 2px; font-weight:700; font-size:13px}
+details.pod > summary::-webkit-details-marker{display:none}
+details.pod > summary::after{content:"▾"; margin-left:auto; color:var(--soft); transition:transform .15s}
+details.pod:not([open]) > summary::after{transform:rotate(-90deg)}
+details.pod > summary:focus-visible{outline:2px solid var(--magenta); outline-offset:2px}
+details.pod .zmiana{display:none; width:7px; height:7px; border-radius:50%; background:var(--magenta)}
+details.pod .zmiana.widac{display:inline-block}
+.pod-reset{display:block; width:auto; margin:12px 0 4px; padding:0; border:0; background:none; color:var(--soft); font-size:12px; text-decoration:underline; text-underline-offset:3px}
+.pod-reset:hover{color:var(--ink)}

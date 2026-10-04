@@ -94,6 +94,7 @@ function drawScreen(target, smp, W,H, ink, z){
 /* Grupa punktów jednego koloru (fillStyle/strokeStyle już ustawione):
    znaki tekstem, kształty ścieżką (nowe, postrzępione, obrys) albo wprost
    (dawne — co do piksela jak przed dodaniem ścieżek). */
+const PORCJA = 300;
 const sciezka = (x, k) => { x.moveTo(k[0][0], k[0][1]); for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]); x.closePath(); };
 function rysujGrupe(x, kropki, g, ksztalt, numery){
   const obr = grubostObrysu() > 0;
@@ -109,10 +110,16 @@ function rysujGrupe(x, kropki, g, ksztalt, numery){
     });
     return;
   }
+  /* Kształty ścieżką: reguła nonzero (nie evenodd — tam część wspólna
+     nakładających się punktów wychodziła dziurą, w ciemnych tonach białe
+     plamki) i porcjami po PORCJA punktów — jedna ścieżka z dziesiątkami
+     tysięcy kształtów wypełniała się w Chrome kilka sekund. */
   if(sciezkowy(ksztalt, g)){
-    x.beginPath();
-    for(const kr of kropki) for(const k of obrys(ksztalt, kr, g.postrzep, g.cell)) sciezka(x, k);
-    if(obr) x.stroke(); else x.fill("evenodd");
+    for(let i=0; i<kropki.length; i+=PORCJA){
+      x.beginPath();
+      for(const kr of kropki.slice(i, i + PORCJA)) for(const k of obrys(ksztalt, kr, g.postrzep, g.cell)) sciezka(x, k);
+      if(obr) x.stroke(); else x.fill("nonzero");
+    }
     return;
   }
   const cell = g.cell;

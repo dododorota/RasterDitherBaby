@@ -802,8 +802,22 @@ export function ksztaltWlasny(){
       if(!k.length) k = null;
     }
   }catch{ k = null; }
-  pamiecKsztaltu = {tekst: t, kontury: k};
-  return k;
+  pamiecKsztaltu = {tekst: t, kontury: k && orientuj(k)};
+  return pamiecKsztaltu.kontury;
+}
+/* Kierunek obiegu: kontury zewnętrzne w jedną stronę, otwory (leżące
+   wewnątrz nieparzystej liczby innych) w drugą. Punkty rysujemy regułą
+   nonzero (nakładające się punkty zostają zamalowane — przy evenodd ich część
+   wspólna robiła dziurę), a otwory działają wtedy tylko przy odwrotnym
+   obiegu. Plik SVG może mieć obiegi dowolne, więc poprawiamy przy odczycie. */
+function orientuj(kontury){
+  const pole = c => { let s = 0; for(let i=0; i<c.length; i++){ const [a, b] = c[i], [x, y] = c[(i + 1) % c.length]; s += a*y - b*x; } return s; };
+  const wewnatrz = (p, c) => { let w = false; for(let i=0, j=c.length - 1; i<c.length; j=i++){ const [xi, yi] = c[i], [xj, yj] = c[j];
+    if((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi)*(p[1] - yi)/(yj - yi) + xi) w = !w; } return w; };
+  return kontury.map((c, i) => {
+    const otwor = kontury.filter((d, j) => j !== i && wewnatrz(c[0], d)).length % 2 === 1;
+    return (pole(c) > 0) === !otwor ? c : [...c].reverse();
+  });
 }
 /* kontury w dowolnych jednostkach → środek w zerze, pole π (evenodd: dziury
    odejmują), najwyżej `maks` punktów razem (równo po długości) */
