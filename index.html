@@ -203,30 +203,54 @@
 
     <div class="group">
       <h2>Korekta przed rastrem</h2>
-      <div class="row"><label for="bri">Jasność</label><span class="val" id="bri-v">0</span></div>
-      <input type="range" id="bri" min="-100" max="100" value="0">
-      <div class="row"><label for="con">Kontrast</label><span class="val" id="con-v">0</span></div>
-      <input type="range" id="con" min="-100" max="100" value="0">
-      <div class="row"><label for="cienie">Cienie</label><span class="val" id="cienie-v">0</span></div>
-      <input type="range" id="cienie" min="-100" max="100" value="0">
-      <div class="row"><label for="gam">Półtony (gamma)</label><span class="val" id="gam-v">1.00</span></div>
-      <input type="range" id="gam" min="30" max="300" value="100">
-      <div class="row"><label for="swiatla">Światła</label><span class="val" id="swiatla-v">0</span></div>
-      <input type="range" id="swiatla" min="-100" max="100" value="0">
-      <div class="row"><label for="nasycenie">Nasycenie</label><span class="val" id="nasycenie-v">0</span></div>
-      <input type="range" id="nasycenie" min="-100" max="100" value="0">
-      <div class="row"><label for="odcien">Odcień</label><span class="val" id="odcien-v">0°</span></div>
-      <input type="range" id="odcien" min="-180" max="180" value="0">
-      <div class="row"><label for="blur">Rozmycie</label><span class="val" id="blur-v">brak</span></div>
-      <input type="range" id="blur" min="0" max="20" value="0">
-      <div class="row"><label for="ostrosc">Wyostrzanie</label><span class="val" id="ostrosc-v">brak</span></div>
-      <input type="range" id="ostrosc" min="0" max="100" value="0">
-      <div class="row"><label for="odszum">Odszumianie</label><span class="val" id="odszum-v">brak</span></div>
-      <input type="range" id="odszum" min="0" max="100" value="0">
-      <div class="row"><label for="pix">Pikselizacja</label><span class="val" id="pix-v">1×</span></div>
-      <input type="range" id="pix" min="1" max="16" value="1">
-      <label class="check"><input type="checkbox" id="inv"> Negatyw</label>
-      <button class="btn" id="korekta-reset" style="margin-top:6px">Przywróć korektę</button>
+      <details class="pod" data-pod="k-tony" open>
+        <summary>Tony<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="bri">Jasność</label><span class="val" id="bri-v">0</span></div>
+        <input type="range" id="bri" min="-100" max="100" value="0">
+        <div class="row"><label for="con">Kontrast</label><span class="val" id="con-v">0</span></div>
+        <input type="range" id="con" min="-100" max="100" value="0">
+        <div class="row"><label for="cienie">Cienie</label><span class="val" id="cienie-v">0</span></div>
+        <input type="range" id="cienie" min="-100" max="100" value="0">
+        <div class="row"><label for="gam">Półtony (gamma)</label><span class="val" id="gam-v">1.00</span></div>
+        <input type="range" id="gam" min="30" max="300" value="100">
+        <div class="row"><label for="swiatla">Światła</label><span class="val" id="swiatla-v">0</span></div>
+        <input type="range" id="swiatla" min="-100" max="100" value="0">
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="k-kolor">
+        <summary>Kolor<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="nasycenie">Nasycenie</label><span class="val" id="nasycenie-v">0</span></div>
+        <input type="range" id="nasycenie" min="-100" max="100" value="0">
+        <div class="row"><label for="odcien">Odcień</label><span class="val" id="odcien-v">0°</span></div>
+        <input type="range" id="odcien" min="-180" max="180" value="0">
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="k-ostrosc">
+        <summary>Ostrość i szum<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="blur">Rozmycie</label><span class="val" id="blur-v">brak</span></div>
+        <input type="range" id="blur" min="0" max="20" value="0">
+        <div class="row"><label for="ostrosc">Wyostrzanie</label><span class="val" id="ostrosc-v">brak</span></div>
+        <input type="range" id="ostrosc" min="0" max="100" value="0">
+        <div class="row"><label for="odszum">Odszumianie</label><span class="val" id="odszum-v">brak</span></div>
+        <input type="range" id="odszum" min="0" max="100" value="0">
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="k-piksele" open>
+        <summary>Pikselizacja i negatyw<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <div class="row"><label for="pix">Pikselizacja</label><span class="val" id="pix-v">1×</span></div>
+        <input type="range" id="pix" min="1" max="16" value="1">
+        <label class="check"><input type="checkbox" id="inv"> Negatyw</label>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <button class="btn" id="korekta-reset" style="margin-top:12px">Przywróć całą korektę</button>
     </div>
 
     <!-- DITHER -->

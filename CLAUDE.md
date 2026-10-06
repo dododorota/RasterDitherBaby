@@ -410,7 +410,7 @@ to osobny krok — `utrwalStan()` przed i po. Nowa kontrolka wyglądu trafia do
 historii sama, jeśli jej zmiana woła `schedule()`. Podświetlenie presetu
 (`podswietlPresety()`, też z `schedule()`): wszystkie klucze presetu równe S.
 
-**Sekcje rastra** (`details.pod` w g-half): klucze sekcji zbierane raz,
+**Sekcje panelu** (`details.pod` w grupie rastra i w korekcie — mechanizm ogólny, dla każdej grupy): klucze sekcji zbierane raz,
 na końcu app.js, z jej kontrolek przez `opisKontrolki()` — nowa kontrolka
 wewnątrz sekcji trafia do kropki „zmienione" i do przycisku przywracania
 sama. `SEKCJE` to `let` wysoko w pliku, bo `schedule()` woła
