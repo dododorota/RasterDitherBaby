@@ -30,6 +30,6 @@ export const PRESETS = {
     ["Kolorowe punkty", {inkmode:"obraz", rozmiarJasnosc:true, cell:7, ang:45, dot:1.15, paper:"#0d0d0d", nasycenie:25, con:10}],
     ["Termo", {inkmode:"gradient", rasterGrad:"g-termo", rozmiarJasnosc:true, siatka:"heks", cell:6, dot:1.2, paper:"#000000", con:15}],
     ["Skan", {inkmode:"mono", cell:7, ang:15, dot:0.95, chmury:30, nierowne:40, drganie:10, postrzep:50, szorstkosc:20, ink:"#111111", paper:"#ffffff", bri:10}],
-    ["Niebieski skan", {inkmode:"mono", cell:6, ang:45, dot:0.95, chmury:60, nierowne:30, drganie:8, postrzep:40, ink:"#4b4fa0", paper:"#ffffff", bri:30, con:-15}]
+    ["Niebieski skan", {inkmode:"mono", cell:6, ang:45, dot:0.95, chmury:60, nierowne:30, drganie:8, postrzep:40, ink:"#4b4fa0", paper:"#ffffff", bri:10, con:-25}]
   ]
 };

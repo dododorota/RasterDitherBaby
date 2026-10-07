@@ -31,7 +31,7 @@ export const EFEKTY = [
   {id:"tint",    nazwa:"Zabarwienie",        klucze:["tint","tintKolor","tintTryb"], start:{tint:70}},
   {id:"glow",    nazwa:"Poświata",           klucze:["glow","glowR","glowProg","glowZrodlo","glowKolor"], start:{glow:90}},
   {id:"gwiazdy", nazwa:"Gwiazdki",           klucze:["gwiazdy","gwProg","gwRamiona","gwDlugosc","gwKat"], start:{gwiazdy:120}},
-  {id:"faktura", nazwa:"Faktura",            klucze:["faktura","faktSkala","faktTryb","faktKrycie"], start:{faktura:"skanlinie"}},
+  {id:"faktura", nazwa:"Faktura",            klucze:["faktura","faktSkala","faktTryb","faktKrycie"], start:{faktura:"papier"}},
   {id:"post",    nazwa:"Obróbka końcowa",    klucze:["postJas","postKon","postNas","winieta","postZiarno"], start:{winieta:45}},
   {id:"czas",    nazwa:"Zmienność w czasie", klucze:["czasSzum","czasDrganie","czasCykl"], start:{czasSzum:30}, przed:true}
 ];

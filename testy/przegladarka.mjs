@@ -1014,6 +1014,31 @@ try{
   sprawdz(!sek.przed && sek.zmiana.join() === "true,50,30" && sek.reset.join() === "false,true,true,0" && sek.pamiec,
           "sekcja rastra: kropka przy zmianie, „Przywróć domyślne w tej sekcji” cofa tylko jej suwaki, otwarcie zapamiętane");
 
+  console.log("--- faktura (efekt) ---");
+  const fk = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const $ = s => document.querySelector(s);
+    const zmien = (s, v) => { const el = $(s); el.value = v; el.dispatchEvent(new Event("change")); };
+    const wyn = {};
+    /* wybór faktury ustawia jej tryb mieszania */
+    zmien("#faktura", "holo"); wyn.holo = [S.faktTryb, $("#faktTryb").value];
+    zmien("#faktura", "kurz"); wyn.kurz = [S.faktTryb, $("#faktTryb").value];
+    /* własny preset sprzed zmiany faktur: dawna „rozeta” → kineskop */
+    let stare = null; try{ stare = localStorage.getItem("raster.presety"); }catch{}
+    const lista = JSON.parse(stare || "[]");
+    lista.push({app: "raster", nazwa: "Stara faktura", tryb: "dither", look: {efekty: "faktura", faktura: "rozeta", faktKrycie: 40}});
+    localStorage.setItem("raster.presety", JSON.stringify(lista));
+    $("#tab-half").click(); $("#tab-dither").click();
+    [...document.querySelectorAll("#presets .moj .btn")].find(b => b.textContent === "Stara faktura").click();
+    wyn.stary = [S.faktura, $("#faktura").value, S.faktKrycie];
+    if(stare === null) localStorage.removeItem("raster.presety"); else localStorage.setItem("raster.presety", stare);
+    S.efekty = ""; S.faktura = "brak";
+    $("#tab-half").click(); $("#tab-dither").click();
+    return wyn;
+  });
+  sprawdz(fk.holo.join() === "miekkie,miekkie" && fk.kurz.join() === "mnoz,mnoz", "wybór faktury ustawia jej tryb mieszania (folia → miękkie światło, kurz → mnożenie)");
+  sprawdz(fk.stary.join() === "crt,crt,40", "preset z dawną fakturą „rozeta” dostaje kineskop: " + fk.stary.join());
+
   console.log("--- przezroczyste tło w PNG ---");
   const przezr = await wykonaj(async () => {
     const { S } = await import("/src/state.js");

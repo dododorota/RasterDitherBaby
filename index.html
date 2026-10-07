@@ -758,25 +758,29 @@
         <div class="row"><label for="faktura">Wzór</label></div>
         <select id="faktura">
           <option value="brak" selected>Brak</option>
-          <optgroup label="Kineskop">
-            <option value="maskaRGB">Maska RGB (pasy)</option>
-            <option value="rozeta">Rozeta RGB (triady)</option>
-            <option value="matryca">Matryca RGB (LCD)</option>
-            <option value="skanlinie">Linie skanowania</option>
+          <optgroup label="Papier">
+            <option value="papier">Papier</option>
+            <option value="karton">Karton z makulatury</option>
+            <option value="pogniecony">Pognieciony papier</option>
+            <option value="milimetrowy">Papier milimetrowy</option>
           </optgroup>
-          <optgroup label="Szum">
-            <option value="szum">Szum</option>
-            <option value="szumBarwny">Szum barwny</option>
-            <option value="tkanina">Tkanina</option>
+          <optgroup label="Druk i zużycie">
+            <option value="ksero">Kserokopia</option>
+            <option value="kurz">Kurz i rysy</option>
+            <option value="grain">Ziarno filmowe</option>
           </optgroup>
-          <optgroup label="Wzór">
-            <option value="kratka">Kratka</option>
-            <option value="romby">Romby</option>
-            <option value="tecza">Tęcza</option>
-            <option value="walek">Wałek</option>
+          <optgroup label="Ekran i taśma">
+            <option value="crt">Kineskop</option>
+            <option value="lcd">Ekran LCD z bliska</option>
+            <option value="vhs">Taśma VHS</option>
+          </optgroup>
+          <optgroup label="Materiał">
+            <option value="plotno">Płótno</option>
+            <option value="beton">Beton</option>
+            <option value="holo">Folia holograficzna</option>
           </optgroup>
         </select>
-        <div class="row" style="margin-top:12px"><label for="faktSkala">Skala</label><span class="val" id="faktSkala-v">2 px</span></div>
+        <div class="row" style="margin-top:12px"><label for="faktSkala">Skala</label><span class="val" id="faktSkala-v">×1</span></div>
         <input type="range" id="faktSkala" min="1" max="12" value="2">
         <div class="row"><label for="faktTryb">Mieszanie</label></div>
         <select id="faktTryb">

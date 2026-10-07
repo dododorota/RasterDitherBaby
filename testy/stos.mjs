@@ -4,7 +4,7 @@
    Uruchom z katalogu projektu: node testy/stos.mjs */
 import { S, DEFAULTS } from "../src/state.js";
 import { lista, czynne, dodaj, usun, przelacz, przesun, uruchomNaBuforze, uruchomWSkali, EFEKTY, kopie, ustawParametrKopii } from "../src/stos.js";
-import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka, zmiennoscPrzed, FAKTURY } from "../src/fx.js";
+import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka, zmiennoscPrzed, FAKTURY, FAKTURY_TRYB, DAWNE_FAKTURY } from "../src/fx.js";
 
 let bledy = 0;
 const sprawdz = (warunek, opis) => { console.log((warunek ? "  ok    " : "  ŹLE   ") + opis); if(!warunek) bledy++; };
@@ -73,6 +73,39 @@ for(const nazwa of Object.keys(FAKTURY)){
   if(kolory.size < 2){ sprawdz(false, `faktura ${nazwa}: jednolita`); }
 }
 sprawdz(true, `wszystkie ${Object.keys(FAKTURY).length} faktury dają wzór`);
+{
+  /* każda faktura w swoim trybie, przy skali nieparzystej: zapis z=3 to
+     dokładne powiększenie podglądu */
+  let zle = [];
+  for(const nazwa of Object.keys(FAKTURY)){
+    ustaw({faktura: nazwa, faktKrycie: 80, faktSkala: 3, faktTryb: FAKTURY_TRYB[nazwa]});
+    const w = 30, h = 20, pod = gradient(w, h); faktura(pod, w, h, 1);
+    const duzy = powieksz(gradient(w, h), w, h, 3); faktura(duzy, w*3, h*3, 3);
+    if(!rowne(duzy, powieksz(pod, w, h, 3))) zle.push(nazwa);
+  }
+  sprawdz(!zle.length, "każda faktura, z=3: dokładnie powiększony podgląd" + (zle.length ? " — źle: " + zle : ""));
+  sprawdz(Object.keys(FAKTURY).every(n => FAKTURY_TRYB[n]), "każda faktura ma swój tryb mieszania");
+  /* dawne identyfikatory z presetów dają to samo, co ich następczynie */
+  zle = [];
+  for(const [stara, nowa] of Object.entries(DAWNE_FAKTURY)){
+    const a = gradient(20, 20), b = gradient(20, 20);
+    ustaw({faktura: stara, faktKrycie: 70}); faktura(a, 20, 20, 1);
+    ustaw({faktura: nowa, faktKrycie: 70}); faktura(b, 20, 20, 1);
+    if(!(nowa in FAKTURY) || !rowne(a, b)) zle.push(stara);
+  }
+  sprawdz(!zle.length, `${Object.keys(DAWNE_FAKTURY).length} dawnych faktur → najbliższa nowa` + (zle.length ? " — źle: " + zle : ""));
+  /* ziarno, taśma i kurz zmieniają się z klatką, reszta stoi */
+  const klatka = (nazwa, nr) => { ustaw({faktura: nazwa, faktKrycie: 100, klatkaNr: nr}); const p = gradient(64, 64); faktura(p, 64, 64, 1); return p; };
+  const ruchome = Object.keys(FAKTURY).filter(n => !rowne(klatka(n, 0), klatka(n, 1)));
+  sprawdz(ruchome.join() === "kurz,vhs,grain", "zmieniają się z klatką filmu: " + ruchome.join());
+  /* czas na dużym obrazie — faktura liczy się przy każdym renderze */
+  const W = 1400, H = 1000, duzy = new Uint8ClampedArray(W*H*4).fill(200), czasy = [];
+  for(const nazwa of Object.keys(FAKTURY)){
+    ustaw({faktura: nazwa, faktKrycie: 60}); const t0 = performance.now(); faktura(duzy, W, H, 1); czasy.push([nazwa, Math.round(performance.now() - t0)]);
+  }
+  const max = Math.max(...czasy.map(c => c[1]));
+  sprawdz(max < 600, `1400×1000: najwolniejsza ${max} ms (${czasy.map(c => c.join(" ")).join(", ")})`);
+}
 
 console.log("--- JPEG: struktura bloków ---");
 {

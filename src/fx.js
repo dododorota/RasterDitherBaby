@@ -204,48 +204,213 @@ export function warstwaGwiazd(p, w, h, jednostka){
 }
 
 /* ---------- faktura ----------
-   Wzór nałożony na obraz, jak siatka kineskopu albo tkanina pod drukiem.
-   Generowany kodem, bez plików: każdy wzór to funkcja współrzędnych komórki
-   faktury → kolor. Skala to rozmiar komórki w pikselach siatki efektu. */
-const tecza = t => { const h = (t % 1)*6, i = Math.floor(h), f = h - i, q = 255*(1 - f), u = 255*f;
+   Materiał albo nośnik nałożony na obraz: papier, ksero, kurz, kineskop,
+   taśma, płótno… Generowane kodem, bez plików — każda faktura to funkcja
+   piksela siatki efektu (X, Y) → kolor, z ziarnem ze skrótu, więc
+   deterministyczna. Liczona raz na piksel podglądu (przy zapisie w skali
+   powiększana blokami z×z — dokładne powiększenie, jak ziarno). Skala z
+   suwaka (1–12, środek 2) mnoży wielkość szczegółów. Neutralne tło: 255 dla
+   mnożenia, 128 dla nakładki i miękkiego światła — każda faktura podaje
+   tryb, w którym wygląda najlepiej (FAKTURY_TRYB, ustawiany przy wyborze).
+   Ziarno filmowe, taśma i kurz zmieniają się z klatką filmu (S.klatkaNr). */
+const gl = t => t*t*(3 - 2*t);
+const fr = v => v - Math.floor(v);
+/* szum wartości na siatce obróconej o ~37° (prosta zdradza kratkę) */
+function szumW(x, y, z){
+  const u = x*0.8 - y*0.6, v = x*0.6 + y*0.8, i = Math.floor(u), j = Math.floor(v), fx = gl(u - i), fy = gl(v - j);
+  const a = skrot(i, j, z), b = skrot(i + 1, j, z), c = skrot(i, j + 1, z), d = skrot(i + 1, j + 1, z);
+  return a + (b - a)*fx + (c - a + (a - b - c + d)*fx)*fy;
+}
+function fbm(x, y, z, okt){
+  let s = 0, a = 0.5, f = 1, n = 0;
+  for(let o=0; o<okt; o++){ s += a*szumW(x*f, y*f, z + o*101); n += a; a *= 0.5; f *= 2.03; }
+  return s/n;
+}
+const sz = v => Math.max(0, Math.min(255, v));
+const tecza = t => { const h = fr(t)*6, i = Math.floor(h), f = h - i, q = 255*(1 - f), u = 255*f;
   return [[255,u,0],[q,255,0],[0,255,u],[0,q,255],[u,0,255],[255,0,q]][i]; };
+/* punkt (kropka, plamka) w losowym miejscu komórki — do kurzu, drobinek, porów */
+function plamka(X, Y, kom, prawd, rMin, rMax, ziarno){
+  const cx = Math.floor(X/kom), cy = Math.floor(Y/kom);
+  for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){
+    const i = cx + dx, j = cy + dy;
+    if(skrot(i, j, ziarno) >= prawd) continue;
+    const px = (i + skrot(i, j, ziarno + 1))*kom, py = (j + skrot(i, j, ziarno + 2))*kom;
+    const r = rMin + (rMax - rMin)*skrot(i, j, ziarno + 3), d = Math.hypot(X + 0.5 - px, Y + 0.5 - py);
+    if(d < r) return {d: d/r, ton: skrot(i, j, ziarno + 4)};
+  }
+  return null;
+}
+
+/* (X, Y, k — skala szczegółów, W, H — wymiary siatki efektu, t — klatka) → [r, g, b] */
 export const FAKTURY = {
-  maskaRGB:   (X, Y) => [[255,40,40],[40,255,40],[40,40,255]][((X % 3) + 3) % 3],
-  rozeta:     (X, Y) => (Y % 3 === 2) ? [30,30,30] : [[255,40,40],[40,255,40],[40,40,255]][(X + (Math.floor(Y/3) % 2)*2) % 3],
-  skanlinie:  (X, Y) => (Y & 1) ? [60,60,60] : [255,255,255],
-  kratka:     (X, Y) => (X % 4 === 0 || Y % 4 === 0) ? [70,70,70] : [255,255,255],
-  szumBarwny: (X, Y) => [155 + skrot(X, Y, 11)*100, 155 + skrot(X, Y, 12)*100, 155 + skrot(X, Y, 13)*100],
-  szum:       (X, Y) => { const v = 120 + skrot(X, Y, 21)*135; return [v, v, v]; },
-  tkanina:    (X, Y) => { const pion = ((X >> 2) + (Y >> 2)) & 1, nic = pion ? (X & 3) : (Y & 3), v = (nic === 0 || nic === 3) ? 150 : 245; return [v, v - 6, v - 14]; },
-  romby:      (X, Y) => (Math.abs((X % 8) - 3.5) + Math.abs((Y % 8) - 3.5) < 4) ? [255,255,255] : [90,90,90],
-  tecza:      (X, Y) => tecza((X + Y)/48),
-  /* matryca LCD: komórka 4×4 — trzy subpiksele R, G, B i ciemna przerwa
-     w czwartej kolumnie i wierszu, jak ekran pod lupą */
-  matryca:    (X, Y) => (((X % 4) + 4) % 4 === 3 || ((Y % 4) + 4) % 4 === 3) ? [25,25,25] : [[255,50,50],[50,255,50],[60,60,255]][((X % 4) + 4) % 4],
-  /* wałek: poziome pasy nierównej farby — jasność płynie wzdłuż Y (szum
-     interpolowany co 5 komórek), z drobnymi smugami wzdłuż X */
-  walek:      (X, Y) => {
-    const t = Y/5, j = Math.floor(t), f = t - j, s = f*f*(3 - 2*f);
-    const v = skrot(0, j, 31) + (skrot(0, j + 1, 31) - skrot(0, j, 31))*s, smuga = skrot(X >> 4, Y, 32) < 0.15 ? 25 : 0;
-    const c = 135 + v*120 - smuga; return [c, c, c];
+  /* papier: ziarno, łagodne chmurki masy i krótkie włókna, ciepła biel */
+  papier: (X, Y, k) => {
+    const m = fbm(X/(45*k), Y/(45*k), 1, 3), z = skrot(X, Y, 2) - 0.5;
+    const w1 = Math.abs(szumW(X/(1.2*k), Y/(9*k), 3) - 0.5), w2 = Math.abs(szumW(X/(9*k), Y/(1.2*k), 4) - 0.5);
+    const wl = (w1 < 0.04 ? 22 : 0) + (w2 < 0.035 ? 16 : 0);
+    const v = 246 - (m - 0.5)*55 + z*16 - wl;
+    return [sz(v), sz(v - 4), sz(v - 11)];
+  },
+  /* karton z makulatury: brązowa masa, plamki farby i kory, jaśniejsze włókna */
+  karton: (X, Y, k) => {
+    const m = fbm(X/(30*k), Y/(30*k), 5, 3), z = skrot(X, Y, 6) - 0.5;
+    let r = 222 - (m - 0.5)*40 + z*16, g = r - 16, b = r - 40;
+    const p = plamka(X, Y, 7*k, 0.35, 0.4*k, 1.6*k, 7);
+    if(p){ const c = p.ton < 0.7 ? [80, 66, 52] : (p.ton < 0.85 ? [60, 70, 110] : [140, 50, 45]); const a = 1 - p.d*p.d; r += (c[0] - r)*a; g += (c[1] - g)*a; b += (c[2] - b)*a; }
+    if(Math.abs(szumW(X/(1.4*k), Y/(7*k), 8) - 0.5) < 0.03){ r += 18; g += 18; b += 14; }
+    return [sz(r), sz(g), sz(b)];
+  },
+  /* pognieciony papier: płaskie ścianki (komórki Voronoja w dwóch skalach),
+     każda nachylona inaczej do światła, na stykach ostre zagięcia; do nakładki */
+  pogniecony: (X, Y, k) => {
+    const sc = (s, zi) => {
+      const x = X/s, y = Y/s, i = Math.floor(x), j = Math.floor(y);
+      let d1 = 9, d2 = 9, ni = 0, nj = 0, px = 0, py = 0;
+      for(let b=-1; b<=1; b++) for(let a=-1; a<=1; a++){
+        const fx = i + a + skrot(i + a, j + b, zi), fy = j + b + skrot(i + a, j + b, zi + 1), d = Math.hypot(x - fx, y - fy);
+        if(d < d1){ d2 = d1; d1 = d; ni = i + a; nj = j + b; px = x - fx; py = y - fy; } else if(d < d2) d2 = d;
+      }
+      /* nachylenie ścianki: los na komórkę, plus spadek w stronę losowego kierunku */
+      const kat = skrot(ni, nj, zi + 2)*6.283, nach = skrot(ni, nj, zi + 3) - 0.5;
+      return {v: nach*1.3 + (px*Math.cos(kat) + py*Math.sin(kat))*0.6, zag: d2 - d1};
+    };
+    const A = sc(38*k, 9), B = sc(13*k, 12);
+    let v = 128 + (A.v*0.7 + B.v*0.35)*70;
+    if(A.zag < 0.04) v += A.v > 0 ? 40 : -45;
+    else if(B.zag < 0.05) v += B.v > 0 ? 18 : -22;
+    v += (skrot(X, Y, 11) - 0.5)*8;
+    return [sz(v), sz(v), sz(v)];
+  },
+  /* papier milimetrowy: linie co milimetr, mocniejsze co pięć, niebieskie */
+  milimetrowy: (X, Y, k) => {
+    const P = Math.max(3, Math.round(4*k)), mx = ((X % P) + P) % P, my = ((Y % P) + P) % P;
+    const gx = ((Math.floor(X/P) % 5) + 5) % 5, gy = ((Math.floor(Y/P) % 5) + 5) % 5;
+    if((mx === 0 && gx === 0) || (my === 0 && gy === 0)) return [150, 192, 228];
+    if(mx === 0 || my === 0) return [205, 226, 242];
+    return [255, 255, 255];
+  },
+  /* kserokopia: drobny toner tam, gdzie bęben brudny, poziome smugi, ciemniejsze
+     brzegi i rogi, pojedyncze wykruszenia */
+  ksero: (X, Y, k, W, H) => {
+    let v = 255;
+    const brud = fbm(X/(60*k), Y/(60*k), 12, 2);
+    if(skrot(X, Y, 13) < 0.02 + Math.max(0, brud - 0.55)*0.6) v -= 90 + skrot(X, Y, 14)*120;
+    const smuga = szumW(X/(400*k), Y/(2.5*k), 15);
+    if(smuga > 0.78) v -= (smuga - 0.78)*260;
+    const bx = Math.min(X, W - 1 - X)/(W*0.06), by = Math.min(Y, H - 1 - Y)/(H*0.06), brzeg = Math.max(0, 1 - Math.min(bx, by));
+    v -= brzeg*brzeg*70*(0.6 + 0.4*szumW(X/(8*k), Y/(8*k), 16));
+    return [sz(v), sz(v), sz(v)];
+  },
+  /* kurz i rysy: pyłki, włosy (warstwice szumu — kręte linie) i pionowe
+     rysy jak na starej taśmie; ciemne na bieli, do mnożenia */
+  kurz: (X, Y, k, W, H, t) => {
+    let v = 255;
+    const p = plamka(X, Y, 8*k, 0.3, 0.5*k, 2.2*k, 18 + t*11);
+    if(p) v = 255 - (p.ton < 0.8 ? 200 : 120)*(1 - p.d*p.d*p.d);
+    const wl = szumW(X/(24*k), Y/(24*k), 19 + t*13), maska = szumW(X/(80*k), Y/(80*k), 20 + t*13);
+    const g = Math.abs(wl - 0.5);
+    if(maska > 0.6 && g < 0.012) v = Math.min(v, 60 + g*9000);
+    const kol = Math.floor(X/Math.max(1, Math.round(k*0.8)));
+    if(skrot(kol, 0, 21 + t*17) < 0.008){ const s = szumW(0, Y/(30*k), kol + t); if(s > 0.3) v = Math.min(v, 255 - (s - 0.3)*260); }
+    return [v, v, v];
+  },
+  /* kineskop: maska z pasków luminoforu R, G, B, ciemne linie między
+     liniami obrazu, lekka poświata w środku paska */
+  crt: (X, Y, k) => {
+    const s = Math.max(1, Math.round(k)), sub = ((Math.floor(X/s) % 3) + 3) % 3, u = fr(X/s), w = fr(Y/(3*s));
+    const pas = 0.55 + 0.45*Math.sin(Math.PI*(s > 1 ? u : 0.5)), lin = w > 0.72 ? 0.35 : 1;
+    const c = [[255, 70, 60], [70, 255, 90], [70, 110, 255]][sub];
+    return c.map(x => x*pas*lin);
+  },
+  /* ekran LCD z bliska: komórka z trzech subpikseli z czarnymi przerwami */
+  lcd: (X, Y, k) => {
+    const s = Math.max(1, Math.round(k*1.5)), kom = 3*s + 1, x = ((X % kom) + kom) % kom, y = ((Y % kom) + kom) % kom;
+    if(x === kom - 1 || y === kom - 1 || y === 0) return [20, 20, 22];
+    return [[255, 60, 50], [60, 240, 90], [60, 90, 255]][Math.min(2, Math.floor(x/s))];
+  },
+  /* taśma VHS: drżące pasy jasności, linie obrazu, szum barwny i jasna linia
+     śledzenia, która przesuwa się z klatki na klatkę; do nakładki */
+  vhs: (X, Y, k, W, H, t) => {
+    const pas = (szumW(t*0.37, Y/(3*k), 22) - 0.5)*44, lin = (Y & 1) ? -14 : 6;
+    const sledz = fr(t*0.031 + 0.2)*H, odl = Math.abs(Y - sledz);
+    let v = 128 + pas + lin;
+    if(odl < 3*k) v += (1 - odl/(3*k))*70*skrot(X >> 1, Y, 23 + t);
+    const c = (skrot(X >> 1, Y, 24 + t) - 0.5)*26;
+    return [sz(v + c), sz(v - c*0.5), sz(v - c)];
+  },
+  /* ziarno filmowe: zbite w grudki (dwie skale szumu), w każdej klatce inne */
+  grain: (X, Y, k, W, H, t) => {
+    const n = szumW(X/(0.8*k), Y/(0.8*k), 25 + t*7)*0.65 + skrot(X, Y, 26 + t*7)*0.35;
+    const v = 128 + (n - 0.5)*110;
+    return [v, v, v];
+  },
+  /* płótno: splot płócienny — nić na wierzchu zaokrąglona w poprzek
+     i schodząca pod spód na końcach odcinka, z nierównościami przędzy */
+  plotno: (X, Y, k) => {
+    const P = Math.max(3, 5*k), cx = Math.floor(X/P), cy = Math.floor(Y/P), pion = (cx + cy) & 1;
+    const u = pion ? fr(X/P) : fr(Y/P), w = pion ? fr(Y/P) : fr(X/P), wzdl = pion ? Y : X;
+    const profil = Math.sin(Math.PI*u)*(0.45 + 0.55*Math.sin(Math.PI*w));
+    const nier = szumW(wzdl/(4*k), (pion ? cx : cy)*7.3, 27 + pion);
+    const v = 128 + (profil - 0.45)*130 + (nier - 0.5)*36 + (skrot(X, Y, 28) - 0.5)*10;
+    return [sz(v), sz(v - 3), sz(v - 9)];
+  },
+  /* beton: plamy w kilku skalach, ziarno i pory po pęcherzykach powietrza */
+  beton: (X, Y, k) => {
+    let v = 128 + (fbm(X/(35*k), Y/(35*k), 29, 4) - 0.5)*80 + (skrot(X, Y, 30) - 0.5)*24;
+    const p = plamka(X, Y, 10*k, 0.3, 0.6*k, 2.2*k, 31);
+    if(p) v = p.d < 0.8 ? v - 75*(1 - p.d*p.d) : v + 35;
+    return [v, v, v];
+  },
+  /* folia holograficzna: tęczowe smugi interferencji ukosem, falujące,
+     pastelowe; do miękkiego światła */
+  holo: (X, Y, k) => {
+    const h = fbm(X/(120*k), Y/(120*k), 32, 3)*1.4 + (X*0.6 + Y)/(90*k) + szumW(X/(14*k), Y/(14*k), 33)*0.12;
+    const c = tecza(h);
+    return c.map(x => 150 + (x - 128)*0.42);
   }
 };
+export const FAKTURY_TRYB = {
+  papier: "mnoz", karton: "mnoz", pogniecony: "nakladka", milimetrowy: "mnoz", ksero: "mnoz", kurz: "mnoz",
+  crt: "mnoz", lcd: "mnoz", vhs: "nakladka", grain: "nakladka", plotno: "nakladka", beton: "nakladka", holo: "miekkie"
+};
+/* dawne faktury (presety sprzed zmiany) → najbliższa nowa */
+export const DAWNE_FAKTURY = {maskaRGB: "crt", rozeta: "crt", matryca: "lcd", skanlinie: "crt", kratka: "milimetrowy",
+  szum: "grain", szumBarwny: "grain", tkanina: "plotno", romby: "plotno", tecza: "holo", walek: "ksero"};
+const ANIMOWANE = new Set(["kurz", "vhs", "grain"]);
+const PAMIEC_FAKTUR = new Map();
+
 export function faktura(p, w, h, z){
-  const wzor = FAKTURY[S.faktura], a = S.faktKrycie/100;
+  const id = DAWNE_FAKTURY[S.faktura] || S.faktura, wzor = FAKTURY[id], a = S.faktKrycie/100;
   if(!wzor || !(a > 0)) return;
-  const sk = Math.max(1, S.faktSkala | 0)*z, tryb = S.faktTryb;
+  const k = Math.max(1, S.faktSkala | 0)/2, tryb = S.faktTryb, t = ANIMOWANE.has(id) ? (S.klatkaNr | 0) : 0;
+  /* wzór raz na piksel siatki efektu (podglądu), potem blokami z×z; wzór nie
+     zależy od obrazu, więc pamiętamy kilka ostatnich (pognieciony papier
+     na 1400 px to pół sekundy, a efekt liczy się przy każdym renderze) */
+  const Wp = Math.ceil(w/z), Hp = Math.ceil(h/z), klucz = [id, k, Wp, Hp, t].join();
+  let wz = PAMIEC_FAKTUR.get(klucz);
+  if(wz) PAMIEC_FAKTUR.delete(klucz);
+  else {
+    wz = new Uint8ClampedArray(Wp*Hp*3);
+    for(let Y=0; Y<Hp; Y++) for(let X=0; X<Wp; X++){
+      const c = wzor(X, Y, k, Wp, Hp, t), o = (Y*Wp + X)*3;
+      wz[o] = c[0]; wz[o+1] = c[1]; wz[o+2] = c[2];
+    }
+    if(PAMIEC_FAKTUR.size >= 3) PAMIEC_FAKTUR.delete(PAMIEC_FAKTUR.keys().next().value);
+  }
+  PAMIEC_FAKTUR.set(klucz, wz);
   for(let y=0; y<h; y++){
-    const Y = Math.floor(y/sk);
+    const Y = Math.floor(y/z);
     for(let x=0; x<w; x++){
-      const t = wzor(Math.floor(x/sk), Y), o = (y*w + x)*4;
-      for(let k=0; k<3; k++){
-        const v = p[o+k], c = t[k];
+      const s = (Y*Wp + Math.floor(x/z))*3, o = (y*w + x)*4;
+      for(let kk=0; kk<3; kk++){
+        const v = p[o+kk], c = wz[s+kk];
         let n;
         if(tryb === "ekran") n = 255 - (255 - v)*(255 - c)/255;
         else if(tryb === "nakladka") n = v < 128 ? 2*v*c/255 : 255 - 2*(255 - v)*(255 - c)/255;
         else if(tryb === "miekkie"){ const A = v/255, B = c/255; n = 255*(B < 0.5 ? A - (1 - 2*B)*A*(1 - A) : A + (2*B - 1)*((A <= 0.25 ? ((16*A - 12)*A + 4)*A : Math.sqrt(A)) - A)); }
         else n = v*c/255;
-        p[o+k] = v + a*(n - v);
+        p[o+kk] = v + a*(n - v);
       }
     }
   }

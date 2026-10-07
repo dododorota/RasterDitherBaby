@@ -522,10 +522,14 @@ przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
   rozjaśnienie.
 - **Gwiazdki** — promienie z najjaśniejszych punktów, jak z przysłony:
   liczba promieni, długość, obrót, próg.
-- **Faktura** (odpowiednik „Tile" z Dither Boya) — wzór nałożony na obraz:
-  maska RGB, rozeta i matryca LCD, linie skanowania, szum, szum barwny,
-  tkanina, kratka, romby, tęcza, wałek;
-  skala, mieszanie (mnożenie, rozjaśnienie, nakładka, miękkie światło), krycie.
+- **Faktura** (odpowiednik „Tile" z Dither Boya) — materiał albo nośnik
+  nałożony na obraz, generowany kodem: papier, karton z makulatury,
+  pognieciony papier, papier milimetrowy; kserokopia, kurz i rysy, ziarno
+  filmowe; kineskop, ekran LCD z bliska, taśma VHS; płótno, beton, folia
+  holograficzna. Wybór faktury ustawia tryb mieszania, w którym wygląda
+  najlepiej (można go potem zmienić); skala ×0,5–×6, krycie. Ziarno, taśma
+  i kurz w filmie zmieniają się z klatki na klatkę. Dawne faktury z presetów
+  (maska RGB, rozeta, tkanina, tęcza…) wczytują się jako najbliższa nowa.
   W ditheringu faktura leży na siatce pikseli po pikselizacji.
 - **Obróbka końcowa** — jasność, kontrast i nasycenie już po ditheringu,
   winieta, ziarno.

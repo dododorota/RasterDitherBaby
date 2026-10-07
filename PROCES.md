@@ -130,6 +130,12 @@ to przegląd bez zmian w kodzie.
     prosto, przezroczyste miejsca jako papier, kadrowanie; potem
     zaokrąglanie rogów i kod QR jako siatka (koder własny, sprawdzony
     dekoderem jsQR). Zostało: unia SVG (wymaga biblioteki).
+25. **Nowe faktury** (6.10) — dawne kafelki (maska RGB, rozeta, kratka,
+    romby…) wyglądały podobnie i „cyfrowo"; zamienione na 13 faktur
+    proceduralnych w czterech grupach (papier, druk i zużycie, ekran i taśma,
+    materiał), każda z własnym trybem mieszania. Dawne identyfikatory
+    mapowane na najbliższe nowe (`DAWNE_FAKTURY`). Wygląd oceniony na
+    arkuszu próbek renderowanym w Node, nie na prawdziwych zdjęciach.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -193,6 +199,10 @@ Nie sprawdzone:
 - **Reszta różnic z Dither Boyem** — lista w README, „Co dalej".
 - **Lista z porównania z Halftone Maker** — w README, „Co dalej"; do wyboru,
   co robimy.
+- **Nowe faktury efektu** — siła i skala dobrane na arkuszu z gradientami;
+  do obejrzenia na zdjęciach (zwłaszcza pognieciony papier, kurz i folia,
+  które najłatwiej przesadzić). Stare presety z fakturą wyglądają inaczej
+  niż przed zmianą — to świadome.
 - **Faktura farby i risograf** dobrane na próbce — do sprawdzenia na
   prawdziwych zdjęciach, czy skala plam (34 i 13 px podglądu) pasuje.
 - **MP4 z dźwiękiem w Premiere i na Instagramie** — sprawdzone tylko

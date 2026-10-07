@@ -420,6 +420,16 @@ w localStorage (try/catch).
 **Krzywa klatki** (animacja.js): `{t, v, k}` — `k` to przejście OD tej klatki
 do następnej, bez `k` krzywa ścieżki. W presecie trzeci element klatki.
 
+**Faktura (efekt)** (`FAKTURY` w fx.js): funkcja `(X, Y, k, W, H, t)` →
+kolor, liczona raz na piksel podglądu i powiększana blokami z×z; wzór nie
+zależy od obrazu, więc `faktura()` pamięta trzy ostatnie. `FAKTURY_TRYB`
+— tryb ustawiany przy wyborze (app.js, też w kartach kopii),
+`DAWNE_FAKTURY` — dawne identyfikatory z presetów (mapowane w `faktura()`,
+w `syncUI()` i `wypelnijCialo()`, bo inaczej lista odrzuci nieznaną
+wartość). Animowane (`ANIMOWANE`) czytają `S.klatkaNr`. Nowa faktura: wpis
+w `FAKTURY` i `FAKTURY_TRYB`, opcja w markupie; testy w stos.mjs sprawdzą
+powiększenie i czas.
+
 **Faktura papieru** (`papier.js`): włókna i drobinki jako kształty
 w pikselach podglądu (`ctx.scale(z)`), chmurki jako mały obraz powiększany
 płynnie. Rysowana po kolorze papieru, przed farbami.

@@ -15,6 +15,7 @@ import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUS
 import { normalizujKsztalt, biezacyQR } from "./siatki.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
 import { fit } from "./image.js";
+import { FAKTURY_TRYB, DAWNE_FAKTURY } from "./fx.js";
 import { W, otworz as otworzWideo, zamknij as zamknijWideo, idzDo, graj, pauza, ustawTempo,
          czasOd, dlugosc, przyKlatce, zapiszWideo, czyFilm, czyMozeAnimacja, FORMATY_WIDEO, mozeMp4,
          animujObraz, ustawDlugosc, DLUGOSC_STOPKLATKI } from "./video.js";
@@ -154,7 +155,7 @@ const SUWAKI = [
   {id:"gwRamiona",  key:"gwRamiona",  opis:v=>String(v)},
   {id:"gwDlugosc",  key:"gwDlugosc",  opis:v=>v+" px"},
   {id:"gwKat",      key:"gwKat",      opis:v=>v+"°"},
-  {id:"faktSkala",  key:"faktSkala",  opis:v=>v+" px"},
+  {id:"faktSkala",  key:"faktSkala",  opis:v=>"×"+String(v/2).replace(".", ",")},
   {id:"faktKrycie", key:"faktKrycie", opis:v=>v+"%"},
   {id:"postJas",    key:"postJas",    opis:v=>v>0?"+"+v:String(v)},
   {id:"postKon",    key:"postKon",    opis:v=>v>0?"+"+v:String(v)},
@@ -616,6 +617,10 @@ function klonCiala(efekt, suf, zapisz){
       const w = cialo.querySelector("#" + CSS.escape(el.id.slice(0, -suf.length) + "-v" + suf));
       if(w && o.opis) w.textContent = o.opis(v);
       zapisz(o.key, v);
+      if(o.key === "faktura" && FAKTURY_TRYB[v]){
+        const tr = cialo.querySelector("#faktTryb" + CSS.escape(suf));
+        if(tr){ tr.value = FAKTURY_TRYB[v]; zapisz("faktTryb", tr.value); }
+      }
     });
   }
   return cialo;
@@ -627,7 +632,8 @@ function wypelnijCialo(k, inst, suf, par){
   for(const el of k.querySelectorAll("input, select")){
     const id = el.id.slice(0, -suf.length), o = opisKontrolki(id);
     if(!o) continue;
-    const v = o.key in par ? par[o.key] : (o.key in wpis.start ? wpis.start[o.key] : DEFAULTS[o.key]);
+    let v = o.key in par ? par[o.key] : (o.key in wpis.start ? wpis.start[o.key] : DEFAULTS[o.key]);
+    if(o.key === "faktura" && v in DAWNE_FAKTURY) v = DAWNE_FAKTURY[v];
     if(el.type === "checkbox") el.checked = !!v; else el.value = o.naS ? o.naS(v) : v;
     const w = k.querySelector("#" + CSS.escape(id + "-v" + suf));
     if(w && o.opis) w.textContent = o.opis(v);
@@ -767,6 +773,7 @@ function syncUI(){
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
   }
   for(const k of PTASZKI){ const el=$("#"+k); el.checked = !!S[k]; S[k]=el.checked; }
+  if(S.faktura in DAWNE_FAKTURY) S.faktura = DAWNE_FAKTURY[S.faktura];
   for(const k of LISTY){
     const el=$("#"+k);
     el.value = S[k];
@@ -833,6 +840,7 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="pal") wybranoPalete();
   if(k==="mapa") mapaUI();
   if(k==="sort") efektyUI();
+  if(k==="faktura" && FAKTURY_TRYB[S.faktura]){ S.faktTryb = FAKTURY_TRYB[S.faktura]; $("#faktTryb").value = S.faktTryb; }
   if(k==="asciiZestaw" || k==="asciiTryb" || k==="asciiKolor") asciiUI();
   if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k)) risoUI();
   schedule();
