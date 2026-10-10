@@ -18,6 +18,7 @@ import { out, octx } from "./dom.js";
 import { adjust, fit, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomWSkali } from "./stos.js";
 import { siatkaAscii, wymiaryKomorki } from "./ascii-znaki.js";
+import { Litery, zXlink } from "./krzywe-liter.js";
 export { ZESTAWY } from "./ascii-znaki.js";
 
 /* komórki obrazu: pomniejszenie płótnem (średnia), potem korekta */
@@ -87,13 +88,30 @@ export function renderAscii(scale, opcje){
 }
 
 const xml = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-/* SVG: każdy znak jako <text> w grupie swojego koloru — w Illustratorze
-   zostaje edytowalnym tekstem; przy jednym kolorze wiersz to jeden <text>. */
+/* SVG: znaki jako krzywe (domyślnie — plik nie zależy od kroju, wygląda jak
+   podgląd; Litery w krzywe-liter.js) albo jako <text> w grupie swojego koloru
+   (S.svgLitery „tekst” — w Illustratorze edytowalny tekst; przy jednym
+   kolorze wiersz to jeden <text>). */
 export function svgAscii(){
   const a = daneAscii(), W = a.kol*a.cw, H = a.wier*a.ch, fs = (a.ch*0.95).toFixed(2);
   const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
   parts.push(`<rect width="${W}" height="${H}" fill="${S.paper}"/>`);
   let count = 0;
+  if(S.svgLitery !== "tekst"){
+    const lit = new Litery(px => px + "px " + FONT, "ascii"), grupy = new Map();
+    for(let y=0; y<a.wier; y++) for(let x=0; x<a.kol; x++){
+      const c = a.znaki[y][x]; if(c === " ") continue;
+      const i = (y*a.kol + x)*3, k = S.asciiKolor === "jeden" ? S.ink : `rgb(${a.kolory[i]},${a.kolory[i+1]},${a.kolory[i+2]})`;
+      const u = lit.uzyj(c, (x + 0.5)*a.cw, (y + 0.5)*a.ch, a.ch*0.95);
+      if(!u) continue;
+      let g = grupy.get(k); if(!g) grupy.set(k, g = []);
+      g.push(u); count++;
+    }
+    if(!lit.puste){ parts[0] = zXlink(parts[0]); parts.splice(1, 0, `<defs>${lit.defs()}</defs>`); }
+    for(const [k, g] of grupy) parts.push(`<g fill="${k}">${g.join("")}</g>`);
+    parts.push("</svg>");
+    return {svg: parts.join("\n"), count};
+  }
   const czcionka = `font-family='${FONT.replace(/"/g, "")}' font-size="${fs}" text-anchor="middle" dominant-baseline="central"`;
   if(S.asciiKolor === "jeden"){
     parts.push(`<g fill="${S.ink}" ${czcionka}>`);

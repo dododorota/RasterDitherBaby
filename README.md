@@ -172,7 +172,8 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
 - **Kształt punktu** — dawne (koło, kwadrat, romb, elipsa, linia, krzyżyk)
   i nowe: gwiazdka, krzyżyk ukośny, pierścień, sześciokąt, elipsa pod kątem,
   trójkąt, wielokąt o 3–12 bokach (z wcięciem — gwiazda), superelipsa (od
-  koła do kwadratu) i **znak** — litera, słowo albo emoji jako punkt (kilka
+  koła do kwadratu), gwiazda pięcioramienna, kwiat, serce, **cyfra** (siedem
+  segmentów, losowa na punkt) i **znak** — litera, słowo albo emoji jako punkt (kilka
   znaków idzie po kolei). Nowe kształty mają pole koła, więc zmiana kształtu
   nie zmienia tonu. **Obrys zamiast wypełnienia** — dla każdego kształtu,
   także w SVG. **Własny kształt z pliku SVG** — logo, ikona, rysunek
@@ -263,7 +264,11 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
   w apli; dziury — drobne niedodruki; ślady wałka — poziome smugi słabszej
   farby. Szum leży na siatce podglądu, więc
   zapis w skali daje ten sam wzór, tylko ostrzej. Faktura jest tylko na
-  podglądzie i w PNG — SVG ma czyste kształty.
+  podglądzie i w PNG — SVG ma czyste kształty. **Skala faktury** (25–400%)
+  powiększa ziarno, plamy i włókna papieru razem; **faktura zmienna
+  w czasie** — w filmie nowe ziarno farby co klatkę. Plamy to równe, drobne
+  wykruszenia z delikatnie zmienną gęstością (wcześniej w ciemnych pełnych
+  miejscach farba wypadała dużymi, poszarpanymi płatami).
 
 Presety: *Riso duo*, *Rytownik* (fale na żółtym), *Obręcze*, *Wzdłuż
   kształtu*, *Promienie*.
@@ -418,7 +423,7 @@ jasności) i z każdą paletą.
 
 ## Korekta przed rastrem
 
-Jasność, kontrast, **cienie, półtony (gamma), światła**, **nasycenie**,
+**Ekspozycja** (±3 EV), **punkt czerni i bieli** (poziomy), jasność, kontrast, **cienie, półtony (gamma), światła**, **nasycenie**,
 **odcień** (obrót barwy), **rozmycie**, **wyostrzanie**, **odszumianie**
 (filtr dwustronny — zdejmuje szum, krawędzie zostawia), pikselizacja,
 negatyw. Działa we wszystkich trzech trybach. Rozmycie przeniesione tu z siatki
@@ -762,6 +767,12 @@ tego samego koloru w większe prostokąty (`mergeRects`). Przy pikselizacji 1×
 i szumiącym algorytmie i tak wyjdzie kilkadziesiąt tysięcy obiektów — po zapisie
 apka pokazuje ich liczbę i wagę pliku. Praktycznie: do wektora trzymaj
 pikselizację na 3–4×.
+
+**Litery** (kształt „znak” w rastrze, cały tryb ASCII) zapisują się domyślnie
+jako **krzywe**: każdy znak obrysowany z tego, co narysowała przeglądarka,
+raz w `<defs>`, punkty to odwołania `<use>` — plik wygląda jak podgląd i nie
+potrzebuje kroju. Emoji (kolorowe) idą jako osadzony obrazek. Do wyboru przy
+zapisie: „Tekst — edytowalny” (dawne `<text>`, krój musi być w systemie).
 
 ## Co dalej
 

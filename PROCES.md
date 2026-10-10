@@ -170,6 +170,40 @@ to przegląd bez zmian w kodzie.
     Na koniec proporcje punktu (stała i losowa szerokość / wysokość, z listy
     Ditherfy) — w geometrii, SVG porównane pikselami z podglądem. Lista
     porównania z Ditherfy zamknięta (poza świadomie pominiętą kamerą).
+    Commit `3925b66`.
+27. **Poprawki z wtyczek VFX i litery jako krzywe** (11.10) — część A
+    z `AE Plugin Land/raster-dither/DLA-APKI.md`: plamy riso bez
+    „fraktalnych” płatów (błąd), ekspozycja i punkt czerni / bieli, skala
+    faktury, faktura farby zmienna w czasie (osobny przełącznik — nie
+    podpięta pod „szum w czasie”, żeby stare presety się nie zmieniły),
+    kształty gwiazda 5, kwiat, serce, cyfra. Reszta z VFX Raster 1.5 —
+    aplikacja ma odpowiedniki, nie przenoszone. Litery w SVG (raster i ASCII)
+    domyślnie jako krzywe — decyzja użytkowniczki, „żeby fontów nie tracić”;
+    tekst edytowalny jako opcja. Część B (style Dither Boya) czeka na
+    wtyczkę.
+
+## Do przetestowania na koniec
+
+Lista użytkowniczki — rzeczy sprawdzone tylko na obrazach generowanych
+w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
+
+- **Znaki według tonu** na prawdziwych ikonach i zdjęciach: czy wpisanie
+  obrazka w kwadrat 2r daje dobry ton, czy domyślne kolory tonów się
+  podobają, podmiana tonów w filmie.
+- **SVG w Illustratorze**: znaki z osadzonymi obrazkami (`<symbol>` +
+  `<use>`), litery jako krzywe (`<use>` do `<defs>`), papier w gradiencie,
+  sylwetki „tylko wektory”.
+- **Plamy riso po poprawce** na prawdziwym ciemnym zdjęciu, 2 farby — mają
+  zostać drobne wykruszenia bez chmur; do tego skala faktury.
+- **Ekspozycja i punkty czerni / bieli** na zdjęciu z prześwietleniem
+  i z niedoświetleniem.
+- **Nowe kształty** (gwiazda 5, kwiat, serce, cyfra) i **proporcje punktu**
+  na zdjęciach — czy ton się zgadza.
+- **Ruch punktów** zapisany do MP4 / GIF — płynność pętli, czy cykl pasuje
+  do długości animacji.
+- **Napis**: krój wczytany z pliku (zwłaszcza zmienny), polskie znaki,
+  obrazki zamiast liter.
+- **Faktura farby zmienna w czasie** w zapisanym filmie.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
@@ -241,11 +275,8 @@ Nie sprawdzone:
   prawdziwych zdjęciach, czy skala plam (34 i 13 px podglądu) pasuje.
 - **MP4 z dźwiękiem w Premiere i na Instagramie** — sprawdzone tylko
   w Chrome (decodeAudioData na wyniku).
-- **Znaki według tonu na prawdziwych obrazkach** — testowane na
-  narysowanym w kodzie bananie i sercu SVG; do obejrzenia na prawdziwych
-  ikonach i zdjęciach, czy wpisanie w kwadrat 2r (a nie w pole koła) daje
-  dobry ton, i czy domyślne kolory tonów się podobają. SVG z osadzonymi
-  obrazkami nie otwierany w Illustratorze.
+- **Znaki według tonu, SVG w Illustratorze i reszta z 10–11.10** — zebrane
+  wyżej, w „Do przetestowania na koniec”.
 - **Siła poświaty** dobrana na scenach generowanych w kodzie — do sprawdzenia
   na prawdziwych zdjęciach i filmach, czy 100% to dobry środek skali.
 - **Skrypty testowe** — `CLAUDE.md` mówiło, że testy „na razie nie są

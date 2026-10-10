@@ -340,6 +340,29 @@ obrazki tonów przez `wymiaryZnaku(z, r, kr)`, znaki tekstem przez skalę
 w transformacji. Uwaga, stare: SVG zapisuje znaki (`<text>`) bez kroju,
 a płótno rysuje je Archivo — porównanie pikseli znaków zawsze się rozjedzie.
 
+**Litery jako krzywe** (`krzywe-liter.js`, `Litery`): znak rysowany na
+płótnie tym samym krojem co podgląd w stopniu 192, obrysowany
+`sledzKontury` + `sciezkaGladka(…, 2)`, raz w `<defs>`, punkty `<use>`
+(translate, rotate, scale stopień/192). Kolorowy znak (emoji) wykrywany po
+pikselach jaśniejszych niż czerń, którą rysujemy — idzie jako PNG. Domyślnie
+w SVG rastra (kształt „znak”) i ASCII; `S.svgLitery: "tekst"` — dawne
+`<text>` (w rastrze z krojem podglądu w atrybutach). Małe litery w SVG
+różnią się od płótna wygładzaniem (płótno hintuje mały tekst) — zmierzona
+średnia różnica ~5/255 wobec ~11 przy tekście; kształt i położenie zgodne.
+
+**Z wtyczek VFX (DLA-APKI.md, część A)**: plamy riso bez „fraktalnych”
+płatów (`krycie()`: gęstość ±12% z dużych skal, wykruszenia z szumu 1,2 px
+rozsiane równo — test liczy największą spójną dziurę: było 1457 px, jest
+< 60); `fakturaSkala` mnoży skale szumu faktury farby i papieru (papier:
+kadr /ks, płótno ×ks); `fakturaCzas` — ziarno faktury farby co klatkę
+(`ziarnoFaktury()`); ekspozycja i punkt czerni / bieli na początku `lut()`,
+przed jasnością; kształty gwiazda5, kwiat, serce (wielokąty o polu koła)
+i cyfra (7 segmentów, cyfra ze skrótu `id` — dla punktów bez numeru geometria
+nadaje kod położenia, `kodyPolozenia()`). Pozostałe z VFX Raster 1.5
+(mieszanie kształtów, gradient koloru, tryby mieszania, próg, Black Wear) —
+aplikacja ma podobne (znaki według tonu, mapa gradientu, faktura farby),
+nie przenoszone.
+
 **Historia startuje od stanu po uruchomieniu** (`utrwalStan()` na końcu
 app.js) — wcześniej pierwszej zmiany nie dało się cofnąć.
 
@@ -591,9 +614,9 @@ puść odpowiedni po zmianie w module, który sprawdza: `palety-pliki` →
 palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
 contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.js,
 `kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `siatki` →
-siatki.js, faktura-farby.js i gradient papieru (papier.js), `wycinanie` → wycinanie.js, `algorytmy` →
+siatki.js, faktura-farby.js (z plamami, skalą i ziarnem w czasie) i gradient papieru (papier.js), `wycinanie` → wycinanie.js, `algorytmy` →
 wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
-`korekta` → image.js, głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
+`korekta` → image.js (z ekspozycją i poziomami), głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
 ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js,
 `qr` → qr.js i siatka QR.
 Każdy kończy się kodem 0, gdy wszystko gra.

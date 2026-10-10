@@ -4,6 +4,7 @@ import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
 import { sampler, inkList, mieszanieFarby } from "./halftone.js";
 import { svgTla } from "./papier.js";
+import { Litery, zXlink } from "./krzywe-liter.js";
 import { znakiWGrupach, wersja, wymiaryZnaku, rozmiarWersji, konturyZnaku } from "./znaki-tonu.js";
 import { geometria, obrys, konturLinii, odcinkiBarwne, kolorCSS, sciezkowy, grubostObrysu, znakPunktu } from "./siatki.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
@@ -111,13 +112,21 @@ function svgShape(x,y,r,deg,cell,ksztalt){
     default: return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r)}"/>`;
   }
 }
+/* Znaki punktów w SVG: domyślnie krzywe (S.svgLitery), bo plik bez kroju
+   Archivo pokazałby je innym krojem; „tekst” — edytowalny, z krojem podglądu
+   w atrybutach. `litery` ustawia svgHalftone() na czas jednego zapisu. */
+const KROJ_ZNAKU = `font-family="Archivo, 'Segoe UI Emoji', sans-serif" font-weight="700"`;
+let litery = null;
 /* punkty jednej grupy jako SVG — te same rozgałęzienia co rysujGrupe() w halftone.js */
 const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 function svgGrupa(kropki, g, ksztalt, kontur, numery){
+  /* znaki: krzywe (Litery — wygląd jak podgląd, bez kroju) albo tekst z krojem podglądu */
+  if(ksztalt === "znak" && litery) return kropki.map((kr, i) =>
+    litery.uzyj(znakPunktu(numery ? numery.get(kr) : i), kr[0], kr[1], kr[2]*2.6, kr[3]*180/Math.PI, kr[7] ?? 1, kr[8] ?? 1)).join("");
   if(ksztalt === "znak") return kropki.map((kr, i) => { const [x, y, r, kat] = kr;
     /* rozciągnięty znak: w układzie znaku (przesunięcie, obrót, skala), tekst w zerze */
-    if(kr[7] !== undefined) return `<text x="0" y="0" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="translate(${n2(x)} ${n2(y)}) rotate(${n2(kat*180/Math.PI)}) scale(${n2(kr[7])} ${n2(kr[8])})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`;
-    return `<text x="${n2(x)}" y="${n2(y)}" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`; }).join("");
+    if(kr[7] !== undefined) return `<text x="0" y="0" font-size="${n2(r*2.6)}" ${KROJ_ZNAKU} text-anchor="middle" dominant-baseline="central" transform="translate(${n2(x)} ${n2(y)}) rotate(${n2(kat*180/Math.PI)}) scale(${n2(kr[7])} ${n2(kr[8])})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`;
+    return `<text x="${n2(x)}" y="${n2(y)}" font-size="${n2(r*2.6)}" ${KROJ_ZNAKU} text-anchor="middle" dominant-baseline="central" transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`; }).join("");
   /* reguła nonzero (domyślna) — nakładające się punkty zostają zamalowane, otwory mają odwrotny obieg */
   if(sciezkowy(ksztalt, g)) return `<path d="${kropki.map(k => obrys(ksztalt, k, g.postrzep, g.cell).map(kontur).join("")).join("")}"/>`;
   return kropki.map(([x,y,r,kat]) => svgShape(x, y, r, kat*180/Math.PI, g.cell, ksztalt)).join("");
@@ -155,6 +164,7 @@ function svgZnaki(g, ink, kontur, defs, stat){
 }
 export function svgHalftone(){
   const [W,H] = fit(S.img.width, S.img.height, MAX);
+  litery = S.svgLitery === "tekst" ? null : new Litery(px => '700 ' + px + 'px Archivo, "Segoe UI Emoji", sans-serif', "znak");
   const farby = inkList();
   const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));
   const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
@@ -206,10 +216,12 @@ export function svgHalftone(){
     parts.push(`<g id="${ink.name}" ${malowanie(ink.color)}${krycie} style="mix-blend-mode:multiply">${body.join("")}</g>`);
   }
   parts.push("</svg>");
+  if(litery && !litery.puste) defs.push(litery.defs());
   if(defs.length){
-    if(stat.osadzone) parts[0] = parts[0].replace("<svg ", `<svg xmlns:xlink="http://www.w3.org/1999/xlink" `);
+    if(stat.osadzone || (litery && !litery.puste)) parts[0] = zXlink(parts[0]);
     parts.splice(1, 0, `<defs>${defs.join("")}</defs>`);
   }
+  litery = null;
   return {svg:parts.join("\n"), count, pominiete: stat.pominiete, osadzone: stat.osadzone};
 }
 /* 2–4, 22–24, 32–34… kolory; 5–21, 25–31… kolorów */
