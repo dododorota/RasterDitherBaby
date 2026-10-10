@@ -251,6 +251,12 @@
       <details class="pod" data-pod="k-tony" open>
         <summary>Tony<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
         <div class="pod-cialo">
+        <div class="row"><label for="ekspozycja">Ekspozycja</label><span class="val" id="ekspozycja-v">0 EV</span></div>
+        <input type="range" id="ekspozycja" min="-30" max="30" value="0">
+        <div class="row"><label for="czern">Punkt czerni</label><span class="val" id="czern-v">0</span></div>
+        <input type="range" id="czern" min="0" max="254" value="0">
+        <div class="row"><label for="biel">Punkt bieli</label><span class="val" id="biel-v">255</span></div>
+        <input type="range" id="biel" min="1" max="255" value="255">
         <div class="row"><label for="bri">Jasność</label><span class="val" id="bri-v">0</span></div>
         <input type="range" id="bri" min="-100" max="100" value="0">
         <div class="row"><label for="con">Kontrast</label><span class="val" id="con-v">0</span></div>
@@ -457,7 +463,7 @@
         <button class="btn" id="swap-a" style="width:auto; padding:6px 10px">Zamień</button>
       </div>
       <label class="check"><input type="checkbox" id="asciiDither"> Dithering znaków (gładsze przejścia)</label>
-      <p class="hint">Znaki i tło: pierwszy kolor to znaki (przy „Jeden kolor”), drugi tło. Na ciemnym tle jasne miejsca dostają gęste znaki, na jasnym — ciemne. SVG zapisuje znaki jako tekst, TXT — sam tekst do wklejenia.</p>
+      <p class="hint">Znaki i tło: pierwszy kolor to znaki (przy „Jeden kolor”), drugi tło. Na ciemnym tle jasne miejsca dostają gęste znaki, na jasnym — ciemne. SVG zapisuje znaki jako krzywe (wygląd jak w podglądzie) albo jako edytowalny tekst — do wyboru przy zapisie; TXT — sam tekst do wklejenia.</p>
     </div>
 
     <div class="group hidden" id="g-half">
@@ -486,6 +492,10 @@
           <option value="trojkat">Trójkąt</option>
           <option value="wielokat">Wielokąt / gwiazda</option>
           <option value="superelipsa">Superelipsa</option>
+          <option value="gwiazda5">Gwiazda pięcioramienna</option>
+          <option value="kwiat">Kwiat</option>
+          <option value="serce">Serce</option>
+          <option value="cyfra">Cyfra — losowa na punkt</option>
           <option value="znak">Znak — litera, emoji</option>
           <option value="wlasny">Własny kształt z pliku SVG</option>
           <option value="tony">Znaki według tonu — kształty, obrazki</option>
@@ -775,6 +785,9 @@
         <input type="range" id="dziury" min="0" max="100" value="0">
         <div class="row"><label for="walek">Ślady wałka</label><span class="val" id="walek-v">brak</span></div>
         <input type="range" id="walek" min="0" max="100" value="0">
+        <div class="row"><label for="fakturaSkala">Skala faktury (farba i papier)</label><span class="val" id="fakturaSkala-v">100%</span></div>
+        <input type="range" id="fakturaSkala" min="25" max="400" value="100">
+        <label class="check"><input type="checkbox" id="fakturaCzas"> Faktura farby zmienna w czasie (nowe ziarno co klatkę)</label>
         <p class="hint">Jak druk riso i sitodruk — tylko w PNG (SVG to czysta geometria).</p>
         <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
         </div>
@@ -988,6 +1001,13 @@
           <div class="row" style="margin-top:12px"><label for="wygl">Wygładzenie konturów</label><span class="val" id="wygl-v">3</span></div>
           <input type="range" id="wygl" min="0" max="10" value="3">
         </div>
+      </div>
+      <div id="svg-litery-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="svgLitery">Litery w SVG</label></div>
+        <select id="svgLitery">
+          <option value="krzywe" selected>Krzywe — jak w podglądzie, bez kroju</option>
+          <option value="tekst">Tekst — edytowalny, wymaga kroju</option>
+        </select>
       </div>
       <div id="svg-znaki-opcje" class="hidden">
         <div class="row" style="margin-top:12px"><label for="svgObrazki">Obrazki znaków w SVG</label></div>

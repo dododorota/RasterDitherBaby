@@ -124,6 +124,9 @@ const SUWAKI = [
   {id:"bri",   key:"bri",   opis:v=>v},
   {id:"con",   key:"con",   opis:v=>v},
   {id:"gam",   key:"gam",   opis:v=>v.toFixed(2),        zS:v=>v/100, naS:v=>Math.round(v*100)},
+  {id:"ekspozycja", key:"ekspozycja", opis:v=>(v>0?"+":"")+v.toFixed(1).replace(".", ",").replace(/,0$/, "")+" EV", zS:v=>v/10, naS:v=>Math.round(v*10)},
+  {id:"czern",     key:"czern",     opis:v=>String(v)},
+  {id:"biel",      key:"biel",      opis:v=>String(v)},
   {id:"cienie",    key:"cienie",    opis:v=>v>0?"+"+v:String(v)},
   {id:"swiatla",   key:"swiatla",   opis:v=>v>0?"+"+v:String(v)},
   {id:"nasycenie", key:"nasycenie", opis:v=>v>0?"+"+v:String(v)},
@@ -352,7 +355,9 @@ PTASZKI.push("ruchOdbicie");
 LISTY.push("ruchKrzywa", "papierTlo");
 SUWAKI.push({id: "papierKat", key: "papierKat", opis: v => v + "°"},
   {id: "punktSzer", key: "punktSzer", opis: v => v + "%"}, {id: "punktWys", key: "punktWys", opis: v => v + "%"},
-  {id: "punktLosSzer", key: "punktLosSzer", opis: v => v ? v + "%" : "brak"}, {id: "punktLosWys", key: "punktLosWys", opis: v => v ? v + "%" : "brak"});
+  {id: "punktLosSzer", key: "punktLosSzer", opis: v => v ? v + "%" : "brak"}, {id: "punktLosWys", key: "punktLosWys", opis: v => v ? v + "%" : "brak"},
+  {id: "fakturaSkala", key: "fakturaSkala", opis: v => v + "%"});
+PTASZKI.push("fakturaCzas");
 /* ---------- papier w gradiencie: edytor punktów ----------
    Punkty to tekst JSON w S.papierGrad (stopnieTla czyta go nieufnie); edytor
    pisze cały tekst od nowa przy każdej zmianie, więc cofnij / ponów i presety
@@ -853,6 +858,11 @@ function eksportUI(){
   const znaki = S.shape === "tony" || (S.inkmode === "riso" && [1, 2, 3, 4].slice(0, S.risoIle).some(i => S["risoS" + i] === "tony"));
   $("#svg-znaki-opcje").classList.toggle("hidden", !(S.fmt==="svg" && S.mode==="half" && znaki && saObrazki()));
   $("#svgObrazki").value = S.svgObrazki;
+  /* litery w SVG: w ASCII zawsze, w rastrze — gdy któryś kształt to znak */
+  const ksz = [S.shape, ...(S.inkmode === "riso" ? [1, 2, 3, 4].slice(0, S.risoIle).map(i => S["risoS" + i]) : [])];
+  const tonyZnak = ksz.includes("tony") && Array.from({length: Math.max(2, Math.min(16, S.znakiIle | 0))}, (_, i) => S["znakiS" + (i + 1)]).includes("znak");
+  $("#svg-litery-opcje").classList.toggle("hidden", !(S.fmt === "svg" && (S.mode === "ascii" || (S.mode === "half" && (ksz.includes("znak") || tonyZnak)))));
+  $("#svgLitery").value = S.svgLitery;
   $("#wygl-opcje").classList.toggle("hidden", S.wektor!=="kontury");
   $("#wektor").value = S.wektor;
   $("#mp4-opcje").classList.toggle("hidden", S.fmt!=="mp4");
@@ -961,7 +971,7 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="asciiZestaw" || k==="asciiTryb" || k==="asciiKolor") asciiUI();
   if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k) || k==="znakiBarwa" || k==="papierTlo") risoUI();
   if(k==="papierTlo") eksportUI();
-  if(k==="shape" || /^risoS/.test(k)) eksportUI();
+  if(k==="shape" || /^risoS/.test(k) || /^znakiS/.test(k)) eksportUI();
   schedule();
 });
 function koloryUI(){ for(const {id, key} of KOLORY) $("#"+id).value = S[key]; }
@@ -1689,6 +1699,7 @@ function ustawFormat(){
 }
 $("#wektor").addEventListener("change", e=>{ S.wektor=e.target.value; eksportUI(); });
 $("#svgObrazki").addEventListener("change", e=>{ S.svgObrazki=e.target.value; });
+$("#svgLitery").addEventListener("change", e=>{ S.svgLitery=e.target.value; });
 $("#jakosc").addEventListener("change", e=>{ S.jakosc=e.target.value; });
 $("#przezroczyste").addEventListener("change", e=>{ S.przezroczyste=e.target.checked; });
 $("#dzwiek").addEventListener("change", e=>{ S.dzwiek=e.target.checked; });

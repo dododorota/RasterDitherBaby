@@ -45,6 +45,8 @@ export function krycie(p, W, H, z, ziarno){
   if(!fakturaWlaczona()) return;
   const OW = W*z, OH = H*z, n = OW*OH;
   const sz = S.szorstkosc/100, roz = S.rozlanie/100, pl = S.plamy/100, dz = S.dziury/100, wa = (S.walek || 0)/100;
+  /* skala faktury: ziarno, plamy, dziury, wałek i szerokość brzegu ×ks (100% — jak dawniej) */
+  const ks = (S.fakturaSkala ?? 100)/100;
   let a = new Float32Array(n);
   for(let i=0; i<n; i++) a[i] = p[i*4 + 3]/255;
   /* Rozlanie i szorstkość na rozmytym kryciu: rozmycie robi wokół brzegu pas
@@ -52,11 +54,11 @@ export function krycie(p, W, H, z, ziarno){
      punkty puchną) i z progiem przesuniętym szumem (szorstkość, brzeg rwie
      się w obie strony). Z dala od punktów rozmyte krycie jest zerem, więc
      na czystym papierze nic się nie pojawia. */
-  const brzeg = sz > 0 ? [poleSzumu(W, H, 1.6, ziarno*7 + 1), poleSzumu(W, H, 5, ziarno*7 + 2)] : null;
+  const brzeg = sz > 0 ? [poleSzumu(W, H, 1.6*ks, ziarno*7 + 1), poleSzumu(W, H, 5*ks, ziarno*7 + 2)] : null;
   if(roz > 0 || brzeg){
     const b = new Float32Array(n*4);
     for(let i=0; i<n; i++) b[i*4] = a[i];
-    rozmyj(b, OW, OH, Math.max(roz > 0 ? 0.6 + 2.2*roz : 0, brzeg ? 0.9 + 1.2*sz : 0)*z);
+    rozmyj(b, OW, OH, Math.max(roz > 0 ? 0.6 + 2.2*roz : 0, brzeg ? 0.9 + 1.2*sz : 0)*ks*z);
     const prog = 0.5 - 0.38*roz;
     for(let y=0; y<OH; y++){
       const v = Math.min(H - 0.001, Math.max(0, (y + 0.5)/z - 0.5));
@@ -72,16 +74,18 @@ export function krycie(p, W, H, z, ziarno){
       }
     }
   }
-  /* Plamy: dwie skale (34 i 13 px) mówią, GDZIE farby brakuje, a drobne
-     ziarno (1,4 px) — JAK: zamiast gładkiego prześwitu (wyglądał jak
-     cyfrowe moro) farba wykrusza się w ziarno, gęściej w środku plamy,
-     jak na prawdziwym odbitym arkuszu. Odrobina gładkiego spadku zostaje. */
-  const plamy = pl > 0 ? [poleSzumu(W, H, 34, ziarno*7 + 3), poleSzumu(W, H, 13, ziarno*7 + 5), poleSzumu(W, H, 1.4, ziarno*7 + 9)] : null;
+  /* Plamy (nierówne krycie): duże skale (34 i 13 px) zmieniają tylko
+     delikatnie gęstość farby (±12%), a drobne wykruszenia (ziarno 1,2 px) są
+     rozsiane równo — ich ilość lekko zależy od dużej skali. Wcześniej
+     wykruszenia brały się z progu dużego szumu i w ciemnych pełnych miejscach
+     farba wypadała chmurami o poszarpanych, „fraktalnych" brzegach (poprawka
+     z wtyczki VFX Riso 1.3, inkSurface w core/paper.cpp). */
+  const plamy = pl > 0 ? [poleSzumu(W, H, 34*ks, ziarno*7 + 3), poleSzumu(W, H, 13*ks, ziarno*7 + 5), poleSzumu(W, H, 1.2*ks, ziarno*7 + 9)] : null;
   /* dziury 2 px — pojedyncze piksele wyglądały jak szum, nie niedodruk */
-  const dziury = dz > 0 ? poleSzumu(W, H, 2, ziarno*7 + 4) : null;
+  const dziury = dz > 0 ? poleSzumu(W, H, 2*ks, ziarno*7 + 4) : null;
   /* ślady wałka: poziome smugi — szum o skali 2,5 px próbkowany z osią x
      rozciągniętą 18 razy, plus szersze pasy (9 px) słabszej farby */
-  const walek = wa > 0 ? [poleSzumu(W, H, 2.5, ziarno*7 + 6), poleSzumu(W, H, 9, ziarno*7 + 8)] : null;
+  const walek = wa > 0 ? [poleSzumu(W, H, 2.5*ks, ziarno*7 + 6), poleSzumu(W, H, 9*ks, ziarno*7 + 8)] : null;
   if(plamy || dziury || walek) for(let y=0; y<OH; y++){
     const v = Math.min(H - 0.001, Math.max(0, (y + 0.5)/z - 0.5));
     for(let x=0; x<OW; x++){
@@ -89,9 +93,10 @@ export function krycie(p, W, H, z, ziarno){
       if(a[i] <= 0) continue;
       const u = Math.min(W - 0.001, Math.max(0, (x + 0.5)/z - 0.5));
       if(plamy){
-        const m = Math.max(0, Math.min(1, (probka(plamy[0], W, u, v)*0.65 + probka(plamy[1], W, u, v)*0.35)*1.9 - 0.6));
-        const ziarnko = probka(plamy[2], W, u, v) < m*0.85 ? 1 : 0;
-        a[i] *= 1 - pl*(0.25*m + 0.7*ziarnko);
+        const m = Math.max(0, Math.min(1, (probka(plamy[0], W, u, v)*0.65 + probka(plamy[1], W, u, v)*0.35 - 0.5)*2.5 + 0.5));
+        const prog = pl*(0.16 + 0.12*m);
+        const wypadlo = gladko(prog + 0.025, prog - 0.025, probka(plamy[2], W, u, v));   /* odwrócone zbocze: 1 tam, gdzie farba wypadła */
+        a[i] *= 1 - pl*0.12*m - 0.8*wypadlo;
       }
       if(dziury && probka(dziury, W, u, v) < dz*0.3) a[i] *= 0.1;
       if(walek){
@@ -108,6 +113,9 @@ export function krycie(p, W, H, z, ziarno){
 export function fakturaFarby(c, W, H, z, kolor){
   if(!fakturaWlaczona()) return;
   const x = c.getContext("2d"), d = x.getImageData(0, 0, c.width, c.height);
-  krycie(d.data, W, H, z, parseInt(String(kolor || "#000").slice(1), 16) % 9973 || 1);
+  krycie(d.data, W, H, z, ziarnoFaktury(parseInt(String(kolor || "#000").slice(1), 16) % 9973 || 1));
   x.putImageData(d, 0, 0);
 }
+/* faktura zmienna w czasie: nowe ziarno co klatkę osi (jak „Animate Texture"
+   we wtyczce VFX Riso); wyłączona — stałe, jak dawniej */
+export const ziarnoFaktury = z0 => S.fakturaCzas ? 1 + (z0 + (S.klatkaNr | 0)*7919) % 99991 : z0;

@@ -104,6 +104,13 @@ export function ruchPunktow(u){
   return wyn;
 }
 
+/* Cyfra na punkt potrzebuje numeru niezależnego od z: punkt bez numeru (−1
+   albo brak piątego elementu) dostaje kod swojego położenia w pikselach
+   podglądu. Punkty z numerem (nierówny raster) zostają przy swoim. */
+function kodyPolozenia(kropki){
+  for(const kr of kropki) if(kr.length < 5 || kr[4] < 0) kr[4] = (Math.imul(Math.round(kr[0]*4), 73856093) ^ Math.imul(Math.round(kr[1]*4), 19349663)) >>> 1;
+}
+
 /* ---------- proporcje punktu ----------
    Jak „pixel proportions" i „overlap X/Y" w Ditherfy: kształt rozciągnięty
    w swoich osiach (obraca się razem z nim) — stale o szerokość/wysokość
@@ -241,6 +248,7 @@ export function geometria(smp, W, H, ink, z){
      się razem z rastrem — pokrycie liczone przed obrotem), potem skala z */
   const ob = u.obrot*Math.PI/180, co = Math.cos(ob), so = Math.sin(ob), cx = W/2, cy = H/2;
   const t = (x, y) => ob ? [(cx + (x - cx)*co - (y - cy)*so)*z, (cy + (x - cx)*so + (y - cy)*co)*z] : [x*z, y*z];
+  if(wyn.kropki && (u.ksztalt === "cyfra" || (u.tony && Array.from({length: u.tony}, (_, i) => S["znakiS" + (i + 1)]).includes("cyfra")))) kodyPolozenia(wyn.kropki);
   if(wyn.kropki && proporcjePunktu(wyn.kropki)) wyn.rozciag = true;
   if(wyn.kropki){
     /* „obracaj kształt z siatką" wyłączone: kształt stoi prosto (logo, litery), obraca go tylko płyta */
@@ -620,7 +628,8 @@ function warstwice(smp, W, H, ink, u){
    Dawne (koło, kwadrat, romb, linia, krzyż) rysuje halftone.js po staremu;
    nowe opisujemy wielokątami — ten sam opis dla płótna i SVG. Zwraca listę
    konturów [[x, y], …]; pierścień to dwa kontury (reguła evenodd). */
-export const NOWE_KSZTALTY = ["gwiazda", "krzyzUkos", "pierscien", "szesciokat", "elipsa", "trojkat", "wielokat", "superelipsa", "wlasny"];
+export const NOWE_KSZTALTY = ["gwiazda", "krzyzUkos", "pierscien", "szesciokat", "elipsa", "trojkat", "wielokat", "superelipsa", "wlasny",
+                             "gwiazda5", "kwiat", "serce", "cyfra"];
 /* wielokąt jednostkowy przeskalowany do pola π·r² */
 function doPola(p, r){
   let s = 0;
@@ -628,7 +637,27 @@ function doPola(p, r){
   const k = r*Math.sqrt(Math.PI/Math.abs(s/2));
   return p.map(([a, b]) => [a*k, b*k]);
 }
-export function kontury(nazwa, x, y, r, kat, komorka){
+/* Kształty jak w ToneCraft (z wtyczki VFX Raster 1.5): gwiazda pięcioramienna,
+   kwiat (promień 0,62 + 0,38·cos 5θ), serce (krzywa parametryczna) — jako
+   wielokąty o polu koła, więc ton się nie zmienia — i cyfra: 7 segmentów,
+   wysokość 1,6 r, cyfra losowana na punkt ze skrótu jego kodu położenia
+   (`id`, nadawany w geometrii, gdy kształt „cyfra” jest w użyciu). */
+const SEGMENTY = ["abcdef", "bc", "abged", "abgcd", "fgbc", "afgcd", "afgedc", "abc", "abcdefg", "abcdfg"];
+const jednostkowe = {
+  gwiazda5: Array.from({length: 10}, (_, i) => { const f = -Math.PI/2 + i*Math.PI/5, R = i % 2 ? 0.382 : 1; return [R*Math.cos(f), R*Math.sin(f)]; }),
+  kwiat: Array.from({length: 80}, (_, i) => { const t = i*2*Math.PI/80, R = 0.62 + 0.38*Math.cos(5*t); return [R*Math.cos(t - Math.PI/2), R*Math.sin(t - Math.PI/2)]; }),
+  /* serce: 16 sin³t, −(13 cos t − 5 cos 2t − 2 cos 3t − cos 4t), wyśrodkowane na obrysie (y od −5 do 17 → −11 do 11) */
+  serce: Array.from({length: 64}, (_, i) => { const t = i*2*Math.PI/64;
+    return [16*Math.sin(t)**3, -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) - 6]; })
+};
+function cyfra(id, r){
+  const h = 1.6*r, w = 0.5*h, t = 0.18*h, n = Math.floor(skrot(id | 0, 41, 977)*10) % 10;
+  const p = (x, y, a, b) => [[x, y], [x + a, y], [x + a, y + b], [x, y + b]];
+  const seg = {a: p(-w/2, -h/2, w, t), d: p(-w/2, h/2 - t, w, t), g: p(-w/2, -t/2, w, t),
+               f: p(-w/2, -h/2, t, h/2 + t/2), b: p(w/2 - t, -h/2, t, h/2 + t/2), e: p(-w/2, -t/2, t, h/2 + t/2), c: p(w/2 - t, -t/2, t, h/2 + t/2)};
+  return [...SEGMENTY[n]].map(s => seg[s]);
+}
+export function kontury(nazwa, x, y, r, kat, komorka, id){
   const obr = (pts, k) => pts.map(([px, py]) => [x + px*Math.cos(k) - py*Math.sin(k), y + px*Math.sin(k) + py*Math.cos(k)]);
   const wielokat = (n, R, k0) => Array.from({length: n}, (_, i) => { const f = k0 + i*2*Math.PI/n; return [R*Math.cos(f), R*Math.sin(f)]; });
   if(nazwa === "gwiazda"){
@@ -660,6 +689,8 @@ export function kontury(nazwa, x, y, r, kat, komorka){
       p.push([Math.sign(c)*Math.pow(Math.abs(c), 2/e), Math.sign(s)*Math.pow(Math.abs(s), 2/e)]); }
     return [obr(doPola(p, r), kat)];
   }
+  if(jednostkowe[nazwa]) return [obr(doPola(jednostkowe[nazwa], r), kat)];
+  if(nazwa === "cyfra") return cyfra(id, r).map(k => obr(k, kat));
   /* własny kształt z pliku SVG: kontury już znormalizowane (pole π, środek w 0) */
   if(nazwa === "wlasny"){
     const k = ksztaltWlasny();
@@ -699,7 +730,7 @@ export function obrys(ksztalt, kr, postrzep, komorka){
 }
 function obrysBazowy(ksztalt, [x, y, r, kat, id], postrzep, komorka){
   if(!(postrzep && ksztalt === "circle")){
-    const k = kontury(ksztalt, x, y, r, kat, komorka), z = (S.zaokraglenie || 0)/100;
+    const k = kontury(ksztalt, x, y, r, kat, komorka, id), z = (S.zaokraglenie || 0)/100;
     return z > 0 && ksztalt !== "circle" ? zaokraglij(k, z, x, y) : k;
   }
   const n = 22, a1 = skrot(id, 11, 913), a2 = skrot(id, 12, 913), f1 = skrot(id, 13, 913)*6.2832, f2 = skrot(id, 14, 913)*6.2832;

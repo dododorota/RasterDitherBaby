@@ -3,7 +3,7 @@
 import { S, DEFAULTS } from "../src/state.js";
 import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY, odcinkiBarwne, przesuniecie, ustawieniaFarby, normalizujKsztalt, ksztaltWlasny, zaokraglij } from "../src/siatki.js";
 import { gradientLUT } from "../src/palettes.js";
-import { krycie } from "../src/faktura-farby.js";
+import { krycie, ziarnoFaktury } from "../src/faktura-farby.js";
 
 let bledy = 0;
 const sprawdz = (warunek, opis) => { console.log((warunek ? "  ok    " : "  ŹLE   ") + opis); if(!warunek) bledy++; };
@@ -468,6 +468,22 @@ console.log("--- ruch punktów ---");
   S.czasKlatki = 0;
 }
 
+console.log("--- cyfry na punktach ---");
+{
+  const ink = {ang: 20, cov, off: [0, 0]};
+  ustaw({cell: 9, shape: "cyfra"});
+  const a = geometria(gradient, W, H, ink, 1).kropki, b = geometria(gradient, W, H, ink, 3).kropki;
+  const liczba = kr => obrys("cyfra", kr, 0, 9).length;     /* liczba segmentów rozróżnia cyfry (1 → 2, 8 → 7) */
+  sprawdz(a.length === b.length && a.every((p, i) => p[4] >= 0 && p[4] === b[i][4]), "każdy punkt ma kod położenia, ten sam w zapisie 3×");
+  const rozne = new Set(a.map(liczba));
+  sprawdz(rozne.size >= 4, `cyfry rozłożone losowo (${rozne.size} różnych liczb segmentów)`);
+  ustaw({cell: 9, shape: "cyfra", nierowne: 30});
+  const c = geometria(gradient, W, H, ink, 1).kropki;
+  sprawdz(c.every((p, i) => p[4] === i), "z nierównym rastrem — numer punktu zostaje (nie kod położenia)");
+  ustaw({cell: 9, shape: "circle"});
+  sprawdz(geometria(gradient, W, H, ink, 1).kropki.every(p => p.length === 4), "inny kształt — punkty bez kodu");
+}
+
 console.log("--- proporcje punktu ---");
 {
   const ink = {ang: 30, cov, off: [0, 0]};
@@ -545,6 +561,37 @@ console.log("--- faktura farby ---");
   let pion = 0, poz = 0;
   for(let y=40;y<80;y++) for(let x=60;x<100;x++){ const v = g[(y*OW+x)*4+3]; pion += Math.abs(v - g[((y+1)*OW+x)*4+3]); poz += Math.abs(v - g[(y*OW+x+1)*4+3]); }
   sprawdz(suma(g) < suma(zr)*0.97 && pion > poz*2, `ślady wałka: mniej farby, smugi poziome (zmiany w pionie ${pion} vs w poziomie ${poz})`);
+}
+
+console.log("--- plamy bez płatów, skala faktury, faktura w czasie ---");
+{
+  /* pełna farba 240×180: wykruszenia mają być drobne i rozsiane, nie płatami */
+  const fw = 240, fh = 180, pelna = () => { const p = new Uint8ClampedArray(fw*fh*4); for(let i=0;i<fw*fh;i++){ p[i*4] = 255; p[i*4+3] = 255; } return p; };
+  const platy = p => {
+    const dziura = new Uint8Array(fw*fh), byl = new Uint8Array(fw*fh); let n = 0, maks = 0, ile = 0;
+    for(let i=0;i<fw*fh;i++) if(p[i*4+3] < 128){ dziura[i] = 1; ile++; }
+    for(let i=0;i<fw*fh;i++) if(dziura[i] && !byl[i]){
+      n++; let roz = 0; const st = [i]; byl[i] = 1;
+      while(st.length){ const j = st.pop(); roz++; const x = j % fw, y = (j/fw)|0;
+        for(const k of [x > 0 ? j-1 : -1, x < fw-1 ? j+1 : -1, y > 0 ? j-fw : -1, y < fh-1 ? j+fw : -1]) if(k >= 0 && dziura[k] && !byl[k]){ byl[k] = 1; st.push(k); } }
+      maks = Math.max(maks, roz);
+    }
+    return {n, maks, udzial: ile/(fw*fh)};
+  };
+  ustaw({plamy: 100}); const a = pelna(); krycie(a, fw, fh, 1, 7);
+  const pa = platy(a);
+  sprawdz(pa.maks <= 60 && pa.n > 200 && pa.udzial > 0.05 && pa.udzial < 0.4,
+          `plamy 100%: ${pa.n} drobnych wykruszeń, największe ${pa.maks} px, ${(pa.udzial*100).toFixed(0)}% powierzchni — bez dużych płatów`);
+  ustaw({plamy: 100, fakturaSkala: 200}); const b = pelna(); krycie(b, fw, fh, 1, 7);
+  const pb = platy(b);
+  sprawdz(pb.n < pa.n*0.5 && pb.maks > pa.maks, `skala faktury 200%: wykruszeń ${pa.n} → ${pb.n}, większe (do ${pb.maks} px)`);
+  ustaw({plamy: 100, fakturaSkala: 100}); const c = pelna(); krycie(c, fw, fh, 1, 7);
+  sprawdz(c.every((v, i) => v === a[i]), "skala 100% — co do bitu jak bez suwaka");
+  ustaw({}); S.klatkaNr = 3;
+  const stale = ziarnoFaktury(77);
+  ustaw({fakturaCzas: true}); S.klatkaNr = 3; const k3 = ziarnoFaktury(77); S.klatkaNr = 4; const k4 = ziarnoFaktury(77); S.klatkaNr = 3;
+  sprawdz(stale === 77 && k3 !== k4 && k3 === ziarnoFaktury(77) && k3 >= 1 && k3 <= 99991, "faktura w czasie: inne ziarno co klatkę, powtarzalne; wyłączona — stałe");
+  S.klatkaNr = 0;
 }
 
 console.log("\nBŁĘDÓW:", bledy);

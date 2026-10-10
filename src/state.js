@@ -40,7 +40,8 @@ export const DEFAULTS = {
   ruchPuls:0, ruchKrzywa:"gladko", ruchCykl:20, ruchFala:0, ruchFalaKat:45, ruchOdbicie:true,
   ruchKat:0, ruchObrot:0, ruchSkok:0, ruchPostoj:4, ruchDrzenie:0,
   papierTlo:"kolor", papierKat:90, papierGrad:"",
-  punktSzer:100, punktWys:100, punktLosSzer:0, punktLosWys:0
+  punktSzer:100, punktWys:100, punktLosSzer:0, punktLosWys:0,
+  fakturaSkala:100, fakturaCzas:false, ekspozycja:0, czern:0, biel:255
 };
 /* Znaki według tonu: kształt i kolor każdego z 16 poziomów (od cieni do
    świateł) — część wyglądu, więc w presecie. Obrazki poziomów to materiał
@@ -56,4 +57,4 @@ export const LOOK = Object.keys(DEFAULTS);
 /* klatkaNr: numer bieżącej klatki osi czasu (0 bez filmu) — od niego zależą
    efekty zmienne w czasie; czasKlatki: jej czas w sekundach (ruch punktów
    rastra). Ustawia je podgląd filmu i zapis, nie panel */
-export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png", wektor:"piksele", wygl:3, jakosc:"wysoka", przezroczyste:false, dzwiek:true, klatkaNr:0, czasKlatki:0, svgObrazki:"osadz" }, DEFAULTS);
+export const S = Object.assign({ img:null, custom:null, mode:"dither", scl:1, fmt:"png", wektor:"piksele", wygl:3, jakosc:"wysoka", przezroczyste:false, dzwiek:true, klatkaNr:0, czasKlatki:0, svgObrazki:"osadz", svgLitery:"krzywe" }, DEFAULTS);

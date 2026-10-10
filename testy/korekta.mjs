@@ -106,5 +106,27 @@ console.log("--- dopasowanie percepcyjne ---");
   sprawdz(a.every((v, i) => v === b[i]), "paleta 100 kolorów: powtarzalnie co do bajtu");
 }
 
+console.log("--- ekspozycja, punkt czerni i bieli ---");
+{
+  ustaw({ekspozycja: 0, czern: 0, biel: 255});
+  sprawdz(lut().every((v, i) => v === i), "0 EV, 0 / 255 — tożsamość");
+  ustaw({ekspozycja: 1});
+  let t = lut();
+  sprawdz(t[50] === 100 && t[100] === 200 && t[200] === 255, "+1 EV: dwa razy jaśniej, światła obcięte do bieli");
+  ustaw({ekspozycja: -2});
+  t = lut();
+  sprawdz(t[200] === 50 && t[0] === 0, "−2 EV: cztery razy ciemniej");
+  ustaw({czern: 50, biel: 200});
+  t = lut();
+  sprawdz(t[50] === 0 && t[200] === 255 && t[125] === 128 && t[30] === 0 && t[230] === 255, "poziomy 50–200: rozciągnięte do 0–255, poza zakresem obcięte");
+  sprawdz(t.every((v, i) => !i || v >= t[i-1]), "krzywa rośnie");
+  /* poziomy przed jasnością: 125 → 127,5 → +51 */
+  ustaw({czern: 50, biel: 200, bri: 20});
+  sprawdz(lut()[125] === 178, "poziomy liczone przed jasnością");
+  ustaw({czern: 200, biel: 200});
+  t = lut();
+  sprawdz(t[199] === 0 && t[201] === 255, "czerń = biel — próg, bez dzielenia przez zero");
+}
+
 console.log("\nBŁĘDÓW:", bledy);
 process.exitCode = bledy ? 1 : 0;

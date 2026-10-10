@@ -63,10 +63,14 @@ export function svgTla(W, H){
 export function papier(ctx, W, H, z){
   const ust = RODZAJE[S.papierRodzaj], s = (S.papierSila || 0)/100;
   if(!ust || !(s > 0)) return;
+  /* skala faktury: papier rysowany w jednostkach ks razy większych — kadr
+     W/ks × H/ks, płótno ×ks (100% — co do bitu jak dawniej) */
+  const ks = (S.fakturaSkala ?? 100)/100;
+  W /= ks; H /= ks;
   const [chm, naWlokno, dl, naDrobinke] = ust, [r, g, b] = hex2rgb(S.paper);
   const ciemny = a => `rgba(${r*0.62|0},${g*0.6|0},${b*0.56|0},${a.toFixed(3)})`;
   ctx.save();
-  ctx.scale(z, z);
+  ctx.scale(z*ks, z*ks);
 
   /* chmurki: szum na siatce co 10 px (dwie skale), ciemniej i jaśniej od papieru */
   if(chm){

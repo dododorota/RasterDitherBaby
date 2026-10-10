@@ -13,8 +13,14 @@ export function lut(){
   const t=new Uint8ClampedArray(256);
   const c = S.con, f = (259*(c+255))/(255*(259-c));
   const cien = (S.cienie||0)/100, swiatla = (S.swiatla||0)/100;
+  /* ekspozycja (EV) i poziomy (punkt czerni / bieli) — przed jasnością, jak we
+     wtyczkach VFX; przy 0 / 0 / 255 pominięte, więc LUT co do bajtu jak dawniej */
+  const ev = S.ekspozycja || 0, czern = S.czern || 0, biel = S.biel ?? 255;
   for(let i=0;i<256;i++){
-    let v = i + S.bri*2.55;
+    let v = i;
+    if(ev) v *= 2 ** ev;
+    if(czern !== 0 || biel !== 255) v = (v - czern)*255/Math.max(1, biel - czern);
+    v = v + S.bri*2.55;
     v = f*(v-128)+128;
     if(cien || swiatla){
       /* cienie i światła: przesunięcie ważone garbem w dolnej albo górnej
