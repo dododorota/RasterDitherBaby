@@ -388,6 +388,18 @@ od czystej pamięci, więc wynik nie zależy od tego, co wcześniej oglądano.
 
 Poza klasyką dyfuzji błędu i Bayerem:
 
+- **Linie — jak Dither Boy** (z wtyczki VFX Dither 1.4): **Waveform** —
+  równoległe linie wygięte jasnością, grubsze w jasnych miejscach (relief,
+  „CRT Bend”); **Topografia** — warstwice jasności stałej grubości; **Fala
+  w dyfuzji** — Floyd z progiem przesuniętym falującymi liniami; **Pęknięcia**
+  — dyfuzja z błędem spływającym po skosie, ukośne „pęknięcia” w półtonach;
+  **Smugi światła** — proste linie, każda z własną jasnością, ze smugą wzdłuż.
+  Suwaki (widać tylko te, których styl używa): odstęp i kąt linii, wygięcie,
+  fala i jej długość, siła stylu, prędkość linii (płyną w filmie i po „Animuj
+  obraz”). Długości w pikselach ditheringu — rosną z pikselizacją. Presety:
+  CRT, Topo neon, Fala, Pęknięcia, Smugi. Na jasnych zdjęciach linie
+  wypełniają kadr — pomaga negatyw albo niższa ekspozycja.
+
 - **Ostromukhov — zmienne wagi** (SIGGRAPH 2001). Wagi rozprowadzania błędu
   zależą od jasności piksela, z tabeli autora — mniej regularnych „robaków"
   niż u Floyda–Steinberga, a przy mocnym kontraście charakterystyczne faktury

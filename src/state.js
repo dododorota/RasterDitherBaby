@@ -41,7 +41,8 @@ export const DEFAULTS = {
   ruchKat:0, ruchObrot:0, ruchSkok:0, ruchPostoj:4, ruchDrzenie:0,
   papierTlo:"kolor", papierKat:90, papierGrad:"",
   punktSzer:100, punktWys:100, punktLosSzer:0, punktLosWys:0,
-  fakturaSkala:100, fakturaCzas:false, ekspozycja:0, czern:0, biel:255
+  fakturaSkala:100, fakturaCzas:false, ekspozycja:0, czern:0, biel:255,
+  stylOdstep:8, stylKat:0, stylWygiecie:50, stylFala:0, stylFalaDl:24, stylSila:60, stylPredkosc:0
 };
 /* Znaki według tonu: kształt i kolor każdego z 16 poziomów (od cieni do
    świateł) — część wyglądu, więc w presecie. Obrazki poziomów to materiał

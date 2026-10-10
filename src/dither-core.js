@@ -3,7 +3,7 @@ import { palette, paletaGradientu, nearest, quantizer } from "./palettes.js";
 import { K, BAYER2, BAYER4, BAYER8, BAYER16, CLUSTER, WZORY, niebieskiSzum, wagiOstro, ign } from "./kernels.js";
 import { adjustPixels, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomNaBuforze, zmiennoscCzynna } from "./stos.js";
-import { zmiennoscPrzed, cyklMacierzy } from "./fx.js";
+import { zmiennoscPrzed, cyklMacierzy, skrot } from "./fx.js";
 
 /* Samo liczenie ditheringu: korekta tonalna i algorytm, w miejscu na buforze
    RGBA. Ani jednego odwołania do DOM-u, bo ten moduł biega też w workerze
@@ -43,10 +43,13 @@ export function ditherPixels(p, w, h, opcje){
   korektaPrzestrzenna(p, w, h, 1/S.pix);
   if(zmiennoscCzynna()) zmiennoscPrzed(p, w, h, 1/S.pix);
   if(S.algo === "ostromoukhov" || S.algo === "riemersma" || S.algo === "knuth"){ ditherSpecjalny(p, w, h); return; }
+  if(S.algo === "waveform" || S.algo === "topografia" || S.algo === "smugi"){ ditherLinii(p, w, h); return; }
   if(S.mapa === "jasnosc"){ ditherJasnosci(p, w, h, opcje); zapamietaj(p, w, h, opcje); return; }
 
   const pal = palette(), q = quantizer(), bias = S.thr*2.55;
-  const diff = K[S.algo];
+  /* style „zepsutej" dyfuzji: przesunięcie progu falą albo własne jądro */
+  const dyf = dyfuzjaStylu(p, w, h, 255/Math.max(2, pal.length-1));
+  const diff = K[S.algo] || (dyf && dyf.diff), serp = dyf ? dyf.serp : S.serp, off = dyf && dyf.off;
 
   if(diff){
     const st = stabilizacja(w, h, opcje);
@@ -54,8 +57,9 @@ export function ditherPixels(p, w, h, opcje){
     const wPalecie = st ? new Set(pal.map(c => (c[0] << 16) | (c[1] << 8) | c[2])) : null;
     const buf = new Float32Array(w*h*3);
     for(let i=0,j=0;i<p.length;i+=4,j+=3){ buf[j]=p[i]+bias; buf[j+1]=p[i+1]+bias; buf[j+2]=p[i+2]+bias; }
+    if(off) for(let i=0; i<w*h; i++){ buf[i*3] += off[i]; buf[i*3+1] += off[i]; buf[i*3+2] += off[i]; }
     for(let y=0;y<h;y++){
-      const rev = S.serp && (y&1);
+      const rev = serp && (y&1);
       for(let k=0;k<w;k++){
         const x = rev ? w-1-k : k;
         const idx=(y*w+x)*3;
@@ -120,7 +124,8 @@ function ditherJasnosci(p, w, h, opcje){
   const krok = 255/Math.max(1, ost), bias = S.thr*2.55, n = w*h;
   const poziom = v => { const k = Math.round(v/krok); return k < 0 ? 0 : (k > ost ? ost : k); };
   const ind = new Uint8Array(n);
-  const diff = K[S.algo];
+  const dyf = dyfuzjaStylu(p, w, h, krok);
+  const diff = K[S.algo] || (dyf && dyf.diff), serp = dyf ? dyf.serp : S.serp, off = dyf && dyf.off;
 
   if(diff){
     /* stabilizacja: poprzedni poziom z koloru poprzedniej klatki (−1, gdy go
@@ -135,8 +140,9 @@ function ditherJasnosci(p, w, h, opcje){
     }
     const buf = new Float32Array(n);
     for(let i=0, o=0; i<n; i++, o+=4) buf[i] = 0.299*p[o] + 0.587*p[o+1] + 0.114*p[o+2] + bias;
+    if(off) for(let i=0; i<n; i++) buf[i] += off[i];
     for(let y=0;y<h;y++){
-      const rev = S.serp && (y&1);
+      const rev = serp && (y&1);
       for(let k=0;k<w;k++){
         const x = rev ? w-1-k : k, i = y*w+x;
         const v = buf[i];
@@ -167,6 +173,150 @@ function ditherJasnosci(p, w, h, opcje){
     }
   }
   for(let i=0, o=0; i<n; i++, o+=4){ const c = pal[ind[i]]; p[o]=c[0]; p[o+1]=c[1]; p[o+2]=c[2]; }
+}
+
+/* ---------- style linii (jak Dither Boy / Glitch Machine) ----------
+   Przeniesione z wtyczki VFX Dither 1.4 (core/dither.cpp: waveTemplate,
+   topoTemplate, templated, streaks, ModulatedDiffuse, CrackedDiffuse).
+   Liczone na pikselach ditheringu (po pikselizacji), na jasności po
+   korekcie; długości w tych pikselach. Czas: S.czasKlatki × prędkość linii
+   (okresy na sekundę) — przy prędkości 0 klatki filmu się nie różnią.
+   Losowość tylko ze skrótu numeru linii.
+   - Waveform: równoległe linie wygięte jasnością (relief, „CRT Bend"),
+   - Topografia: warstwice jasności stałej grubości,
+   - Fala w dyfuzji: Floyd z progiem przesuniętym wzorem Waveform,
+   - Pęknięcia: dyfuzja z błędem spływającym po skosie,
+   - Smugi: proste linie, każda z własną jasnością, ze smugą światła. */
+export const STYLE_LINII = ["waveform", "topografia", "falaDyfuzja", "pekniecia", "smugi"];
+const lum = (p, o) => 0.299*p[o] + 0.587*p[o+1] + 0.114*p[o+2];
+/* rozmycie ≈ Gauss: trzy przebiegi pudełkowe w poziomie i w pionie (boxBlur3 z wtyczki, 1 kanał) */
+function rozmyjPudelka(d, w, h, sigma){
+  if(sigma < 0.3 || w <= 0 || h <= 0) return;
+  const r = Math.max(1, Math.round(Math.sqrt(sigma*sigma + 1) - 0.5)), tmp = new Float32Array(d.length);
+  const przebieg = (zr, cel, poziomo) => {
+    const linii = poziomo ? h : w, dl = poziomo ? w : h;
+    for(let l=0; l<linii; l++){
+      const at = i => { i = i < 0 ? 0 : (i > dl - 1 ? dl - 1 : i); return poziomo ? l*w + i : i*w + l; };
+      let acc = 0;
+      for(let i=-r; i<=r; i++) acc += zr[at(i)];
+      for(let i=0; i<dl; i++){ cel[at(i)] = acc/(2*r + 1); acc += zr[at(i + r + 1)] - zr[at(i - r)]; }
+    }
+  };
+  for(let k=0; k<3; k++){ przebieg(d, tmp, true); przebieg(tmp, d, false); }
+}
+function jasnoscGladka(p, w, h, sigma){
+  const L = new Float32Array(w*h);
+  for(let i=0; i<w*h; i++) L[i] = lum(p, i*4);
+  rozmyjPudelka(L, w, h, sigma);
+  return L;
+}
+const ustLinii = () => ({P: Math.max(2, S.stylOdstep || 8), th: (S.stylKat || 0)*Math.PI/180, bend: (S.stylWygiecie ?? 50)/100,
+  fala: (S.stylFala || 0)/100, dl: Math.max(2, S.stylFalaDl || 24), sila: (S.stylSila ?? 60)/100, faza: (S.stylPredkosc || 0)/10*(S.czasKlatki || 0)});
+/* Waveform: f = (odległość w poprzek)/odstęp + 6·wygięcie·L + 1,5·fala·L·sin(wzdłuż·2π/długość) − czas;
+   linie na całkowitych f, próg 1 w środku linii — jaśniej, grubsza linia */
+function wzorFali(p, w, h){
+  const u = ustLinii(), dx = Math.cos(u.th), dy = Math.sin(u.th), nx = -dy, ny = dx;
+  const L = jasnoscGladka(p, w, h, u.P*0.6), bendK = u.bend*6, faleA = u.fala*1.5, faleK = 2*Math.PI/u.dl;
+  const t = new Float32Array(w*h);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const i = y*w + x, gx = x + 0.5, gy = y + 0.5, l = L[i]/255;
+    const f = (gx*nx + gy*ny)/u.P + bendK*l + faleA*l*Math.sin((gx*dx + gy*dy)*faleK) - u.faza;
+    t[i] = 1 - 2*Math.abs(f - Math.floor(f + 0.5));
+  }
+  return t;
+}
+/* Topografia: warstwice jasności (96/odstęp poziomów) stałej grubości — odległość od warstwicy |g − round g|/|∇g| */
+function wzorWarstwic(p, w, h){
+  const u = ustLinii(), N = Math.max(2, 96/u.P), L = jasnoscGladka(p, w, h, Math.max(1, u.P*0.3));
+  const dx = Math.cos(u.th), dy = Math.sin(u.th), faleA = u.fala*0.5, faleK = 2*Math.PI/u.dl;
+  const g = new Float32Array(w*h), t = new Float32Array(w*h), pol = 0.6 + u.P/16;
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){ const i = y*w + x; g[i] = L[i]/255*N + faleA*Math.sin((x*dx + y*dy)*faleK) - u.faza; }
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const i = y*w + x;
+    const gx = (g[y*w + Math.min(w - 1, x + 1)] - g[y*w + Math.max(0, x - 1)])*0.5;
+    const gy = (g[Math.min(h - 1, y + 1)*w + x] - g[Math.max(0, y - 1)*w + x])*0.5;
+    const d = Math.abs(g[i] - Math.floor(g[i] + 0.5))/Math.max(1e-4, Math.sqrt(gx*gx + gy*gy));
+    t[i] = Math.max(0, 1 - d/pol);
+  }
+  return t;
+}
+/* Kwantyzacja progiem ze wzoru (jak uporządkowany, tylko próg z pola linii).
+   Próg ściśnięty do 0,02–0,98: czysta czerń zostaje czarna, biel biała.
+   val — wartości po smugach (3 kanały albo jasność), bez niego z p. */
+function progowy(p, w, h, t, val){
+  const n = w*h, bias = S.thr*2.55;
+  if(S.mapa === "jasnosc"){
+    const pal = paletaGradientu(), ost = pal.length - 1, krok = 255/Math.max(1, ost), spread = krok*S.str;
+    for(let i=0, o=0; i<n; i++, o+=4){
+      let k = Math.round(((val ? val[i] : lum(p, o)) + (0.02 + 0.96*t[i] - 0.5)*spread + bias)/krok);
+      k = k < 0 ? 0 : (k > ost ? ost : k);
+      const c = pal[k]; p[o] = c[0]; p[o+1] = c[1]; p[o+2] = c[2];
+    }
+    return;
+  }
+  const pal = palette(), q = quantizer(), spread = 255/Math.max(2, pal.length - 1)*S.str;
+  for(let i=0, o=0; i<n; i++, o+=4){
+    const of = (0.02 + 0.96*t[i] - 0.5)*spread + bias;
+    const r = (val ? val[i*3] : p[o]) + of, g = (val ? val[i*3+1] : p[o+1]) + of, b = (val ? val[i*3+2] : p[o+2]) + of;
+    const c = q ? q(r, g, b) : nearest(pal, r, g, b);
+    p[o] = c[0]; p[o+1] = c[1]; p[o+2] = c[2];
+  }
+}
+/* Smugi: proste linie wzdłuż kąta. Jasność rozlewa się wzdłuż linii (maksimum
+   z wykładniczo gasnącą smugą w obie strony, dokładane w połowie), a każda
+   linia ma własną jasność ze skrótu jej numeru — nieliczne świecą, reszta
+   przygasa. Przy „szumie w czasie" (zmienność w czasie) jasności linii
+   losowane co klatkę, jak Animate we wtyczce. */
+function smugi(p, w, h){
+  const u = ustLinii(), dx = Math.cos(u.th), dy = Math.sin(u.th), nx = -dy, ny = dx, n = w*h;
+  const C = S.mapa === "jasnosc" ? 1 : 3, val = new Float32Array(n*C);
+  for(let i=0, o=0; i<n; i++, o+=4){ if(C === 1) val[i] = lum(p, o); else { val[i*3] = p[o]; val[i*3+1] = p[o+1]; val[i*3+2] = p[o+2]; } }
+  const poziomo = Math.abs(dx) >= Math.abs(dy), linii = poziomo ? h : w, dl = poziomo ? w : h;
+  const zasieg = u.sila*6*u.P, gasnie = zasieg > 0.5 ? Math.exp(-1/zasieg) : 0;
+  if(gasnie > 0){
+    const przod = new Float32Array(dl*C);
+    for(let l=0; l<linii; l++){
+      const at = i => poziomo ? l*w + i : i*w + l;
+      for(let c=0; c<C; c++){
+        let s = 0;
+        for(let i=0; i<dl; i++){ s = Math.max(val[at(i)*C + c], s*gasnie); przod[i*C + c] = s; }
+        s = 0;
+        for(let i=dl-1; i>=0; i--){
+          const q = at(i)*C + c;
+          s = Math.max(val[q], s*gasnie);
+          val[q] += 0.5*(Math.max(s, przod[i*C + c]) - val[q]);
+        }
+      }
+    }
+  }
+  const t = new Float32Array(n), ziarno = 1234567 + (S.czasSzum > 0 ? (S.klatkaNr | 0) : 0);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const i = y*w + x, f = ((x + 0.5)*nx + (y + 0.5)*ny)/u.P - u.faza, nr = Math.floor(f + 0.5);
+    t[i] = 1 - 2*Math.abs(f - nr);
+    const r = skrot(nr, 911, ziarno), wzm = 1 + u.sila*(4*r*r*r*r - 0.6);
+    for(let c=0; c<C; c++){ const v = val[i*C + c]*wzm; val[i*C + c] = v < 0 ? 0 : (v > 255 ? 255 : v); }
+  }
+  progowy(p, w, h, t, val);
+}
+function ditherLinii(p, w, h){
+  if(S.algo === "smugi") smugi(p, w, h);
+  else progowy(p, w, h, S.algo === "waveform" ? wzorFali(p, w, h) : wzorWarstwic(p, w, h));
+}
+/* Fala w dyfuzji i pęknięcia — wchodzą w zwykłą pętlę dyfuzji: przesunięcie
+   progu (wzór Waveform × 1,2 kroku × siła) albo jądro, w którym błąd
+   spływa coraz bardziej po skosie (bez wężyka). */
+function dyfuzjaStylu(p, w, h, krok){
+  if(S.algo === "falaDyfuzja"){
+    const t = wzorFali(p, w, h), amp = krok*1.2*ustLinii().sila, off = new Float32Array(w*h);
+    for(let i=0; i<w*h; i++) off[i] = (t[i] - 0.5)*amp;
+    return {diff: K.floyd, serp: S.serp, off};
+  }
+  if(S.algo === "pekniecia"){
+    const c = Math.max(0, Math.min(1, ustLinii().sila));
+    const wR = Math.round(70*(1 - c)), wDL = Math.round(30*(1 - c)), wD = Math.round(50*(1 - c));
+    return {diff: {d: 160, m: [[1, 0, wR], [-1, 1, wDL], [0, 1, wD], [1, 1, 160 - wR - wDL - wD]]}, serp: false, off: null};
+  }
+  return null;
 }
 
 /* Dithering razem z efektami po rastrze — to woła worker i fallback, żeby oba

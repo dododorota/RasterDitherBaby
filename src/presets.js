@@ -8,7 +8,12 @@ export const PRESETS = {
     ["Miękko", {algo:"jjn", str:0.85, pix:1, pal:"gray4", con:10, gam:1}],
     ["Poświata", {algo:"atkinson", str:1, pix:2, pal:"g-poswiata", mapa:"jasnosc", con:30, gam:0.9, glow:90, glowR:18, glowProg:40}],
     ["Termowizja", {algo:"floyd", str:1, pix:2, pal:"g-termo", mapa:"jasnosc", con:12}],
-    ["Riso", {algo:"bayer8", str:1, pix:2, pal:"r-niebroz", mapa:"kolor", con:22, gam:1.05}]
+    ["Riso", {algo:"bayer8", str:1, pix:2, pal:"r-niebroz", mapa:"kolor", con:22, gam:1.05}],
+    ["CRT", {algo:"waveform", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ff3df2", con:35, glow:80, glowR:14, glowProg:35, stylOdstep:6, stylWygiecie:60}],
+    ["Topo neon", {algo:"topografia", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#3dfff0", con:20, glow:70, glowR:12, glowProg:30, stylOdstep:6}],
+    ["Fala", {algo:"falaDyfuzja", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:25}],
+    ["Pęknięcia", {algo:"pekniecia", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:25, stylSila:100}],
+    ["Smugi", {algo:"smugi", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:40, glowR:16, glowProg:60, stylOdstep:5, stylKat:90}]
   ],
   ascii:[
     ["Terminal", {asciiZestaw:"standard", asciiRozmiar:10, asciiKolor:"jeden", ink:"#33ff66", paper:"#000000", con:20}],

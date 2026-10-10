@@ -4,6 +4,88 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — handover z 11 października 2026 (wieczór)
+
+Ta sekcja jest na początek następnej sesji. Pod nią — dawny stan i pełna
+historia.
+
+### Stan repozytorium
+
+- Ostatni commit apki w chwili pisania: `5bb791b` (litery jako krzywe).
+  **Niezacommitowane:** style linii jak Dither Boy (punkt 28 niżej) —
+  `dither-core.js`, `index.html`, `app.js`, `state.js`, `presets.js`,
+  `testy/algorytmy.mjs` i dokumentacja. Jeśli `git status` dalej je
+  pokazuje, użytkowniczka commituje:
+  `git add -A && git commit -m "Style linii jak Dither Boy (z VFX Dither 1.4)"`.
+- Wszystkie testy przechodziły na koniec sesji (16 w Node, `przegladarka.mjs`).
+
+### Wtyczka VFX — sprawdzić od nowa, bo zmienia się w osobnej sesji
+
+Kod: `C:\Users\Dodo\Claude\Projects\AE Plugin Land\raster-dither\`
+(osobne repo, czytać, nie zmieniać). Lista do przeniesienia:
+`raster-dither/DLA-APKI.md`.
+
+**Punkt odniesienia:** wszystko, co przeniesione, pochodzi z commitu
+wtyczki **`05891a0`** (2026-10-11 01:07) i z DLA-APKI.md z 00:53.
+W chwili pisania wtyczka miała **niezacommitowany** etap 2 części B
+(VFX Dither 1.5: `checkersTemplate`, `blockTemplate`, `burstTemplate`
+w `core/dither.cpp`, nowe algorytmy w `dither.h`) — w trakcie, **nie
+przenosić, dopóki DLA-APKI.md nie oznaczy etapu 2 jako GOTOWY**.
+
+Jak sprawdzić (Git Bash):
+```
+cd "/c/Users/Dodo/Claude/Projects/AE Plugin Land/raster-dither"
+git log --oneline -5 -- .
+git diff 05891a0 --stat -- .
+git diff 05891a0 -- core/dither.cpp core/paper.cpp core/dither.h
+```
+i przeczytać DLA-APKI.md oraz najnowsze wpisy w `raster-dither/CLAUDE.md`
+(dziennik wersji). Sprawdzić też, czy nie zmieniło się coś, co już
+przeniesiono — wtedy poprawić apkę:
+- A1 plamy riso — `inkSurface` w `core/paper.cpp` ↔ `krycie()` w `faktura-farby.js`,
+- A2 ekspozycja / poziomy — `Tone` ↔ `lut()` w `image.js`,
+- A3 / A4 skala i czas faktury — `texUnit`, ziarno ↔ `fakturaSkala`, `ziarnoFaktury()`,
+- A5 kształty — `core/raster.cpp` ↔ `kontury()` w `siatki.js`,
+- B etap 1 — `waveTemplate`, `topoTemplate`, `templated`, `streaks`,
+  ModulatedDiffuse, CrackedDiffuse ↔ `wzorFali`, `wzorWarstwic`, `progowy`,
+  `smugi`, `dyfuzjaStylu` w `dither-core.js`; presety `kPresets`
+  w `ae/VFXDither.cpp` ↔ `presets.js`.
+
+### Do zrobienia
+
+1. Commit stylów linii (wyżej), jeśli jeszcze nie ma.
+2. Sprawdzić wtyczkę (wyżej) i przenieść poprawki do już przeniesionych części.
+3. **Część B, etap 2** (gdy gotowy we wtyczce): Checkers (małe / średnie /
+   duże — Bayer 4×4 na kratkach 2 / 4 / 8 px), Block Tone (kwadratowy punkt
+   w komórce, odstęp i kąt z suwaków linii), Radial Burst (promienie od
+   środka, wygięcie jasnością, prędkość obraca). W apce: nowe wzory obok
+   `wzorFali()` i kwantyzacja przez `progowy()`; Bayer 4×4 już jest
+   (`BAYER4` w kernels.js); Radial Burst potrzebuje środka — dodać suwaki
+   środka w grupie linii (w rastrze są `srodekX/Y`, ale to inne pole).
+   Procedura jak przy etapie 1: dawne algorytmy co do bajtu jak przed zmianą
+   (skrypt porównujący z wersją z gita), worker = główny wątek, presety
+   z `kPresets`.
+4. **Część B, etap 3** — jeszcze bez decyzji we wtyczce; przy przenoszeniu
+   porównać z tym, co apka ma (`rgb`, `chrom`, `jpegGlitch`, poświata).
+5. **Decyzje użytkowniczki:**
+   - faktura farby zmienna w czasie — osobny przełącznik (tak jest teraz)
+     czy podpiąć pod „szum w czasie”;
+   - czy zaznaczyć w DLA-APKI.md (plik wtyczki), że część A i etap 1 B są
+     przeniesione — to plik innego projektu, nie ruszać bez zgody.
+6. **Do przetestowania na koniec** — lista w osobnej sekcji niżej.
+
+### Uwagi do pracy
+
+- **Heredoc w Git Bashu psuje polskie znaki** (skrypt Pythona z `<<EOF`
+  dostaje krzaki i `assert` nie znajduje tekstu). Łatki z polskim tekstem
+  zapisywać do pliku (narzędzie Write) i uruchamiać `python plik.py`.
+- Sprawdzenia w Chrome z tej sesji były tymczasowymi skryptami w katalogu
+  sesji (harness jak `testy/przegladarka.mjs`) — nie przetrwają. Jeśli
+  mają zostać, przenieść do `testy/` (decyzja użytkowniczki).
+- Znane i niegroźne: litery w SVG jako krzywe różnią się od podglądu
+  wygładzaniem małych liter (~5/255 średnio; tekst dawał ~11) — kształt
+  i położenie zgodne.
+
 ## Stan na 1 października 2026
 
 - Praca na Windowsie. Repozytorium na GitHubie:
@@ -181,6 +263,13 @@ to przegląd bez zmian w kodzie.
     domyślnie jako krzywe — decyzja użytkowniczki, „żeby fontów nie tracić”;
     tekst edytowalny jako opcja. Część B (style Dither Boya) czeka na
     wtyczkę.
+28. **Style linii jak Dither Boy** (11.10) — część B, etap 1 z DLA-APKI.md
+    (gotowy we wtyczce VFX Dither 1.4): Waveform, Topografia, Fala
+    w dyfuzji, Pęknięcia, Smugi światła; grupa suwaków linii, presety CRT,
+    Topo neon, Fala, Pęknięcia, Smugi (wartości z `kPresets` wtyczki, kolor
+    dwubarwny jako 1-bit według jasności). Etap 2 (wzory) jeszcze nie gotowy
+    we wtyczce. Przy okazji: „Przywróć całą korektę” zeruje też ekspozycję
+    i punkty czerni / bieli.
 
 ## Do przetestowania na koniec
 
@@ -204,6 +293,9 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
 - **Napis**: krój wczytany z pliku (zwłaszcza zmienny), polskie znaki,
   obrazki zamiast liter.
 - **Faktura farby zmienna w czasie** w zapisanym filmie.
+- **Style linii** (Waveform, Topografia, Fala, Pęknięcia, Smugi) na
+  prawdziwych zdjęciach i w filmie z prędkością linii — porównanie
+  z wtyczką VFX Dither na tym samym kadrze.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 

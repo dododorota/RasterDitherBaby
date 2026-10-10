@@ -345,6 +345,13 @@
           <option value="krzyze">Krzyżyki</option>
           <option value="kropki8">Kropki 8×8</option>
         </optgroup>
+        <optgroup label="Linie — jak Dither Boy">
+          <option value="waveform">Waveform — linie wygięte jasnością</option>
+          <option value="topografia">Topografia — warstwice</option>
+          <option value="falaDyfuzja">Fala w dyfuzji</option>
+          <option value="pekniecia">Pęknięcia — dyfuzja po skosie</option>
+          <option value="smugi">Smugi światła</option>
+        </optgroup>
         <optgroup label="Bez ditheringu">
           <option value="threshold">Próg</option>
         </optgroup>
@@ -356,6 +363,33 @@
       <div class="row"><label for="thr">Punkt bieli</label><span class="val" id="thr-v">0</span></div>
       <input type="range" id="thr" min="-80" max="80" value="0">
       <label class="check"><input type="checkbox" id="serp" checked> Skanowanie wężykiem</label>
+      <div id="linie-opcje" class="hidden">
+        <div data-styl="waveform topografia falaDyfuzja smugi">
+          <div class="row" style="margin-top:12px"><label for="stylOdstep">Odstęp linii</label><span class="val" id="stylOdstep-v">8 px</span></div>
+          <input type="range" id="stylOdstep" min="2" max="40" value="8">
+          <div class="row"><label for="stylKat">Kąt linii</label><span class="val" id="stylKat-v">0°</span></div>
+          <input type="range" id="stylKat" min="0" max="180" value="0">
+        </div>
+        <div data-styl="waveform falaDyfuzja">
+          <div class="row"><label for="stylWygiecie">Wygięcie</label><span class="val" id="stylWygiecie-v">50%</span></div>
+          <input type="range" id="stylWygiecie" min="0" max="200" value="50">
+        </div>
+        <div data-styl="waveform topografia falaDyfuzja">
+          <div class="row"><label for="stylFala">Fala</label><span class="val" id="stylFala-v">brak</span></div>
+          <input type="range" id="stylFala" min="0" max="200" value="0">
+          <div class="row"><label for="stylFalaDl">Długość fali</label><span class="val" id="stylFalaDl-v">24 px</span></div>
+          <input type="range" id="stylFalaDl" min="4" max="200" value="24">
+        </div>
+        <div data-styl="falaDyfuzja pekniecia smugi">
+          <div class="row"><label for="stylSila">Siła stylu</label><span class="val" id="stylSila-v">60%</span></div>
+          <input type="range" id="stylSila" min="0" max="100" value="60">
+        </div>
+        <div data-styl="waveform topografia falaDyfuzja smugi">
+          <div class="row"><label for="stylPredkosc">Prędkość linii</label><span class="val" id="stylPredkosc-v">stoją</span></div>
+          <input type="range" id="stylPredkosc" min="-40" max="40" value="0">
+        </div>
+        <p class="hint">Długości w pikselach ditheringu — rosną z pikselizacją. Prędkość działa w filmie i po „Animuj obraz”. Na jasnych zdjęciach linie wypełniają kadr — pomaga negatyw albo niższa ekspozycja.</p>
+      </div>
     </div>
 
     <div class="group" id="g-pal">

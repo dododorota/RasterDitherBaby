@@ -198,5 +198,66 @@ console.log("--- wzory ---");
   }
 }
 
+console.log("--- style linii (z wtyczki VFX Dither 1.4) ---");
+{
+  const W = 160, H = 120;
+  /* poziomy gradient jasności i kula — linie mają się wyginać i grubieć z jasnością */
+  const obraz = f => { const p = new Uint8ClampedArray(W*H*4); for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const o=(y*W+x)*4, v = f(x, y); p[o]=p[o+1]=p[o+2]=v; p[o+3]=255; } return p; };
+  const grad = () => obraz(x => Math.round(x*255/(W-1)));
+  const biale = p => { let s = 0; for(let i=0;i<p.length;i+=4) s += p[i] > 127 ? 1 : 0; return s/(p.length/4); };
+  const kolumnyBiel = p => { const k = []; for(let x0=0; x0<W; x0+=32){ let s = 0, n = 0; for(let y=0;y<H;y++) for(let x=x0;x<x0+32;x++){ s += p[(y*W+x)*4] > 127 ? 1 : 0; n++; } k.push(s/n); } return k; };
+  /* topografia to warstwice (linie równej jasności), nie ton — sprawdzana niżej osobno */
+  for(const algo of ["waveform", "falaDyfuzja", "pekniecia", "smugi"]) for(const mapa of ["jasnosc", "kolor"]){
+    ustaw({algo, pal: "bw", mapa, ink: "#000000", paper: "#ffffff"});
+    const a = grad(); ditherPixels(a, W, H);
+    const b = grad(); ditherPixels(b, W, H);
+    const tylko2 = (() => { for(let i=0;i<a.length;i+=4) if(!((a[i]===0&&a[i+1]===0&&a[i+2]===0) || (a[i]===255&&a[i+1]===255&&a[i+2]===255))) return false; return true; })();
+    const k = kolumnyBiel(a), rosnie = k.every((v, i) => !i || v >= k[i-1] - 0.06) && k[k.length-1] - k[0] > 0.4;
+    sprawdz(tylko2 && a.every((v, i) => v === b[i]) && rosnie, `${algo} (${mapa}): tylko kolory palety, powtarzalnie, jaśniej — więcej bieli (${k.map(v => v.toFixed(2)).join(" ")})`);
+  }
+  /* czerń zostaje czarna, biel biała (próg wzoru ściśnięty do 0,02–0,98);
+     smugi celowo przygaszają większość linii (×0,64), więc biel — nie */
+  for(const algo of ["waveform", "topografia", "smugi"]){
+    ustaw({algo, pal: "bw", mapa: "jasnosc"});
+    const cz = obraz(() => 0), bi = obraz(() => 255); ditherPixels(cz, W, H); ditherPixels(bi, W, H);
+    sprawdz(biale(cz) === 0 && (algo === "smugi" || biale(bi) === 1), `${algo}: czysta czerń czarna${algo === "smugi" ? "" : ", czysta biel biała"}`);
+  }
+  /* topografia na gradiencie: warstwice to pionowe linie — w wierszu kilka osobnych pasów bieli */
+  for(const mapa of ["jasnosc", "kolor"]){
+    ustaw({algo: "topografia", pal: "bw", mapa, stylOdstep: 8});
+    const t = grad(); ditherPixels(t, W, H);
+    const w = Array.from({length: W}, (_, x) => t[(60*W + x)*4] > 127 ? 1 : 0);
+    const pasy = w.filter((v, i) => v && !w[i-1]).length;
+    sprawdz(pasy >= 6, `topografia (${mapa}): ${pasy} warstwic na gradiencie`);
+  }
+  /* dyfuzje stylu trzymają ton */
+  for(const algo of ["falaDyfuzja", "pekniecia"]){
+    ustaw({algo, pal: "bw", mapa: "jasnosc"});
+    const sz = obraz(() => 96); ditherPixels(sz, W, H);
+    sprawdz(Math.abs(biale(sz) - 96/255) < 0.03, `${algo}: szarość 96 → ${(biale(sz)*100).toFixed(1)}% bieli (oczekiwane ${(96/255*100).toFixed(1)}%)`);
+  }
+  /* waveform: wygięcie przesuwa linie, więc obraz zmienia się z wygięciem; kąt 90° — linie pionowe */
+  ustaw({algo: "waveform", pal: "bw", mapa: "jasnosc", stylWygiecie: 0, stylOdstep: 8});
+  const plaska = obraz(() => 128); ditherPixels(plaska, W, H);
+  const wiersz = y => Array.from({length: W}, (_, x) => plaska[(y*W + x)*4]);
+  sprawdz(wiersz(10).every(v => v === wiersz(10)[0]) && wiersz(11).every(v => v === wiersz(11)[0]), "waveform na płaskim obrazie, kąt 0 — linie poziome (wiersz jednego koloru)");
+  ustaw({algo: "waveform", pal: "bw", mapa: "jasnosc", stylWygiecie: 0, stylKat: 90});
+  const pion = obraz(() => 128); ditherPixels(pion, W, H);
+  sprawdz(Array.from({length: H}, (_, y) => pion[(y*W + 5)*4]).every((v, _, a) => v === a[0]), "kąt 90° — linie pionowe");
+  /* prędkość: przy 0 czas nic nie zmienia, przy 1 linia/s — zmienia */
+  const klatka = (pr, t) => { ustaw({algo: "waveform", pal: "bw", mapa: "jasnosc", stylPredkosc: pr}); S.czasKlatki = t; const p = grad(); ditherPixels(p, W, H); S.czasKlatki = 0; return p; };
+  const s0 = klatka(0, 0), s1 = klatka(0, 0.3), r0 = klatka(10, 0), r1 = klatka(10, 0.3), r2 = klatka(10, 1);
+  sprawdz(s0.every((v, i) => v === s1[i]) && r0.some((v, i) => v !== r1[i]) && r0.every((v, i) => v === r2[i]),
+          "prędkość 0 — klatki takie same; 1 linia/s — płyną, po pełnej sekundzie wracają");
+  /* smugi: jasności linii z numeru linii, przy „szumie w czasie" inne co klatkę */
+  const smuga = (cz, k) => { ustaw({algo: "smugi", pal: "bw", mapa: "jasnosc", czasSzum: cz}); S.klatkaNr = k; const p = grad(); ditherPixels(p, W, H); S.klatkaNr = 0; return p; };
+  const a0 = smuga(0, 0), a1 = smuga(0, 5);
+  sprawdz(a0.every((v, i) => v === a1[i]), "smugi bez szumu w czasie — stałe między klatkami");
+  /* pęknięcia: jądro sumuje się do 160 przy każdej sile */
+  ustaw({algo: "pekniecia", pal: "bw", mapa: "jasnosc", stylSila: 37});
+  const pk = obraz(() => 140); ditherPixels(pk, W, H);
+  sprawdz(Math.abs(biale(pk) - 140/255) < 0.03, `pęknięcia przy sile 37%: ton zachowany (${(biale(pk)*100).toFixed(1)}%)`);
+}
+
 console.log("\nBŁĘDÓW:", bledy);
 process.exitCode = bledy ? 1 : 0;

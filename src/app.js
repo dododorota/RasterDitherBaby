@@ -281,6 +281,7 @@ function risoUI(){
   document.querySelector("#wlasny-opcje").classList.toggle("hidden", !ksz.includes("wlasny"));
   document.querySelector("#znaki-opcje").classList.toggle("hidden", !ksz.includes("tony"));
   document.querySelector("#ruch-puls-opcje").classList.toggle("hidden", !(S.ruchPuls > 0));
+  stylUI();
   tloUI();
   document.querySelector("#ruch-obrot-opcje").classList.toggle("hidden", !S.ruchObrot);
   document.querySelector("#ruch-animuj").classList.toggle("hidden", !!W.z || !S.img);
@@ -352,6 +353,17 @@ SUWAKI.push({id: "ruchPuls", key: "ruchPuls", opis: v => v ? v + "%" : "brak"},
   {id: "ruchSkok", key: "ruchSkok", opis: v => v ? v + "°" : "płynnie"}, {id: "ruchPostoj", key: "ruchPostoj", opis: sek},
   {id: "ruchDrzenie", key: "ruchDrzenie", opis: v => v ? v + "%" : "brak"});
 PTASZKI.push("ruchOdbicie");
+/* style linii w ditheringu (algorytmy jak Dither Boy) */
+SUWAKI.push({id: "stylOdstep", key: "stylOdstep", opis: v => v + " px"}, {id: "stylKat", key: "stylKat", opis: v => v + "°"},
+  {id: "stylWygiecie", key: "stylWygiecie", opis: v => v + "%"}, {id: "stylFala", key: "stylFala", opis: v => v ? v + "%" : "brak"},
+  {id: "stylFalaDl", key: "stylFalaDl", opis: v => v + " px"}, {id: "stylSila", key: "stylSila", opis: v => v + "%"},
+  {id: "stylPredkosc", key: "stylPredkosc", opis: v => v ? (v > 0 ? "+" : "") + (v/10).toFixed(1).replace(".", ",") + " linii/s" : "stoją"});
+/* widoczne tylko suwaki, z których korzysta wybrany styl */
+function stylUI(){
+  const styl = ["waveform", "topografia", "falaDyfuzja", "pekniecia", "smugi"].includes(S.algo);
+  document.querySelector("#linie-opcje").classList.toggle("hidden", !styl);
+  for(const el of document.querySelectorAll("#linie-opcje [data-styl]")) el.classList.toggle("hidden", !el.dataset.styl.split(" ").includes(S.algo));
+}
 LISTY.push("ruchKrzywa", "papierTlo");
 SUWAKI.push({id: "papierKat", key: "papierKat", opis: v => v + "°"},
   {id: "punktSzer", key: "punktSzer", opis: v => v + "%"}, {id: "punktWys", key: "punktWys", opis: v => v + "%"},
@@ -674,12 +686,13 @@ function krokAlgorytmu(o){
   const i = wartosci.indexOf(S.algo);
   S.algo = wartosci[(i + o + wartosci.length) % wartosci.length];
   $("#algo").value = S.algo;
+  stylUI();
   schedule();
 }
 $("#algo-prev").addEventListener("click", ()=>krokAlgorytmu(-1));
 $("#algo-next").addEventListener("click", ()=>krokAlgorytmu(1));
 /* przywraca same suwaki korekty, reszty wyglądu nie rusza */
-const KOREKTA = ["bri","con","gam","cienie","swiatla","nasycenie","odcien","blur","ostrosc","odszum","pix","inv"];
+const KOREKTA = ["ekspozycja","czern","biel","bri","con","gam","cienie","swiatla","nasycenie","odcien","blur","ostrosc","odszum","pix","inv"];
 $("#korekta-reset").addEventListener("click", ()=>{
   for(const k of KOREKTA) S[k] = DEFAULTS[k];
   syncUI();
@@ -965,6 +978,7 @@ for(const k of PTASZKI) $("#"+k).addEventListener("change", e=>{ S[k]=e.target.c
 for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   S[k]=e.target.value;
   if(k==="pal") wybranoPalete();
+  if(k==="algo") stylUI();
   if(k==="mapa") mapaUI();
   if(k==="sort") efektyUI();
   if(k==="faktura" && FAKTURY_TRYB[S.faktura]){ S.faktTryb = FAKTURY_TRYB[S.faktura]; $("#faktTryb").value = S.faktTryb; }

@@ -363,6 +363,19 @@ nadaje kod położenia, `kodyPolozenia()`). Pozostałe z VFX Raster 1.5
 aplikacja ma podobne (znaki według tonu, mapa gradientu, faktura farby),
 nie przenoszone.
 
+**Style linii** (`dither-core.js`, część B etap 1 z DLA-APKI.md, wzory
+z `core/dither.cpp` wtyczki VFX Dither 1.4): waveform, topografia i smugi
+idą `ditherLinii()` → `progowy()` (próg ze wzoru jak macierz uporządkowana,
+ściśnięty do 0,02–0,98), fala w dyfuzji i pęknięcia — przez zwykłą pętlę
+dyfuzji z `dyfuzjaStylu()` (przesunięcie progu `off` albo własne jądro, bez
+wężyka). Jasność rozmywana `rozmyjPudelka()` — port boxBlur3 z wtyczki.
+Czas: `S.czasKlatki × stylPredkosc/10`; jasności smug losowane co klatkę
+tylko przy `czasSzum > 0` (odpowiednik Animate). Sprawdzone: 232 kombinacje
+dawnych algorytmów co do bajtu jak przed zmianą, worker = główny wątek dla
+5 stylów × 2 trybów. Topografia to warstwice, nie ton — testuj ją liczbą
+linii, nie udziałem bieli. Etap 2 (Checkers, Block Tone, Radial Burst) —
+czeka na wtyczkę.
+
 **Historia startuje od stanu po uruchomieniu** (`utrwalStan()` na końcu
 app.js) — wcześniej pierwszej zmiany nie dało się cofnąć.
 
@@ -615,7 +628,7 @@ palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
 contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.js,
 `kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `siatki` →
 siatki.js, faktura-farby.js (z plamami, skalą i ziarnem w czasie) i gradient papieru (papier.js), `wycinanie` → wycinanie.js, `algorytmy` →
-wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
+wszystkie algorytmy dodane po wzorze Dither Boya (z liniami z VFX Dither 1.4), `animacja` → animacja.js,
 `korekta` → image.js (z ekspozycją i poziomami), głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
 ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js,
 `qr` → qr.js i siatka QR.
