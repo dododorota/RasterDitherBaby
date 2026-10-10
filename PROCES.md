@@ -137,6 +137,40 @@ to przegląd bez zmian w kodzie.
     mapowane na najbliższe nowe (`DAWNE_FAKTURY`). Wygląd oceniony na
     arkuszu próbek renderowanym w Node, nie na prawdziwych zdjęciach.
 
+26. **Znaki według tonu** (10.10) — po przeglądzie Ditherfy
+    (antonburmistrov.com/tool-files/ditherfy): nowy kształt rastra, ton
+    dzielony na 2–16 poziomów, każdy ze swoim kształtem albo obrazkiem
+    (PNG/JPEG/WebP/SVG, przeciąganie na wiersz). Kolor: farba, kolor tonu
+    albo oryginał; przebarwianie w 11 trybach mieszania. Decyzje
+    użytkowniczki: w rastrze (nie w ASCII), w SVG wybór osadź / tylko
+    wektory, preset pamięta tylko ustawienia (bez obrazków). Kamera na żywo
+    z listy Ditherfy — odrzucona. Reszta porównania w README, „Co dalej".
+    Sprawdzone: testy geometrii (poziomy, skala ×3, scalanie, QR, stippling),
+    w Chrome bez okna — wczytanie PNG i SVG, przebarwianie, risograf, kolory
+    z obrazu, SVG osadzony porównany pikselami z podglądem (śr. różnica
+    0,4/255), zapis 3×, zły plik, własny kształt SVG po przeniesieniu kodu.
+    Skrypt sprawdzający był tymczasowy (poza `testy/`).
+    Potem podmiana tonów z Ditherfy: ile, zasięg, układ (klawisz Q), nowy
+    układ co N klatek w filmie — testy w siatki.mjs (udział zmienionych,
+    zasięg, skala ×3, stałość między zmianami).
+    Potem ruch punktów z Ditherfy: pulsowanie (4 krzywe, tam i z powrotem,
+    fala pod kątem), stały obrót kształtów, obrót ciągły i skokami
+    z postojem, drżenie; czas z osi (`S.czasKlatki`). Testy w siatki.mjs
+    (zakres wielkości, pętla, skala ×3, kąty obrotu i postoju), w Chrome —
+    „Animuj obraz” z panelu, różne klatki na osi.
+    Potem napis (tekst jako źródło z Ditherfy) — jako warstwa kompozycji:
+    kroje wbudowany / systemowe / z pliku, obrazki zamiast liter, bez obrazu
+    na pustym płótnie. Sprawdzone w Chrome (tymczasowym skryptem): napis od
+    zera, krój z pliku (też zepsuty), serce zamiast litery, napis na zdjęciu.
+    Potem papier w gradiencie (decyzja użytkowniczki: wektorowo, nie
+    obrazkiem) — liniowy / promienisty, 2–8 kolorów, w SVG jako gradient
+    (porównane pikselami z podglądem). Przy okazji naprawione: pierwszej
+    zmiany po starcie apki nie dało się cofnąć (historia bez stanu
+    startowego).
+    Na koniec proporcje punktu (stała i losowa szerokość / wysokość, z listy
+    Ditherfy) — w geometrii, SVG porównane pikselami z podglądem. Lista
+    porównania z Ditherfy zamknięta (poza świadomie pominiętą kamerą).
+
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
 - **Odcinanie po jasności przy szukaniu koloru** — matematycznie dokładne, ale
@@ -207,6 +241,11 @@ Nie sprawdzone:
   prawdziwych zdjęciach, czy skala plam (34 i 13 px podglądu) pasuje.
 - **MP4 z dźwiękiem w Premiere i na Instagramie** — sprawdzone tylko
   w Chrome (decodeAudioData na wyniku).
+- **Znaki według tonu na prawdziwych obrazkach** — testowane na
+  narysowanym w kodzie bananie i sercu SVG; do obejrzenia na prawdziwych
+  ikonach i zdjęciach, czy wpisanie w kwadrat 2r (a nie w pole koła) daje
+  dobry ton, i czy domyślne kolory tonów się podobają. SVG z osadzonymi
+  obrazkami nie otwierany w Illustratorze.
 - **Siła poświaty** dobrana na scenach generowanych w kodzie — do sprawdzenia
   na prawdziwych zdjęciach i filmach, czy 100% to dobry środek skali.
 - **Skrypty testowe** — `CLAUDE.md` mówiło, że testy „na razie nie są

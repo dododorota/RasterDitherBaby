@@ -80,7 +80,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:12px; hei
 input[type=range]::-moz-range-thumb{width:12px; height:12px; background:var(--ink); border:0; border-radius:0}
 input[type=range]:focus-visible{outline:2px solid var(--magenta); outline-offset:3px}
 
-select, .btn, input[type=text]{
+select, .btn, input[type=text], textarea{
   font:inherit; color:var(--ink); background:var(--field);
   border:1px solid var(--rule); border-radius:0; padding:6px 8px; width:100%;
 }
@@ -118,6 +118,18 @@ select:focus-visible,.btn:focus-visible{outline:2px solid var(--magenta); outlin
 /* wybierak koloru dla próbek: musi być w układzie, bo przy nim otwiera się okno */
 .kolor-ukryty{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:0; padding:0}
 input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rule); background:none; cursor:pointer}
+
+/* znaki według tonu: wiersz na ton — numer, kształt, kolor, obrazek */
+.znaki-lista{display:grid; gap:4px; margin-top:12px}
+.znak-ton{display:flex; gap:4px; align-items:center; outline-offset:2px}
+.znak-ton.over{outline:1px dashed var(--magenta)}
+.znak-ton .nr{flex:0 0 20px; font-size:11px; color:var(--soft); text-align:right; font-variant-numeric:tabular-nums}
+.znak-ton select{flex:1 1 auto; min-width:0; padding:4px 6px}
+.znak-ton select:disabled{opacity:.45}
+.znak-ton input[type=color]{flex:0 0 28px; width:28px; height:28px}
+.znak-ton .obr{flex:0 0 auto; width:auto; padding:4px 8px; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; display:flex; gap:4px; align-items:center}
+.znak-ton .obr canvas{width:18px; height:18px; flex:0 0 18px; object-fit:contain}
+.znak-ton .usun{flex:0 0 26px; width:26px; padding:4px 0; color:var(--soft)}
 
 .presets{display:flex; flex-wrap:wrap; gap:6px}
 .presets .btn[aria-pressed=true]{background:var(--ink); color:var(--paper)}
@@ -275,3 +287,6 @@ details.pod .zmiana{display:none; width:7px; height:7px; border-radius:50%; back
 details.pod .zmiana.widac{display:inline-block}
 .pod-reset{display:block; width:auto; margin:12px 0 4px; padding:0; border:0; background:none; color:var(--soft); font-size:12px; text-decoration:underline; text-underline-offset:3px}
 .pod-reset:hover{color:var(--ink)}
+textarea{display:block; resize:vertical; min-height:60px; line-height:1.35}
+.znak-ton .litera{flex:0 0 28px; height:28px; display:grid; place-items:center; border:1px solid var(--rule); font-size:14px}
+#napis-znaki .obr{flex:1 1 auto; max-width:none; justify-content:flex-start}

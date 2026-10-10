@@ -48,9 +48,115 @@ export function ustawieniaFarby(ink){
     odk: (S.odksztalcenie || 0)/100, odkSkala: S.odksztSkala || 60, odkPrzes: (S.odksztPrzes || 0)/100,
     rozc: (S.rozciag ?? 100)/100, pochyl: (S.pochyl || 0)*Math.PI/180, minPunkt: (S.minPunkt || 0)/100,
     zlew: (S.zlewanie || 0)/100, scal: (S.scalanie || 0)/100,
+    tony: (ink.ksztalt || S.shape) === "tony" ? Math.max(2, Math.min(ZNAKI_MAKS, S.znakiIle | 0 || 6)) : 0,
     ziarno: ziarnoFarby(ink)
   };
 }
+
+/* ---------- znaki według tonu ----------
+   Kształt „tony": pokrycie dzieli się na N równych przedziałów, a każdy
+   przedział (poziom) ma własny znak — kształt z listy albo obrazek (to już
+   rysowanie, halftone.js i vector.js). Poziom 0 to cienie (największe
+   pokrycie), N−1 — światła. Punkt niesie poziom siódmym elementem:
+   [x, y, r, kąt, numer|−1, kolor|null, poziom]. */
+export const ZNAKI_MAKS = 16;
+const poziomTonu = (k, n) => Math.min(n - 1, Math.max(0, Math.floor((1 - Math.min(1, k))*n)));
+/* ---------- ruch punktów ----------
+   Jak „pixel animation" w Ditherfy: punkty pulsują między (1 − puls)
+   a pełną wielkością, z falą biegnącą pod kątem przez siatkę, i obracają
+   się — stały kąt, stała prędkość albo skokami co N stopni z postojem,
+   plus drżenie. Czas z osi (S.czasKlatki, sekundy), położenie w pikselach
+   podglądu, więc zapis w skali, SVG i każda klatka filmu liczą się tak
+   samo. Zwraca null, gdy wszystko neutralne — wtedy geometria co do bitu
+   jak bez ruchu. */
+const KRZYWE_RUCHU = {
+  liniowo: t => t,
+  gladko: t => t*t*(3 - 2*t),
+  szesc: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2,
+  sprezyna: t => t === 0 || t === 1 ? t : Math.pow(2, -10*t)*Math.sin((t*10 - 0.75)*(2*Math.PI/3)) + 1
+};
+export function ruchPunktow(u){
+  const puls = (S.ruchPuls || 0)/100, kat0 = (S.ruchKat || 0)*Math.PI/180, v = S.ruchObrot || 0, drz = (S.ruchDrzenie || 0)/100;
+  if(!puls && !kat0 && !v && !drz) return null;
+  const t = S.czasKlatki || 0, cell = u.cell, wyn = {};
+  if(puls){
+    const cykl = Math.max(0.1, (S.ruchCykl || 20)/10), fala = (S.ruchFala || 0)/100, fk = (S.ruchFalaKat || 0)*Math.PI/180;
+    const fc = Math.cos(fk)/cell, fs = Math.sin(fk)/cell, krzywa = KRZYWE_RUCHU[S.ruchKrzywa] || KRZYWE_RUCHU.gladko, odbicie = S.ruchOdbicie !== false;
+    wyn.skala = (x, y) => {
+      const f = t/cykl + (x*fc + y*fs)*fala*0.05, faza = f - Math.floor(f);
+      return Math.max(0, 1 - puls*(1 - krzywa(odbicie ? 1 - Math.abs(2*faza - 1) : faza)));
+    };
+  }
+  if(kat0 || v || drz){
+    /* obrót wspólny dla wszystkich punktów w tej chwili; skokami — ruch do
+       następnego kąta płynnie (gladko), potem postój */
+    let kat = kat0;
+    if(v){
+      const skok = S.ruchSkok || 0;
+      if(skok > 0){
+        const ruchS = skok/Math.abs(v), cyklS = ruchS + (S.ruchPostoj || 0)/10, cale = Math.floor(t/cyklS), reszta = t - cale*cyklS;
+        kat += Math.sign(v)*(cale + (reszta < ruchS ? KRZYWE_RUCHU.gladko(reszta/ruchS) : 1))*skok*Math.PI/180;
+      } else kat += v*t*Math.PI/180;
+    }
+    const amp = drz*30*Math.PI/180;
+    wyn.kat = drz ? (x, y) => kat + Math.sin(t*3 + x/cell*0.45 + y/cell*0.33)*amp : () => kat;
+  }
+  return wyn;
+}
+
+/* ---------- proporcje punktu ----------
+   Jak „pixel proportions" i „overlap X/Y" w Ditherfy: kształt rozciągnięty
+   w swoich osiach (obraca się razem z nim) — stale o szerokość/wysokość
+   punktu i losowo, każdy punkt inaczej (skrót położenia w pikselach
+   podglądu, więc zapis w skali i SVG mają te same proporcje). Mnożniki
+   ósmym i dziewiątym elementem punktu: [x, y, r, kąt, numer, kolor, poziom,
+   sx, sy] — brakujące środkowe uzupełnione (−1, null, −1). Rysowanie przez
+   obrys() (kontury), więc działa każdy kształt ścieżką, obrazki i znaki.
+   Wszystko neutralne — punkty nietknięte, co do bitu jak wcześniej. */
+function proporcjePunktu(kropki){
+  const sz = (S.punktSzer ?? 100)/100, sw = (S.punktWys ?? 100)/100, ls = (S.punktLosSzer || 0)/100, lw = (S.punktLosWys || 0)/100;
+  if(sz === 1 && sw === 1 && !ls && !lw) return false;
+  for(const kr of kropki){
+    const hx = Math.round(kr[0]*4), hy = Math.round(kr[1]*4);
+    if(kr.length < 5) kr[4] = -1;
+    if(kr.length < 6) kr[5] = null;
+    if(kr.length < 7) kr[6] = -1;
+    kr[7] = sz*(ls ? 1 + ls*(skrot(hx, hy, 6143)*1.5 - 0.75) : 1);
+    kr[8] = sw*(lw ? 1 + lw*(skrot(hx, hy, 6151)*1.5 - 0.75) : 1);
+  }
+  return true;
+}
+/* kontury punktu rozciągnięte w jego osiach (obrót kąt) o sx, sy */
+function rozciagnij(kontury, x, y, kat, sx, sy){
+  const c = Math.cos(kat), s = Math.sin(kat);
+  return kontury.map(k => k.map(([px, py]) => {
+    const dx = px - x, dy = py - y, u = (dx*c + dy*s)*sx, v = (-dx*s + dy*c)*sy;
+    return [x + u*c - v*s, y + u*s + v*c];
+  }));
+}
+
+/* Podmiana tonów (jak „random midtone switching" w Ditherfy): część punktów
+   dostaje znak sąsiedniego tonu — o 1 do `zasięgu` w górę albo w dół
+   (za skalą odbija się w drugą stronę). Ze skrótu położenia w pikselach
+   podglądu, więc zapis w skali i SVG mają ten sam układ; „układ" zmienia
+   ziarno ręcznie (klawisz Q), a przy filmie nowy układ co N klatek —
+   pomiędzy stoi w miejscu, nie migocze. */
+function podmienTony(kropki, u){
+  const n = u.tony, p = Math.min(1, S.znakiPodmiana/100), zas = Math.max(1, Math.min(n - 1, S.znakiZasieg | 0 || 1));
+  const okres = S.znakiCzas > 0 ? Math.floor((S.klatkaNr | 0)/S.znakiCzas) : 0;
+  const ziarno = (S.znakiUklad | 0)*7919 + okres*104729 + u.ziarno;
+  for(const kr of kropki){
+    const hx = Math.round(kr[0]*4), hy = Math.round(kr[1]*4);
+    if(skrot(hx, hy, ziarno) >= p) continue;
+    const o = (1 + Math.floor(skrot(hx, hy, ziarno + 1)*zas))*(skrot(hx, hy, ziarno + 2) < 0.5 ? -1 : 1);
+    let v = kr[6] + o;
+    if(v < 0 || v > n - 1) v = kr[6] - o;
+    kr[6] = Math.max(0, Math.min(n - 1, v));
+  }
+}
+/* punkt w najkrótszej postaci, jak dawniej — dłuższy tylko, gdy niesie numer, kolor albo poziom */
+const punkt = (px, py, r, kat, id, barwa, poz) =>
+  poz >= 0 ? [px, py, r, kat, id, barwa, poz] : barwa ? [px, py, r, kat, id, barwa] : id >= 0 ? [px, py, r, kat, id] : [px, py, r, kat];
 
 /* ---------- nierówny raster ----------
    Jak zeskanowany odbity raster: krycie płynie chmurami niezależnymi od
@@ -125,18 +231,24 @@ export function geometria(smp, W, H, ink, z){
   ink = przemianaTonu(ink);
   const u = ustawieniaFarby(ink);
   let wyn = u.ksztalt === "pasy" ? linie(smp, W, H, ink, u) : kropki(smp, W, H, ink, u);
+  /* ruch punktów: pulsowanie przed zlewaniem (plamy pulsują razem z punktami), obrót niżej */
+  const ruch = wyn.kropki ? ruchPunktow(u) : null;
+  if(ruch && ruch.skala) wyn.kropki = wyn.kropki.map(kr => { const s = ruch.skala(kr[0], kr[1]); return s === 1 ? kr : [kr[0], kr[1], kr[2]*s, ...kr.slice(3)]; });
   /* zlewanie (metaballe): punkty → płynne plamy; kolorowe punkty zostają punktami */
-  if(u.zlew && wyn.kropki && !ink.barwa) wyn = {plamy: metaballe(wyn.kropki, W, H, u)};
+  if(u.zlew && wyn.kropki && !ink.barwa && !u.tony) wyn = {plamy: metaballe(wyn.kropki, W, H, u)};
+  if(u.tony && wyn.kropki && S.znakiPodmiana > 0) podmienTony(wyn.kropki, u);
   /* pasowanie: obrót całej płyty wokół środka kadru (obraz na płycie obraca
      się razem z rastrem — pokrycie liczone przed obrotem), potem skala z */
   const ob = u.obrot*Math.PI/180, co = Math.cos(ob), so = Math.sin(ob), cx = W/2, cy = H/2;
   const t = (x, y) => ob ? [(cx + (x - cx)*co - (y - cy)*so)*z, (cy + (x - cx)*so + (y - cy)*co)*z] : [x*z, y*z];
+  if(wyn.kropki && proporcjePunktu(wyn.kropki)) wyn.rozciag = true;
   if(wyn.kropki){
     /* „obracaj kształt z siatką" wyłączone: kształt stoi prosto (logo, litery), obraca go tylko płyta */
     const zSiatka = S.obrotZSiatka !== false;
-    wyn.kropki = wyn.kropki.map(([x, y, r, k, ...id]) => { const [a, b] = t(x, y); return [a, b, r*z, (zSiatka ? k : 0) + ob, ...id]; });
+    const obrot = ruch && ruch.kat;
+    wyn.kropki = wyn.kropki.map(([x, y, r, k, ...id]) => { const [a, b] = t(x, y); return [a, b, r*z, (zSiatka ? k : 0) + ob + (obrot ? obrot(x, y) : 0), ...id]; });
     /* postrzępione brzegi tylko dla okrągłych punktów — reszta kształtów ma własny obrys */
-    if(u.post && u.ksztalt === "circle") wyn.postrzep = u.post;
+    if(u.post && (u.ksztalt === "circle" || u.tony)) wyn.postrzep = u.post;
   }
   else if(wyn.plamy) wyn.plamy = wyn.plamy.map(k => k.map(([x, y]) => t(x, y)));
   else wyn.linie = wyn.linie.map(l => l.map(([x, y, hw, ...barwa]) => { const [a, b] = t(x, y); return [a, b, hw*z, ...barwa]; }));
@@ -157,11 +269,13 @@ function kropki(smp, W, H, ink, u){
     if(px < -cell || py < -cell || px > W + cell || py > H + cell) return;
     let r = rStaly;
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
-    if(!(u.nr || u.dr || u.post)){ out.push(barwa ? [px, py, r, kat, -1, barwa] : [px, py, r, kat]); return; }
+    /* znaki według tonu: w stipplingu ton jest w gęstości, ale znak bierze się z pokrycia w miejscu punktu */
+    const poz = u.tony ? poziomTonu(pokrycie(smp, ink.cov, px, py), u.tony) : -1;
+    if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return; }
     const id = out.length, z0 = u.ziarno*3;
     if(u.nr) r *= Math.max(0.15, 1 + u.nr*(0.9*(skrot(id, 1, z0) - 0.5) + (skrot(id, 2, z0) > 0.975 ? 0.7 : 0)));
     if(u.dr){ px += u.dr*0.3*cell*(skrot(id, 3, z0) - 0.5)*2; py += u.dr*0.3*cell*(skrot(id, 4, z0) - 0.5)*2; }
-    out.push(barwa ? [px, py, r, kat, id, barwa] : [px, py, r, kat, id]);
+    out.push(punkt(px, py, r, kat, id, barwa, poz));
   };
   const dodaj = (px, py, kat, s) => {
     if(u.odk) [px, py] = przesuniecie(px, py, u);
@@ -175,13 +289,14 @@ function kropki(smp, W, H, ink, u){
     /* farba „kolorowa" (kolory z obrazu, mapa gradientu): kolor punktu
        z próbki w jego miejscu, szóstym elementem (piąty — numer punktu) */
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
-    if(!(u.nr || u.dr || u.post)){ out.push(barwa ? [px, py, r, kat, -1, barwa] : [px, py, r, kat]); return out.length - 1; }
+    const poz = u.tony ? poziomTonu(k, u.tony) : -1;
+    if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return out.length - 1; }
     /* numer punktu: kolejność liczenia nie zależy od z, więc zapis w skali
        dostaje te same wielkości, drgania i brzegi */
     const id = out.length, z0 = u.ziarno*3;
     if(u.nr) r *= Math.max(0.15, 1 + u.nr*(0.9*(skrot(id, 1, z0) - 0.5) + (skrot(id, 2, z0) > 0.975 ? 0.7 : 0)));
     if(u.dr){ px += u.dr*0.3*cell*(skrot(id, 3, z0) - 0.5)*2; py += u.dr*0.3*cell*(skrot(id, 4, z0) - 0.5)*2; }
-    out.push(barwa ? [px, py, r, kat, id, barwa] : [px, py, r, kat, id]);
+    out.push(punkt(px, py, r, kat, id, barwa, poz));
     return out.length - 1;
   };
   /* rozciągnięcie (wzdłuż kierunku siatki) i pochylenie — przekształcenie
@@ -578,7 +693,11 @@ export function konturLinii(l){
    Brzeg z dwóch harmonicznych (punkt staje się nieregularną plamką, nie
    gwiazdką) i drobnego szumu na wierzchołkach; wszystko ze skrótu numeru
    punktu, więc w skali z ten sam kształt, tylko większy. */
-export function obrys(ksztalt, [x, y, r, kat, id], postrzep, komorka){
+export function obrys(ksztalt, kr, postrzep, komorka){
+  const k = obrysBazowy(ksztalt, kr, postrzep, komorka), sx = kr[7], sy = kr[8];
+  return sx === undefined || (sx === 1 && sy === 1) ? k : rozciagnij(k, kr[0], kr[1], kr[3], sx, sy);
+}
+function obrysBazowy(ksztalt, [x, y, r, kat, id], postrzep, komorka){
   if(!(postrzep && ksztalt === "circle")){
     const k = kontury(ksztalt, x, y, r, kat, komorka), z = (S.zaokraglenie || 0)/100;
     return z > 0 && ksztalt !== "circle" ? zaokraglij(k, z, x, y) : k;
@@ -617,7 +736,7 @@ export const kolorCSS = c => "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
 
 /* Czy punkty rysować ścieżką (konturami z obrys()) zamiast wprost: nowe
    kształty, postrzępione brzegi i tryb obrysu (wtedy każdy kształt). */
-export const sciezkowy = (ksztalt, g) => NOWE_KSZTALTY.includes(ksztalt) || !!g.postrzep || (S.obrys || 0) > 0 || ((S.zaokraglenie || 0) > 0 && ksztalt !== "circle");
+export const sciezkowy = (ksztalt, g) => NOWE_KSZTALTY.includes(ksztalt) || !!g.postrzep || !!g.rozciag || (S.obrys || 0) > 0 || ((S.zaokraglenie || 0) > 0 && ksztalt !== "circle");
 /* grubość obrysu w pikselach podglądu (0 = wypełnienie) */
 export const grubostObrysu = () => (S.obrys || 0)/10;
 /* znak dla punktu: tekst z panelu, znaki po kolei (spacje pomijane) */
@@ -810,7 +929,7 @@ export function ksztaltWlasny(){
    nonzero (nakładające się punkty zostają zamalowane — przy evenodd ich część
    wspólna robiła dziurę), a otwory działają wtedy tylko przy odwrotnym
    obiegu. Plik SVG może mieć obiegi dowolne, więc poprawiamy przy odczycie. */
-function orientuj(kontury){
+export function orientuj(kontury){
   const pole = c => { let s = 0; for(let i=0; i<c.length; i++){ const [a, b] = c[i], [x, y] = c[(i + 1) % c.length]; s += a*y - b*x; } return s; };
   const wewnatrz = (p, c) => { let w = false; for(let i=0, j=c.length - 1; i<c.length; j=i++){ const [xi, yi] = c[i], [xj, yj] = c[j];
     if((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi)*(p[1] - yi)/(yj - yi) + xi) w = !w; } return w; };
@@ -886,9 +1005,11 @@ function scal(out, siec, bok, R, maxR, u){
       const p = out[czl[0]], punkt = [sx/czl.length, sy/czl.length, Math.sqrt(pole), p[3]];
       if(p.length > 4) punkt.push(p[4]);
       if(p.length > 5){
-        const c = [0, 0, 0]; for(const i of czl) for(let j=0; j<3; j++) c[j] += out[i][5][j];
-        punkt.push(c.map(v => Math.round(v/czl.length)));
+        const c = [0, 0, 0]; if(p[5]) for(const i of czl) for(let j=0; j<3; j++) c[j] += out[i][5][j];
+        punkt.push(p[5] ? c.map(v => Math.round(v/czl.length)) : null);
       }
+      /* znaki według tonu: poziom scalonego punktu — średni poziom bloku */
+      if(p.length > 6) punkt.push(Math.round(czl.reduce((s, i) => s + out[i][6], 0)/czl.length));
       nowe.push(punkt);
     }
   }
@@ -974,7 +1095,7 @@ function siatkaQR(smp, W, H, ink, u, out){
     if(k <= 0.004) continue;
     let r = rMaks*Math.sqrt(Math.min(1.35, k));
     if(wKodzie) r = Math.min(r, c3*0.5);                               /* nie wchodzi na środek modułu */
-    out.push(ink.barwa ? [px, py, r, 0, -1, ink.barwa(...probkaRGB(smp, px, py))] : [px, py, r, 0]);
+    out.push(punkt(px, py, r, 0, -1, ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null, u.tony ? poziomTonu(k, u.tony) : -1));
   }
   return dodatki;
 }

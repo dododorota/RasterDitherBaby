@@ -33,6 +33,7 @@
         <button class="btn solid" id="load">Otwórz plik</button>
         <button class="btn" id="sample">Próbka</button>
       </div>
+      <button class="btn" id="napis" style="margin-top:8px">Dodaj napis</button>
       <button class="btn hidden" id="animuj" style="margin-top:8px">Animuj obraz — klatki kluczowe</button>
       <button class="btn hidden" id="kadruj" style="margin-top:8px">Kadruj</button>
       <div id="kadr-opcje" class="hidden">
@@ -85,8 +86,9 @@
         <label class="check" style="margin:0"><input type="checkbox" id="komp-przezr"> Przezroczyste tło</label>
       </div>
       <div class="btns" style="margin-top:10px">
-        <button class="btn" id="komp-dodaj">+ Dodaj obraz</button>
-        <button class="btn" id="komp-dodaj-efekt">+ Warstwa efektu</button>
+        <button class="btn" id="komp-dodaj" title="Dodaj obraz z pliku">+ Obraz</button>
+        <button class="btn" id="komp-dodaj-napis" title="Dodaj warstwę napisu">+ Napis</button>
+        <button class="btn" id="komp-dodaj-efekt" title="Dodaj warstwę efektu">+ Efekt</button>
       </div>
       <input type="file" id="komp-plik" accept="image/*" multiple class="hidden">
       <div class="warstwy-lista" id="komp-lista" role="listbox" aria-label="Warstwy, od góry"></div>
@@ -96,6 +98,47 @@
           <select id="komp-efekt"></select>
           <div id="komp-efekt-karta"></div>
           <p class="hint">Działa tylko na warstwy pod nią (razem z tłem płótna) — warstwy nad nią zostają czyste. Przenieś ją ↑ ↓, żeby zmienić, co obejmuje.</p>
+        </div>
+        <div id="komp-tekstowe" class="hidden">
+          <div class="row" style="margin-top:12px"><label for="napis-tresc">Treść napisu</label></div>
+          <textarea id="napis-tresc" rows="3" maxlength="400" spellcheck="false"></textarea>
+          <div class="row" style="margin-top:10px"><label for="napis-kroj">Krój</label></div>
+          <div class="pal-wybor">
+            <select id="napis-kroj"></select>
+            <button class="btn" id="napis-kroj-wczytaj" title="Wczytaj krój z pliku (TTF, OTF, WOFF, WOFF2)" aria-label="Wczytaj krój z pliku">↥</button>
+          </div>
+          <input type="file" id="napis-kroj-plik" accept=".ttf,.otf,.woff,.woff2" class="hidden">
+          <div class="btns" style="margin-top:8px">
+            <select id="napis-waga" aria-label="Grubość kroju">
+              <option value="300">Cienki</option>
+              <option value="400">Zwykły</option>
+              <option value="600">Półgruby</option>
+              <option value="800" selected>Gruby</option>
+              <option value="900">Czarny</option>
+            </select>
+            <select id="napis-wyrownanie" aria-label="Wyrównanie wierszy">
+              <option value="left">Do lewej</option>
+              <option value="center" selected>Do środka</option>
+              <option value="right">Do prawej</option>
+            </select>
+            <input type="color" id="napis-kolor" value="#000000" aria-label="Kolor napisu">
+          </div>
+          <label class="check"><input type="checkbox" id="napis-kursywa"> Kursywa</label>
+          <div class="row"><label for="napis-interlinia">Interlinia</label><span class="val" id="napis-interlinia-v">115%</span></div>
+          <input type="range" id="napis-interlinia" min="50" max="300" value="115">
+          <div class="row"><label for="napis-odstep">Odstęp liter</label><span class="val" id="napis-odstep-v">0</span></div>
+          <input type="range" id="napis-odstep" min="-20" max="100" value="0">
+          <div class="row"><label for="napis-szer">Szerokość liter</label><span class="val" id="napis-szer-v">100%</span></div>
+          <input type="range" id="napis-szer" min="25" max="300" value="100">
+          <div class="row"><label for="napis-wys">Wysokość liter</label><span class="val" id="napis-wys-v">100%</span></div>
+          <input type="range" id="napis-wys" min="25" max="300" value="100">
+          <div class="row"><label for="napis-rozmycie">Rozmycie</label><span class="val" id="napis-rozmycie-v">brak</span></div>
+          <input type="range" id="napis-rozmycie" min="0" max="100" value="0">
+          <div class="row" style="margin-top:10px"><label>Obrazki zamiast liter</label></div>
+          <div class="znaki-lista" id="napis-znaki"></div>
+          <input type="file" id="napis-znak-plik" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" class="hidden">
+          <p class="hint" id="napis-msg" aria-live="polite"></p>
+          <p class="hint">Do 8 wierszy. Skala 100% wpisuje napis w płótno. Krój z pliku działa do zamknięcia apki; wbudowany Archivo i kroje systemowe — zawsze.</p>
         </div>
         <div class="tylko-obraz">
         <div class="row" style="margin-top:12px"><label for="komp-x">Położenie X</label><span class="val" id="komp-x-v">0</span></div>
@@ -113,6 +156,7 @@
         <select id="komp-tryb"></select>
         <div class="tylko-obraz">
         <button class="btn" id="komp-srodek" style="margin-top:8px">Wyśrodkuj i dopasuj</button>
+        <div class="tylko-zdjecie">
         <label class="check" style="margin-top:12px"><input type="checkbox" id="komp-wytnij"> Usuń tło tej warstwy</label>
         <div id="komp-wytnij-opcje" class="hidden">
           <div class="tabs" role="group" aria-label="Sposób usuwania tła" id="komp-sposob" style="margin-bottom:10px">
@@ -144,6 +188,7 @@
         <input type="range" id="komp-pedzel-r" min="4" max="300" value="40">
         <button class="btn hidden" id="komp-pedzel-wyczysc" style="margin-top:8px">Wyczyść poprawki pędzla</button>
         <p class="hint">Maluj po podglądzie: „Usuń” zdejmuje fragment warstwy, „Przywróć” oddaje to, co zjadło usuwanie tła. Działa też bez usuwania tła.</p>
+        </div>
         </div>
       </div>
       <p class="hint">Zaznaczoną warstwę przesuwasz też myszą na podglądzie. Otwarty albo przeciągnięty plik trafia jako nowa warstwa. Warstwa efektu działa na warstwy pod nią, przed ditheringiem; stos „Efekty po rastrze” — na cały gotowy obraz.</p>
@@ -443,6 +488,7 @@
           <option value="superelipsa">Superelipsa</option>
           <option value="znak">Znak — litera, emoji</option>
           <option value="wlasny">Własny kształt z pliku SVG</option>
+          <option value="tony">Znaki według tonu — kształty, obrazki</option>
           <option value="pasy">Linie — raster liniowy</option>
         </select>
         <div id="wielokat-opcje" class="hidden">
@@ -465,6 +511,59 @@
           <input type="text" id="znak" value="★" maxlength="40" aria-label="Znaki punktów">
           <p class="hint">Kilka znaków — idą po kolei, punkt po punkcie. Emoji działają, ale mają własne kolory.</p>
         </div>
+        <div id="znaki-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="znakiIle">Liczba tonów</label><span class="val" id="znakiIle-v">6</span></div>
+          <input type="range" id="znakiIle" min="2" max="16" value="6">
+          <div class="row"><label for="znakiBarwa">Kolor znaków</label></div>
+          <select id="znakiBarwa">
+            <option value="farba" selected>Kolor farby</option>
+            <option value="poziom">Własny kolor każdego tonu</option>
+            <option value="oryginal">Oryginalne kolory obrazków</option>
+          </select>
+          <div id="znakiMiesz-opcje">
+            <div class="row" style="margin-top:10px"><label for="znakiMiesz">Przebarwianie obrazków</label></div>
+            <select id="znakiMiesz">
+              <option value="source-over" selected>Sylwetka — sam kolor</option>
+              <option value="multiply">Mnożenie</option>
+              <option value="screen">Ekran</option>
+              <option value="overlay">Nakładka</option>
+              <option value="soft-light">Łagodne światło</option>
+              <option value="hard-light">Ostre światło</option>
+              <option value="color-dodge">Rozjaśnianie koloru</option>
+              <option value="color-burn">Ściemnianie koloru</option>
+              <option value="difference">Różnica</option>
+              <option value="color">Barwa — kolor z tonu, jasność z obrazka</option>
+              <option value="luminosity">Jasność</option>
+            </select>
+          </div>
+          <div class="znaki-lista" id="znaki-lista"></div>
+          <input type="file" id="znak-plik" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" class="hidden">
+          <p class="hint" id="znaki-msg" aria-live="polite"></p>
+          <button class="btn" id="znaki-usun" style="margin-top:8px">Usuń wszystkie obrazki</button>
+          <div class="row" style="margin-top:12px"><label for="znakiPodmiana">Podmiana tonów</label><span class="val" id="znakiPodmiana-v">brak</span></div>
+          <input type="range" id="znakiPodmiana" min="0" max="100" value="0">
+          <div id="znaki-podmiana-opcje" class="hidden">
+            <div class="row"><label for="znakiZasieg">Zasięg podmiany</label><span class="val" id="znakiZasieg-v">o 1 ton</span></div>
+            <input type="range" id="znakiZasieg" min="1" max="15" value="1">
+            <div class="row"><label for="znakiUklad">Układ</label><span class="val" id="znakiUklad-v">1</span></div>
+            <input type="range" id="znakiUklad" min="1" max="99" value="1">
+            <div id="znaki-czas-opcje" class="hidden">
+              <div class="row"><label for="znakiCzas">Nowy układ co</label><span class="val" id="znakiCzas-v">stały</span></div>
+              <input type="range" id="znakiCzas" min="0" max="60" value="0">
+            </div>
+            <p class="hint">Część znaków dostaje znak sąsiedniego tonu. Klawisz Q — następny układ. W filmie układ może zmieniać się co kilka klatek i między zmianami stoi w miejscu.</p>
+          </div>
+          <p class="hint" id="znaki-info">Ton 1 to cienie, ostatni — światła. Każdy ton rysuje się swoim kształtem albo obrazkiem (PNG, JPEG, WebP, SVG) — kliknij ↥ albo przeciągnij plik na wiersz. Obrazki nie trafiają do presetu, preset pamięta kształty i kolory. Znaki jednej wielkości: „Najmniejszy punkt” na 100%.</p>
+        </div>
+        <div class="row" style="margin-top:10px"><label for="punktSzer">Szerokość punktu</label><span class="val" id="punktSzer-v">100%</span></div>
+        <input type="range" id="punktSzer" min="25" max="300" value="100">
+        <div class="row"><label for="punktWys">Wysokość punktu</label><span class="val" id="punktWys-v">100%</span></div>
+        <input type="range" id="punktWys" min="25" max="300" value="100">
+        <div class="row"><label for="punktLosSzer">Losowa szerokość</label><span class="val" id="punktLosSzer-v">brak</span></div>
+        <input type="range" id="punktLosSzer" min="0" max="100" value="0">
+        <div class="row"><label for="punktLosWys">Losowa wysokość</label><span class="val" id="punktLosWys-v">brak</span></div>
+        <input type="range" id="punktLosWys" min="0" max="100" value="0">
+        <p class="hint">Rozciąga kształt w jego osiach — obraca się razem z nim. Losowe: każdy punkt inaczej, za każdym razem tak samo. Nie dotyczy linii i zlewanych plam.</p>
         <div class="row" style="margin-top:10px"><label for="zaokraglenie">Zaokrąglenie rogów</label><span class="val" id="zaokraglenie-v">brak</span></div>
         <input type="range" id="zaokraglenie" min="0" max="100" value="0">
         <label class="check" style="margin-top:10px"><input type="checkbox" id="obrotZSiatka" checked> Obracaj kształt z siatką</label>
@@ -534,7 +633,7 @@
         <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
         </div>
       </details>
-      <details class="pod" data-pod="farby" open>
+      <details class="pod" data-klucze="papierGrad" data-pod="farby" open>
         <summary>Farby i papier<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
         <div class="pod-cialo">
         <div class="row"><label for="inkmode">Farby</label></div>
@@ -573,6 +672,21 @@
           <input type="color" id="ink-r" value="#000000" aria-label="Kolor farby">
           <input type="color" id="paper-r" value="#ffffff" aria-label="Kolor papieru">
           <button class="btn" id="swap-r" style="width:auto; padding:6px 10px">Zamień</button>
+        </div>
+        <div class="row" style="margin-top:10px"><label for="papierTlo">Papier</label></div>
+        <select id="papierTlo">
+          <option value="kolor" selected>Jeden kolor</option>
+          <option value="liniowy">Gradient liniowy</option>
+          <option value="promienisty">Gradient promienisty — od środka</option>
+        </select>
+        <div id="tlo-grad-opcje" class="hidden">
+          <div id="tlo-kat-opcje">
+            <div class="row" style="margin-top:10px"><label for="papierKat">Kierunek gradientu</label><span class="val" id="papierKat-v">90°</span></div>
+            <input type="range" id="papierKat" min="0" max="360" value="90">
+          </div>
+          <div class="znaki-lista" id="tlo-stopnie" aria-label="Kolory gradientu papieru"></div>
+          <button class="btn" id="tlo-dodaj" style="margin-top:6px">+ Kolor gradientu</button>
+          <p class="hint">Gradient jest wektorem: w SVG zapisuje się jako gradient, nie obrazek. Farby kładą się na nim mnożeniem, jak na barwionym papierze. Pole koloru papieru wyżej zostaje kolorem faktury papieru.</p>
         </div>
         <div class="row"><label for="mis">Pasowanie</label><span class="val" id="mis-v">0.0</span></div>
         <input type="range" id="mis" min="0" max="60" value="0">
@@ -662,6 +776,45 @@
         <div class="row"><label for="walek">Ślady wałka</label><span class="val" id="walek-v">brak</span></div>
         <input type="range" id="walek" min="0" max="100" value="0">
         <p class="hint">Jak druk riso i sitodruk — tylko w PNG (SVG to czysta geometria).</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="ruch">
+        <summary>Ruch punktów<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <p class="hint" style="margin-top:0">Ruch idzie z czasem osi — widać go przy filmie albo po „Animuj obraz”, a zapis MP4 i GIF oddaje go klatka po klatce.</p>
+        <button class="btn hidden" id="ruch-animuj" style="margin-top:8px">Animuj obraz, żeby zobaczyć ruch</button>
+        <div class="row" style="margin-top:12px"><label for="ruchPuls">Pulsowanie</label><span class="val" id="ruchPuls-v">brak</span></div>
+        <input type="range" id="ruchPuls" min="0" max="100" value="0">
+        <div id="ruch-puls-opcje" class="hidden">
+          <div class="row"><label for="ruchCykl">Czas jednego cyklu</label><span class="val" id="ruchCykl-v">2,0 s</span></div>
+          <input type="range" id="ruchCykl" min="2" max="100" value="20">
+          <div class="row"><label for="ruchKrzywa">Przebieg</label></div>
+          <select id="ruchKrzywa">
+            <option value="liniowo">Liniowo</option>
+            <option value="gladko" selected>Płynnie</option>
+            <option value="szesc">Miękko na końcach</option>
+            <option value="sprezyna">Sprężyście</option>
+          </select>
+          <label class="check"><input type="checkbox" id="ruchOdbicie" checked> Tam i z powrotem (zamiast od nowa)</label>
+          <div class="row"><label for="ruchFala">Fala przez siatkę</label><span class="val" id="ruchFala-v">brak</span></div>
+          <input type="range" id="ruchFala" min="0" max="100" value="0">
+          <div class="row"><label for="ruchFalaKat">Kierunek fali</label><span class="val" id="ruchFalaKat-v">45°</span></div>
+          <input type="range" id="ruchFalaKat" min="0" max="360" value="45">
+        </div>
+        <div class="row" style="margin-top:10px"><label for="ruchKat">Obrót kształtów</label><span class="val" id="ruchKat-v">0°</span></div>
+        <input type="range" id="ruchKat" min="-180" max="180" value="0">
+        <div class="row"><label for="ruchObrot">Prędkość obrotu</label><span class="val" id="ruchObrot-v">brak</span></div>
+        <input type="range" id="ruchObrot" min="-360" max="360" value="0">
+        <div id="ruch-obrot-opcje" class="hidden">
+          <div class="row"><label for="ruchSkok">Obrót skokami co</label><span class="val" id="ruchSkok-v">płynnie</span></div>
+          <input type="range" id="ruchSkok" min="0" max="180" value="0">
+          <div class="row"><label for="ruchPostoj">Postój po skoku</label><span class="val" id="ruchPostoj-v">0,4 s</span></div>
+          <input type="range" id="ruchPostoj" min="0" max="30" value="4">
+        </div>
+        <div class="row"><label for="ruchDrzenie">Drżenie</label><span class="val" id="ruchDrzenie-v">brak</span></div>
+        <input type="range" id="ruchDrzenie" min="0" max="100" value="0">
+        <p class="hint">Płynna pętla: długość animacji podzielna przez czas cyklu (i przez czas pełnego obrotu).</p>
         <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
         </div>
       </details>
@@ -835,6 +988,14 @@
           <div class="row" style="margin-top:12px"><label for="wygl">Wygładzenie konturów</label><span class="val" id="wygl-v">3</span></div>
           <input type="range" id="wygl" min="0" max="10" value="3">
         </div>
+      </div>
+      <div id="svg-znaki-opcje" class="hidden">
+        <div class="row" style="margin-top:12px"><label for="svgObrazki">Obrazki znaków w SVG</label></div>
+        <select id="svgObrazki">
+          <option value="osadz" selected>Osadź obrazki — jak w podglądzie</option>
+          <option value="wektor">Tylko wektory — SVG jako kształty, bez bitmap</option>
+        </select>
+        <p class="hint">Osadzone obrazki to bitmapy w pliku SVG: wyglądają jak podgląd, ale w Illustratorze nie da się ich edytować jak ścieżek. „Tylko wektory” zamienia znaki z plików SVG na ścieżki jednego koloru, a obrazki PNG i JPEG pomija.</p>
       </div>
       <div id="mp4-opcje" class="hidden">
         <div class="row" style="margin-top:12px"><label for="jakosc">Jakość MP4</label></div>

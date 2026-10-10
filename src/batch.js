@@ -15,7 +15,7 @@ import { Zip } from "./zip.js";
    wyjdzie z plikami w różnych ustawieniach. Obraz z podglądu wraca na miejsce
    po skończeniu, także po przerwaniu i po błędzie. */
 
-const KLUCZE = [...LOOK, "mode", "scl", "fmt", "wektor", "wygl", "custom"];
+const KLUCZE = [...LOOK, "mode", "scl", "fmt", "wektor", "wygl", "svgObrazki", "custom"];
 
 /* ścieżka wewnątrz wybranego folderu, bez nazwy samego folderu — w paczce
    ląduje „podfolder/zdjecie", a nie „MojFolder/podfolder/zdjecie" */

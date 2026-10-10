@@ -559,7 +559,7 @@ export async function zapiszWideo({postep = () => {}, przerwano = () => false} =
       postep(k, n, k ? minelo/k*(n - k) : null);
       await z.pokaz(i);
       zastosujAnimacje(S, z.klatki[i].t);
-      S.klatkaNr = i;
+      S.klatkaNr = i; S.czasKlatki = z.klatki[i].t;
       /* stabilizacja: klatki po kolei, pierwsza bez pamięci z podglądu */
       await renderuj(S.scl, {keep: true, pamietaj: true, zPamieci: k > 0});
       if(!koder){

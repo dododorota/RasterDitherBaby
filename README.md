@@ -123,6 +123,8 @@ src/papier.js     faktura papieru pod farbą w rastrze
 src/qr.js         koder kodów QR (do siatki QR w rastrze), bez DOM-u
 src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
+src/znaki-tonu.js obrazki tonów (materiał): wczytywanie, przebarwianie, grupy znaków
+src/tekst.js      napis jako obraz warstwy: układ wierszy, kroje z plików, obrazki zamiast liter
 src/contours.js   obrys konturowy: śledzenie brzegów i wygładzanie ścieżek
 src/batch.js      przetwarzanie całego folderu tymi samymi ustawieniami
 src/zip.js        zapis paczki ZIP bez kompresji, bez zależności
@@ -176,6 +178,35 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
   także w SVG. **Własny kształt z pliku SVG** — logo, ikona, rysunek
   (wszystkie kontury pliku, z otworami, krzywe i przekształcenia); zapisuje
   się w presecie. „Obracaj kształt z siatką" wyłączone — kształt stoi prosto.
+- **Znaki według tonu** — ton obrazu dzielony na 2–16 poziomów, a każdy
+  poziom rysuje się swoim znakiem: kształtem z listy albo obrazkiem (PNG,
+  JPEG, WebP, SVG — przycisk ↥ albo przeciągnięcie pliku na wiersz tonu).
+  Banan w cieniach, kropka w światłach. Kolor znaków: farby, własny kolor
+  każdego tonu albo oryginalne barwy obrazków; obrazki przebarwiane jako
+  sylwetka albo w trybie mieszania (mnożenie, ekran, nakładka, barwa…).
+  Obrazki to materiał jak zdjęcie — preset pamięta tylko kształty i kolory
+  tonów. „Najmniejszy punkt" na 100% daje mozaikę z równych znaków. W SVG
+  do wyboru: obrazki osadzone (jak podgląd) albo tylko wektory (znaki
+  z plików SVG jako ścieżki, bitmapy pominięte). Działa też jako kształt
+  pojedynczej farby risografu. **Podmiana tonów** — część znaków dostaje
+  znak sąsiedniego tonu (ile, o ile tonów, który układ); klawisz Q losuje
+  następny układ, a w filmie układ może zmieniać się co N klatek i między
+  zmianami stoi w miejscu.
+- **Ruch punktów** — punkty pulsują (od mniejszych do pełnej wielkości,
+  liniowo, płynnie, miękko albo sprężyście, tam i z powrotem), z falą
+  biegnącą przez siatkę pod wybranym kątem; kształty obracają się — stały
+  kąt, stała prędkość albo skokami co N stopni z postojem — i drżą. Ruch
+  idzie z czasem osi, więc widać go przy filmie i po „Animuj obraz”,
+  a MP4/GIF zapisuje go klatka po klatce. W geometrii — też w SVG klatki.
+- **Proporcje punktu** — szerokość i wysokość punktu osobno (25–300%)
+  i losowo, każdy punkt inaczej (do ±75%); kształt rozciąga się w swoich
+  osiach i obraca razem z nim. Działa dla kształtów, znaków i obrazków tonów,
+  także w SVG; nie dla linii i zlewanych plam.
+- **Papier w gradiencie** — zamiast jednego koloru gradient liniowy pod
+  kątem albo promienisty od środka, z 2–8 kolorami (dodawanie, usuwanie,
+  położenie każdego). Wektorowo: w SVG zapisuje się jako `<linearGradient>`
+  / `<radialGradient>`, nie obrazek. Farby kładą się na nim mnożeniem jak na
+  barwionym papierze; w presecie razem z resztą wyglądu.
 - **Zlewanie punktów** (metaballe) — sąsiednie punkty zlewają się w płynne
   plamy; pojedynczy punkt zostaje swoim kołem, więc ton się nie zmienia.
   Kontury, więc też w SVG.
@@ -638,6 +669,19 @@ z animacją jej nie kasuje). Stos „Efekty po rastrze" działa na cały gotowy
 obraz, warstwa efektu — na warstwy pod nią przed rastrem. Filmów w kompozycji
 nie ma (tylko obrazy).
 
+### Napis
+
+„Dodaj napis” (w grupie Obraz) albo „+ Napis” w warstwach — warstwa
+z tekstem: do 8 wierszy, krój wbudowany (Archivo), systemowy albo wczytany
+z pliku TTF/OTF/WOFF/WOFF2, grubość, kursywa, kolor, wyrównanie, interlinia,
+odstęp liter, szerokość i wysokość liter, rozmycie. Każda litera napisu może
+dostać obrazek (PNG, JPEG, WebP, SVG) w swoich proporcjach, na wysokość
+wersalika. Bez wczytanego obrazu napis powstaje na białym płótnie
+1920 × 1080 (tekst jako źródło, jak w Ditherfy), z obrazem — na nim.
+Położenie, skala (100% = wpisany w płótno), obrót, krycie, mieszanie
+i klatki kluczowe — jak u każdej warstwy. Napis i kroje z plików to
+materiał: nie trafiają do presetu.
+
 ## Przezroczyste tło
 
 Przy zapisie PNG: kolor papieru staje się przezroczysty. Tylko tam, gdzie
@@ -729,6 +773,16 @@ Halftone Maker** (halftone.xoihazard.com): wszystko zrobione poza
 **scaleniem SVG w jedną ścieżkę** (unia kształtów) — wymaga biblioteki
 operacji na wielokątach; nakładające się kształty w SVG wyglądają tak samo,
 inaczej tylko się je edytuje.
+
+Porównanie z **Ditherfy** (antonburmistrov.com/tool-files/ditherfy):
+własne znaki na tony (obrazki zamiast punktów) — zrobione jako „Znaki
+według tonu", razem z podmianą tonów (klawisz Q, nowy układ co N klatek).
+Ruch punktów (pulsowanie z falą, obrót skokami, drżenie) — zrobiony.
+Tekst jako źródło — zrobiony jako warstwa „Napis”. Tło z gradientu —
+jako papier rastra, wektorowo; tło z obrazka — warstwą pod spodem.
+Losowa szerokość / wysokość i osobne nachodzenie w poziomie i pionie — jako
+proporcje punktu. Z listy Ditherfy zrobione wszystko; kamera na żywo —
+świadomie pominięta.
 
 U nas jest, a tam nie: risograf z farbami i fakturą, raster liniowy
 z falami i „wzdłuż kształtu", faktura papieru, nierówny raster, kompozycja

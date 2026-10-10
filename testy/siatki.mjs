@@ -375,6 +375,149 @@ console.log("--- zaokrąglanie rogów ---");
   sprawdz(obrys("circle", [0, 0, 4, 0], 0)[0].length === 32, "koło zostaje kołem (bez zaokrąglania)");
 }
 
+console.log("--- znaki według tonu ---");
+{
+  const lumP = (smp, x, y) => { const sx = Math.min(smp.sw-1, Math.max(0, Math.round(x/smp.step))), sy = Math.min(smp.sh-1, Math.max(0, Math.round(y/smp.step))); return smp.d[(sy*smp.sw + sx)*4]; };
+  for(const n of [2, 6, 16]){
+    ustaw({cell: 8, shape: "tony", znakiIle: n});
+    const k = geometria(gradient, W, H, {ang: 30, cov, off: [0, 0]}, 1).kropki;
+    /* poziom = przedział pokrycia, cienie (największe pokrycie) to 0 */
+    const zgodne = k.every(p => p.length === 7 && p[6] === Math.min(n - 1, Math.max(0, Math.floor((1 - Math.min(1, cov(...Array(3).fill(lumP(gradient, p[0], p[1])))))*n))));
+    const uzyte = new Set(k.map(p => p[6]));
+    sprawdz(k.length > 0 && zgodne && uzyte.size === n, `${n} tonów: każdy punkt niesie poziom z przedziału pokrycia, użyte wszystkie ${uzyte.size}`);
+  }
+  /* ten sam układ i wielkości co zwykły punkt — kształt tonu zmienia tylko rysunek */
+  ustaw({cell: 9, shape: "circle"});
+  const a = geometria(gradient, W, H, {ang: 15, cov, off: [1, 2]}, 1).kropki;
+  ustaw({cell: 9, shape: "tony"});
+  const b = geometria(gradient, W, H, {ang: 15, cov, off: [1, 2]}, 1).kropki;
+  sprawdz(a.length === b.length && a.every((p, i) => p[0] === b[i][0] && p[1] === b[i][1] && p[2] === b[i][2] && p[3] === b[i][3]), `położenia i promienie co do bitu jak przy punkcie (${a.length})`);
+  /* zapis w skali, z nierównym rastrem, kolorami punktów i obrotem płyty */
+  for(const [siatka, opcje, barwa] of [["kwadrat", {}, false], ["heks", {nierowne: 50, drganie: 40}, false], ["stipple", {}, false],
+                                       ["kwadrat", {}, true], ["okregi", {postrzep: 60}, true], ["qr", {}, false]]){
+    ustaw({cell: 7, shape: "tony", znakiIle: 5, siatka, ...opcje});
+    const ink = {ang: 20, cov, off: [1.5, -2], obrot: 2.5, ...(barwa ? {barwa: (r, g, bb) => [r, g, bb]} : {})};
+    const g1 = geometria(gradient, W, H, ink, 1), g3 = geometria(gradient, W, H, ink, 3);
+    const ok = g1.kropki.length > 0 && g1.kropki.length === g3.kropki.length && g1.kropki.every((p, i) => { const q = g3.kropki[i];
+      return Math.abs(p[0]*3 - q[0]) < 1e-9 && Math.abs(p[1]*3 - q[1]) < 1e-9 && Math.abs(p[2]*3 - q[2]) < 1e-9 && p[6] === q[6] && p.length === 7 && (barwa ? Array.isArray(p[5]) : p[5] === null); });
+    sprawdz(ok, `${siatka}${Object.keys(opcje).length ? " + " + Object.keys(opcje).join(", ") : ""}${barwa ? ", kolory punktów" : ""}: z=3 dokładnie ×3, te same poziomy`);
+  }
+  /* scalanie: scalony punkt zachowuje poziom (średni z bloku), bez koloru zostaje null */
+  ustaw({cell: 6, shape: "tony", znakiIle: 4, scalanie: 100});
+  const plaski = probki(W, H, 4, () => 90);
+  const s = geometria(plaski, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
+  ustaw({cell: 6, shape: "tony", znakiIle: 4});
+  const bez = geometria(plaski, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
+  sprawdz(s.length < bez.length/4 && s.every(p => p.length === 7 && p[5] === null && p[6] === bez[0][6]), `scalanie: ${bez.length} → ${s.length} punktów, poziom zachowany`);
+  /* zlewanie nie zamienia znaków w plamy */
+  ustaw({cell: 8, shape: "tony", zlewanie: 80});
+  const zl = geometria(gradient, W, H, {ang: 0, cov, off: [0, 0]}, 1);
+  sprawdz(!!zl.kropki && !zl.plamy, "zlewanie pomija znaki według tonu (zostają punkty)");
+
+  /* podmiana tonów */
+  const ink = {ang: 25, cov, off: [0, 0]};
+  const poziomy = (o, z = 1) => { ustaw({cell: 6, shape: "tony", znakiIle: 8, ...o}); return geometria(gradient, W, H, ink, z).kropki.map(p => p[6]); };
+  const baza = poziomy({});
+  sprawdz(poziomy({znakiPodmiana: 0, znakiUklad: 7}).every((v, i) => v === baza[i]), "podmiana 0 — poziomy bez zmian, układ bez znaczenia");
+  for(const [proc, zas] of [[30, 1], [60, 3]]){
+    const p = poziomy({znakiPodmiana: proc, znakiZasieg: zas});
+    const zm = p.filter((v, i) => v !== baza[i]).length/p.length;
+    const oIle = p.every((v, i) => Math.abs(v - baza[i]) <= zas && v >= 0 && v < 8);
+    sprawdz(Math.abs(zm - proc/100) < 0.06 && oIle, `${proc}%, zasięg ${zas}: zmienionych ${(zm*100).toFixed(1)}%, każdy o najwyżej ${zas}`);
+  }
+  const p1 = poziomy({znakiPodmiana: 40, znakiUklad: 1}), p1b = poziomy({znakiPodmiana: 40, znakiUklad: 1}), p2 = poziomy({znakiPodmiana: 40, znakiUklad: 2});
+  sprawdz(p1.every((v, i) => v === p1b[i]) && p2.some((v, i) => v !== p1[i]), "ten sam układ — ten sam wynik, inny układ — inny");
+  sprawdz(poziomy({znakiPodmiana: 40}, 3).every((v, i) => v === p1[i]), "zapis 3× — ten sam układ podmiany");
+  const klatka = k => poziomy({znakiPodmiana: 40, znakiCzas: 4, klatkaNr: k});
+  const k0 = klatka(0);
+  sprawdz([1, 2, 3].every(k => klatka(k).every((v, i) => v === k0[i])) && klatka(4).some((v, i) => v !== k0[i]),
+          "nowy układ co 4 klatki: klatki 0–3 jednakowe, 4 — nowy");
+  S.klatkaNr = 0;
+}
+
+console.log("--- ruch punktów ---");
+{
+  const ink = {ang: 20, cov, off: [0, 0]};
+  const g = (o, z = 1, t = 0) => { ustaw({cell: 8, ...o}); S.czasKlatki = t; return geometria(gradient, W, H, ink, z).kropki; };
+  const baza = g({});
+  /* pulsowanie: każdy punkt między (1 − puls) a pełną wielkością, cykl się powtarza */
+  for(const krzywa of ["liniowo", "gladko", "szesc"]){
+    const p = g({ruchPuls: 70, ruchFala: 60, ruchKrzywa: krzywa}, 1, 0.37);
+    const wZakresie = p.every((q, i) => q[2] <= baza[i][2] + 1e-9 && q[2] >= baza[i][2]*0.3 - 1e-9);
+    const rozne = new Set(p.map((q, i) => (q[2]/baza[i][2]).toFixed(3))).size;
+    const petla = g({ruchPuls: 70, ruchFala: 60, ruchKrzywa: krzywa}, 1, 0.37 + 2).every((q, i) => Math.abs(q[2] - p[i][2]) < 1e-9);
+    sprawdz(wZakresie && rozne > 5 && petla, `pulsowanie (${krzywa}): wielkości 30–100%, fala daje ${rozne} faz, po cyklu 2 s to samo`);
+  }
+  /* zapis w skali — z ruchem w każdym rodzaju */
+  const o = {ruchPuls: 50, ruchFala: 40, ruchFalaKat: 120, ruchKat: 15, ruchObrot: 45, ruchSkok: 30, ruchPostoj: 3, ruchDrzenie: 60, shape: "square"};
+  const a = g(o, 1, 1.23), b = g(o, 3, 1.23);
+  sprawdz(a.length === b.length && a.every((p, i) => Math.abs(p[0]*3 - b[i][0]) < 1e-9 && Math.abs(p[2]*3 - b[i][2]) < 1e-9 && Math.abs(p[3] - b[i][3]) < 1e-12),
+          "pulsowanie, fala, obrót skokami i drżenie: z=3 dokładnie ×3, te same kąty");
+  /* obrót: stała prędkość i skokami z postojem */
+  const kat = (o, t) => g({shape: "square", ...o}, 1, t)[0][3] - baza[0][3];
+  sprawdz(Math.abs(kat({ruchObrot: 90}, 1) - Math.PI/2) < 1e-12 && Math.abs(kat({ruchKat: -30}, 5) + Math.PI/6) < 1e-12, "obrót 90°/s po 1 s = 90°, stały kąt −30°");
+  /* skok 45° przy 90°/s: ruch 0,5 s, postój 1 s — w postoju kąt stoi */
+  const sk = {ruchObrot: 90, ruchSkok: 45, ruchPostoj: 10};
+  sprawdz(Math.abs(kat(sk, 0.6) - Math.PI/4) < 1e-12 && Math.abs(kat(sk, 1.4) - Math.PI/4) < 1e-12 && Math.abs(kat(sk, 1.75) - Math.PI/4*1.5) < 1e-12,
+          "skokami co 45°: w postoju stoi, w połowie ruchu kolejnego skoku — w połowie drogi");
+  ustaw({}); S.czasKlatki = 0;
+  const bezObr = g({shape: "square", obrotZSiatka: false, ruchKat: 30});
+  sprawdz(bezObr.every(p => Math.abs(p[3] - Math.PI/6) < 1e-12), "„obracaj z siatką” wyłączone — zostaje tylko obrót kształtów");
+  sprawdz(g({ruchCykl: 55, ruchFala: 80, ruchSkok: 90}, 1, 3.3).every((p, i) => p.length === baza[i].length && p.every((v, j) => v === baza[i][j])),
+          "bez pulsowania, obrotu i drżenia — co do bitu jak bez ruchu (inne suwaki ruchu bez znaczenia)");
+  S.czasKlatki = 0;
+}
+
+console.log("--- proporcje punktu ---");
+{
+  const ink = {ang: 30, cov, off: [0, 0]};
+  const g = (o, z = 1) => { ustaw({cell: 9, shape: "square", ...o}); return geometria(gradient, W, H, ink, z); };
+  const baza = g({}).kropki;
+  sprawdz(baza.every(p => p.length === 4) && !g({}).rozciag, "neutralne — punkty w dawnej postaci, bez rozciągania");
+  const a = g({punktSzer: 200, punktWys: 50});
+  sprawdz(a.rozciag && a.kropki.every(p => p.length === 9 && p[7] === 2 && p[8] === 0.5 && p[4] === -1 && p[5] === null && p[6] === -1), "stała szerokość 200%, wysokość 50% — mnożniki w punkcie");
+  /* kwadrat pod kątem 0 (obrotZSiatka wył.), 2× szerzej i 2× niżej */
+  const [kw] = obrys("square", [50, 50, 10, 0, -1, null, -1, 2, 0.5], 0, 9);
+  const xs = kw.map(p => p[0]), ys = kw.map(p => p[1]);
+  sprawdz(Math.max(...xs) - Math.min(...xs) === 40 && Math.max(...ys) - Math.min(...ys) === 10, "obrys kwadratu 20×20 → 40×10");
+  const [kw2] = obrys("square", [0, 0, 10, Math.PI/2, -1, null, -1, 2, 0.5], 0, 9);
+  sprawdz(Math.abs(Math.max(...kw2.map(p => p[1])) - 20) < 1e-9, "rozciąga w osiach kształtu (obrócony o 90° — wzdłuż pionu)");
+  const l = g({punktLosSzer: 100, punktLosWys: 40}).kropki;
+  const sx = l.map(p => p[7]), sy = l.map(p => p[8]);
+  sprawdz(Math.min(...sx) >= 0.25 && Math.max(...sx) <= 1.75 && Math.min(...sy) >= 0.7 && Math.max(...sy) <= 1.3 && new Set(sx).size > l.length*0.9,
+          `losowe: szerokość 25–175%, wysokość 70–130%, każdy punkt inaczej (${new Set(sx).size}/${l.length})`);
+  const l3 = g({punktLosSzer: 100, punktLosWys: 40}, 3).kropki;
+  sprawdz(l3.length === l.length && l3.every((p, i) => p[7] === l[i][7] && p[8] === l[i][8] && Math.abs(p[0] - l[i][0]*3) < 1e-9), "zapis 3× — te same proporcje każdego punktu");
+  const t = g({shape: "tony", znakiIle: 4, punktSzer: 150}).kropki;
+  sprawdz(t.every(p => p.length === 9 && p[6] >= 0 && p[7] === 1.5), "znaki według tonu zachowują poziom obok proporcji");
+}
+
+console.log("--- papier w gradiencie ---");
+{
+  const { stopnieTla, geometriaTla, svgTla, GRADIENT_PAPIERU } = await import("../src/papier.js");
+  const dom = JSON.stringify(GRADIENT_PAPIERU);
+  for(const [opis, t] of [["pusty", ""], ["zepsuty JSON", "[[#fff"], ["jeden punkt", '[["#ffffff",0]]'], ["nie tablica", '{"a":1}']]){
+    ustaw({papierGrad: t});
+    sprawdz(JSON.stringify(stopnieTla()) === dom, `${opis} — domyślny gradient`);
+  }
+  ustaw({papierGrad: JSON.stringify([["#FF0000", 80], ["zly", 10], ["#00ff00", -40], ["#0000ff", 250], ["#123456", "5"]])});
+  sprawdz(JSON.stringify(stopnieTla()) === JSON.stringify([["#00ff00", 0], ["#ff0000", 80], ["#0000ff", 100]]), "złe punkty odrzucone, położenia przycięte do 0–100, kolejność wg położenia");
+  ustaw({papierTlo: "liniowy", papierKat: 0});
+  let g = geometriaTla(200, 100);
+  sprawdz(g.x1 === 0 && g.x2 === 200 && g.y1 === 50 && g.y2 === 50, "0° — od lewej do prawej przez cały kadr");
+  ustaw({papierTlo: "liniowy", papierKat: 45});
+  g = geometriaTla(200, 100);
+  const rzut = (x, y) => ((x - g.x1)*(g.x2 - g.x1) + (y - g.y1)*(g.y2 - g.y1))/((g.x2 - g.x1)**2 + (g.y2 - g.y1)**2);
+  sprawdz(Math.abs(rzut(0, 0)) < 1e-9 && Math.abs(rzut(200, 100) - 1) < 1e-9, "45° — rogi dostają skrajne kolory (0 i 1)");
+  const [def, wyp] = svgTla(200, 100);
+  sprawdz(/^<linearGradient id="papier" gradientUnits="userSpaceOnUse"/.test(def) && wyp === "url(#papier)" && (def.match(/<stop /g) || []).length === 3, "SVG: linearGradient w jednostkach kadru, 3 punkty");
+  ustaw({papierTlo: "promienisty"});
+  g = geometriaTla(300, 400);
+  sprawdz(g.r === 250 && /<radialGradient[^>]* r="250"/.test(svgTla(300, 400)[0]), "promienisty — promień do rogów");
+  ustaw({papierTlo: "kolor", paper: "#abcdef"});
+  sprawdz(JSON.stringify(svgTla(10, 10)) === JSON.stringify(["", "#abcdef"]), "jeden kolor — bez gradientu w SVG");
+}
+
 console.log("--- faktura farby ---");
 {
   /* farba: koło na pustym papierze */

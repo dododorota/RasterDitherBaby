@@ -42,6 +42,26 @@ export function dodaj(obraz, nazwa){
     tlo: {wl: false, sposob: "kolor", kolor: null, tolerancja: 30, miekkosc: 10, spojne: true}, wyciety: null, robocza: null, reka: null, maskaAI: null});
   K.wybrana = K.warstwy.length - 1;
 }
+/* pusta kompozycja (sam napis): płótno w kolorze tła, bez warstw */
+export function utworzPusta(szer, wys, tlo){
+  K.aktywna = true; K.szer = szer; K.wys = wys; K.tlo = tlo; K.przezroczyste = false;
+  K.warstwy = []; K.wybrana = -1;
+}
+/* Warstwa napisu (tekst.js): obraz rysowany z ustawień w.tekst — przy
+   każdej zmianie napisu podmieniany (podmienObraz), reszta jak u zwykłej. */
+export function dodajTekst(obraz, tekst){
+  dodaj(obraz, "Napis");
+  const w = K.warstwy[K.wybrana];
+  w.typ = "tekst"; w.tekst = tekst; w.nazwaAuto = true;
+  return w;
+}
+export const czyTekst = w => !!w && w.typ === "tekst";
+/* nowy obraz warstwy: maski i kopie robocze liczone ze starego tracą ważność */
+export function podmienObraz(w, obraz){
+  w.obraz = obraz;
+  w.robocza = null; w.piksele = null; w.wyciety = null; w.auto = null; w.reka = null; w.maskaAI = null;
+  if(w.tlo) w.tlo.wl = false;
+}
 /* Warstwa efektu: bez obrazu — w miejscu, w którym leży w stosie warstw,
    bierze wszystko, co pod nią (z tłem płótna), i przepuszcza przez efekt.
    Warstwy nad nią zostają nietknięte — jak efekt jako warstwa w Dither Boyu.

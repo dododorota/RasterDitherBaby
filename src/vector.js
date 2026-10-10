@@ -2,7 +2,9 @@ import { S, MAX } from "./state.js";
 import { $ } from "./dom.js";
 import { fit } from "./image.js";
 import { ditherData } from "./dither.js";
-import { sampler, inkList } from "./halftone.js";
+import { sampler, inkList, mieszanieFarby } from "./halftone.js";
+import { svgTla } from "./papier.js";
+import { znakiWGrupach, wersja, wymiaryZnaku, rozmiarWersji, konturyZnaku } from "./znaki-tonu.js";
 import { geometria, obrys, konturLinii, odcinkiBarwne, kolorCSS, sciezkowy, grubostObrysu, znakPunktu } from "./siatki.js";
 import { sledzKontury, sciezkaDokladna, sciezkaGladka } from "./contours.js";
 import { czynne, wpisEfektu } from "./stos.js";
@@ -113,6 +115,8 @@ function svgShape(x,y,r,deg,cell,ksztalt){
 const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 function svgGrupa(kropki, g, ksztalt, kontur, numery){
   if(ksztalt === "znak") return kropki.map((kr, i) => { const [x, y, r, kat] = kr;
+    /* rozciągnięty znak: w układzie znaku (przesunięcie, obrót, skala), tekst w zerze */
+    if(kr[7] !== undefined) return `<text x="0" y="0" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="translate(${n2(x)} ${n2(y)}) rotate(${n2(kat*180/Math.PI)}) scale(${n2(kr[7])} ${n2(kr[8])})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`;
     return `<text x="${n2(x)}" y="${n2(y)}" font-size="${n2(r*2.6)}" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})">${esc(znakPunktu(numery ? numery.get(kr) : i))}</text>`; }).join("");
   /* reguła nonzero (domyślna) — nakładające się punkty zostają zamalowane, otwory mają odwrotny obieg */
   if(sciezkowy(ksztalt, g)) return `<path d="${kropki.map(k => obrys(ksztalt, k, g.postrzep, g.cell).map(kontur).join("")).join("")}"/>`;
@@ -122,13 +126,43 @@ function svgGrupa(kropki, g, ksztalt, kontur, numery){
 const malowanie = kolor => grubostObrysu() > 0
   ? `fill="none" stroke="${kolor}" stroke-width="${n2(grubostObrysu())}" stroke-linejoin="round"`
   : `fill="${kolor}"`;
+/* Znaki według tonu w SVG — te same grupy co na płótnie (znakiWGrupach).
+   Poziomy bez obrazka: kształty jak zwykłe punkty. Obrazki zależnie od
+   S.svgObrazki: „osadz" — każda wersja obrazka raz, jako PNG w <symbol>,
+   a punkty to <use> (plik wygląda jak podgląd); „wektor" — z SVG sylwetka
+   w kolorze znaku, bitmapy pominięte (liczone w stat.pominiete). Obrazek
+   w symbolu ma 4× największy znak grupy — zapas na powiększenie wydruku. */
+function svgZnaki(g, ink, kontur, defs, stat){
+  const body = [];
+  for(const gr of znakiWGrupach(g.kropki, ink)){
+    if(!gr.znak){ body.push(`<g ${malowanie(gr.kolor)}>${svgGrupa(gr.kropki, g, gr.ksztalt, kontur, gr.numery)}</g>`); continue; }
+    if(S.svgObrazki === "wektor"){
+      if(!gr.znak.kontury){ stat.pominiete += gr.kropki.length; continue; }
+      body.push(`<path ${malowanie(gr.kolorObrazka || gr.kolor)} d="${gr.kropki.map(kr => konturyZnaku(gr.znak, kr).map(kontur).join("")).join("")}"/>`);
+      continue;
+    }
+    const maks = gr.kropki.reduce((m, kr) => Math.max(m, ...wymiaryZnaku(gr.znak, kr[2], kr)), 0);
+    const o = wersja(gr.znak, gr.kolorObrazka, S.znakiMiesz, Math.min(512, rozmiarWersji(maks*4)));
+    const id = "znak-" + (gr.poz + 1) + "-" + defs.length;
+    defs.push(`<symbol id="${id}" viewBox="0 0 ${o.width} ${o.height}"><image width="${o.width}" height="${o.height}" xlink:href="${o.toDataURL("image/png")}"/></symbol>`);
+    body.push(gr.kropki.map(kr => {
+      const [x, y, r, kat] = kr, [w, h] = wymiaryZnaku(gr.znak, r, kr);
+      return `<use xlink:href="#${id}" x="${n2(x - w/2)}" y="${n2(y - h/2)}" width="${n2(w)}" height="${n2(h)}"${kat ? ` transform="rotate(${n2(kat*180/Math.PI)} ${n2(x)} ${n2(y)})"` : ""}/>`;
+    }).join(""));
+    stat.osadzone++;
+  }
+  return body;
+}
 export function svgHalftone(){
   const [W,H] = fit(S.img.width, S.img.height, MAX);
   const farby = inkList();
   const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));
   const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
-  parts.push(`<rect width="${W}" height="${H}" fill="${S.paper}"/>`);
+  /* papier: kolor albo gradient (wektorowo — <linearGradient>/<radialGradient>) */
+  const [gradTla, tlo] = svgTla(W, H);
+  parts.push(`<rect width="${W}" height="${H}" fill="${tlo}"/>`);
   let count=0;
+  const defs = gradTla ? [gradTla] : [], stat = {pominiete: 0, osadzone: 0};
   /* kontur jako fragment ścieżki: M … L … Z */
   const kontur = k => "M" + k.map(([x, y]) => n2(x) + " " + n2(y)).join("L") + "Z";
   for(const ink of farby){
@@ -137,6 +171,13 @@ export function svgHalftone(){
     let body;
     /* kwadraty kodu QR — jedna ścieżka */
     if(g.dodatki) parts.push(`<path id="${ink.name}-qr" fill="${ink.barwa ? S.ink : ink.color}" d="${g.dodatki.map(kontur).join("")}"/>`);
+    if(ksztalt === "tony" && g.kropki){
+      body = svgZnaki(g, ink, kontur, defs, stat);
+      count += g.kropki.length;
+      const miesz = mieszanieFarby(ink) === "multiply" ? ` style="mix-blend-mode:multiply"` : "";
+      parts.push(`<g id="${ink.name}"${krycie}${miesz}>${body.join("")}</g>`);
+      continue;
+    }
     if(ink.barwa){
       /* kolor na punkt: grupy <g fill> po kolorze, linie odcinkami */
       if(g.linie){
@@ -165,7 +206,11 @@ export function svgHalftone(){
     parts.push(`<g id="${ink.name}" ${malowanie(ink.color)}${krycie} style="mix-blend-mode:multiply">${body.join("")}</g>`);
   }
   parts.push("</svg>");
-  return {svg:parts.join("\n"), count};
+  if(defs.length){
+    if(stat.osadzone) parts[0] = parts[0].replace("<svg ", `<svg xmlns:xlink="http://www.w3.org/1999/xlink" `);
+    parts.splice(1, 0, `<defs>${defs.join("")}</defs>`);
+  }
+  return {svg:parts.join("\n"), count, pominiete: stat.pominiete, osadzone: stat.osadzone};
 }
 /* 2–4, 22–24, 32–34… kolory; 5–21, 25–31… kolorów */
 function odmianaKolor(n){
@@ -180,7 +225,7 @@ export async function svgTrybu(){
   return svgHalftone();
 }
 export async function saveSVG(){
-  const {svg,count,kolorow,bezWygladzania} = await svgTrybu();
+  const {svg,count,kolorow,bezWygladzania,pominiete} = await svgTrybu();
   const blob=new Blob([svg],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
@@ -198,6 +243,7 @@ export async function saveSVG(){
   $("#dims").textContent = "Zapisano SVG · " + count.toLocaleString("pl-PL") + " obiektów · " +
     Math.round(blob.size/1024).toLocaleString("pl-PL") + " kB" +
     (brak.length ? " · Wektor nie zawiera efektów: " + brak.join(", ") + " — są tylko w PNG." : "") +
+    (pominiete ? " · Pominięto " + pominiete.toLocaleString("pl-PL") + " znaków z obrazków PNG/JPEG (tryb „tylko wektory”) — żeby były w pliku, wybierz „Osadź obrazki”." : "") +
     (bezWygladzania ? " · Bez wygładzania: obraz ma " + kolorow + " " + odmianaKolor(kolorow) + ", a wygładzanie działa do " +
        KOLOROW_DO_WYGLADZANIA + " — przy większej liczbie plik puchnie kilkukrotnie. Zapisano kontury dokładne." : "") +
     (count>80000 ? " — przy tylu obiektach Illustrator będzie mulił, podnieś pikselizację albo gęstość." : "");

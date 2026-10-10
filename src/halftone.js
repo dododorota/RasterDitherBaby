@@ -7,7 +7,8 @@ import { zmiennoscPrzed } from "./fx.js";
 import { geometria, obrys, konturLinii, odcinkiBarwne, kolorCSS, sciezkowy, grubostObrysu, znakPunktu } from "./siatki.js";
 import { fakturaFarby } from "./faktura-farby.js";
 import { skrot } from "./fx.js";
-import { papier } from "./papier.js";
+import { papier, wypelnijTlo } from "./papier.js";
+import { znakiWGrupach, wersja, wymiaryZnaku, rozmiarWersji } from "./znaki-tonu.js";
 
 /* ---------- tryb 2: raster drukarski ----------
 
@@ -80,13 +81,14 @@ function drawScreen(target, smp, W,H, ink, z){
   x.lineWidth = grubostObrysu()*z; x.lineJoin = "round";
   /* kwadraty kodu QR: kolor farby (przy kolorowych punktach — farba z panelu) */
   if(g.dodatki){ x.save(); x.fillStyle = ink.barwa ? S.ink : ink.color; x.beginPath(); for(const k of g.dodatki) sciezka(x, k); x.fill(); x.restore(); }
-  if(ink.barwa) rysujBarwne(x, g, ksztalt);
+  if(ksztalt === "tony" && g.kropki) rysujZnaki(x, g, ink);
+  else if(ink.barwa) rysujBarwne(x, g, ksztalt);
   else if(g.plamy){ x.beginPath(); for(const k of g.plamy) sciezka(x, k); if(grubostObrysu() > 0) x.stroke(); else x.fill("evenodd"); }
   else if(g.linie) rysujLinie(x, g.linie);
   else rysujGrupe(x, g.kropki, g, ksztalt);
   fakturaFarby(c, W, H, z, ink.color);
   target.save();
-  target.globalCompositeOperation = ink.mieszanie || "multiply";
+  target.globalCompositeOperation = mieszanieFarby(ink);
   if(ink.krycie !== undefined && ink.krycie < 1) target.globalAlpha = ink.krycie;
   target.drawImage(c,0,0);
   target.restore();
@@ -103,6 +105,7 @@ function rysujGrupe(x, kropki, g, ksztalt, numery){
     kropki.forEach((kr, i) => {
       const [px, py, r, kat] = kr;
       x.save(); x.translate(px, py); x.rotate(kat);
+      if(kr[7] !== undefined) x.scale(kr[7], kr[8]);
       x.font = '700 ' + (r*2.6).toFixed(2) + 'px Archivo, "Segoe UI Emoji", sans-serif';
       const z = znakPunktu(numery ? numery.get(kr) : i);
       if(obr) x.strokeText(z, 0, 0); else x.fillText(z, 0, 0);
@@ -139,6 +142,35 @@ function rysujLinie(x, linie){
   x.beginPath();
   for(const l of linie) sciezka(x, konturLinii(l));
   if(grubostObrysu() > 0) x.stroke(); else x.fill();
+}
+/* Jak warstwa farby kładzie się na papier: farby mnożeniem (z dwóch robi
+   się trzecia), kolory — zwyczajnie. Znaki według tonu w kolorach poziomów
+   albo w oryginalnych barwach obrazków to kolory, nie farba — chyba że
+   w risografie, gdzie każda warstwa jest farbą. */
+export function mieszanieFarby(ink){
+  if(ink.mieszanie) return ink.mieszanie;
+  const tony = (ink.ksztalt || S.shape) === "tony" && S.inkmode !== "riso" && S.znakiBarwa !== "farba";
+  return tony ? "source-over" : "multiply";
+}
+/* Znaki według tonu: grupy po poziomie i kolorze (znakiWGrupach — te same
+   co w SVG). Poziom bez obrazka rysuje się kształtem z listy, jak zwykły
+   punkt; z obrazkiem — obrazek wpisany w kwadrat 2r, obrócony z punktem. */
+function rysujZnaki(x, g, ink){
+  for(const gr of znakiWGrupach(g.kropki, ink)){
+    if(!gr.znak){ x.fillStyle = x.strokeStyle = gr.kolor; rysujGrupe(x, gr.kropki, g, gr.ksztalt, gr.numery); continue; }
+    const wersje = new Map();
+    for(const kr of gr.kropki){
+      const [px, py, r, kat] = kr, [w, h] = wymiaryZnaku(gr.znak, r, kr);
+      if(w < 0.25 && h < 0.25) continue;
+      const P = rozmiarWersji(Math.max(w, h));
+      let o = wersje.get(P);
+      if(!o) wersje.set(P, o = wersja(gr.znak, gr.kolorObrazka, S.znakiMiesz, P));
+      const c = Math.cos(kat), s = Math.sin(kat);
+      x.setTransform(c, s, -s, c, px, py);
+      x.drawImage(o, -w/2, -h/2, w, h);
+    }
+    x.setTransform(1, 0, 0, 1, 0, 0);
+  }
 }
 /* Punkty i linie z własnym kolorem: grupy po kolorze, linie odcinkami
    jednego koloru (odcinkiBarwne). Znaki zachowują kolejność z całej siatki. */
@@ -227,7 +259,7 @@ export function inkList(){
 }
 /* papier i wszystkie farby, bez ziarna i efektów, na płótnie (W·z)×(H·z) */
 function rysujRaster(ctx, W, H, z){
-  ctx.fillStyle = S.paper; ctx.fillRect(0,0,W*z,H*z);
+  wypelnijTlo(ctx, W, H, z);
   papier(ctx, W, H, z);
   const farby = inkList();
   /* próbki tak gęsto, jak wymaga najdrobniejsza farba (risograf: każda ma własną gęstość) */

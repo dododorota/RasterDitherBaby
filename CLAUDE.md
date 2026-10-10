@@ -322,6 +322,39 @@ z dwukropkiem nie idą do presetu i `wczytaj()` ich nie kasuje; `KONW` dla nich
 ustawia app.js przy pierwszej klatce (`kluczWarstwyTeraz`). Id warstwy, nie
 indeks — kolejność warstw się zmienia.
 
+**Papier w gradiencie** (papier.js): `wypelnijTlo()` na płótnie i `svgTla()`
+w SVG liczą z jednej `geometriaTla()` w pikselach podglądu (×z na płótnie),
+więc SVG to ten sam gradient, nie obrazek. Punkty w `S.papierGrad` (tekst
+JSON, `stopnieTla()` czyta nieufnie). Edytor punktów nie jest w tabelach
+kontrolek — sekcja „Farby i papier" dostaje klucz przez `data-klucze`
+(ogólny mechanizm w `sekcje()`). Przy gradiencie PNG bez opcji
+przezroczystości (ta zamienia piksele w kolorze papieru). Porównując SVG
+z podglądem, odnoś się do papieru jednokolorowego: kółka rastra same dają
+~2,5% różnych pikseli (antyaliasing płótna i SVG).
+
+**Proporcje punktu** (`proporcjePunktu()` w siatki.js): mnożniki sx, sy
+ósmym i dziewiątym elementem punktu (brakujące środkowe dopełnione −1,
+null, −1), ze skrótu położenia przed z. `wyn.rozciag` przełącza rysowanie
+na ścieżki (`sciezkowy`), `obrys()` rozciąga kontury w osiach kształtu;
+obrazki tonów przez `wymiaryZnaku(z, r, kr)`, znaki tekstem przez skalę
+w transformacji. Uwaga, stare: SVG zapisuje znaki (`<text>`) bez kroju,
+a płótno rysuje je Archivo — porównanie pikseli znaków zawsze się rozjedzie.
+
+**Historia startuje od stanu po uruchomieniu** (`utrwalStan()` na końcu
+app.js) — wcześniej pierwszej zmiany nie dało się cofnąć.
+
+**Napis** (`tekst.js`, `dodajTekst` w warstwy.js): warstwa z `typ:"tekst"`
+i ustawieniami w `w.tekst`; obraz warstwy to płótno z `rysujTekst()`,
+podmieniane przez `podmienObraz()` (kasuje maski i kopie robocze liczone
+ze starego). Stopień dobierany tak, żeby dłuższy bok płótna napisu ≈
+2× bok kompozycji — skala 100% to i tak dopasowanie do płótna. Przed
+rysowaniem `zaladujKroj()` (document.fonts.load), inaczej pierwsza klatka
+wychodzi krojem zastępczym. Odstęp liter przez `ctx.letterSpacing`, żeby
+został kerning kroju. Krój z pliku: FontFace z zakresem grubości 1–1000
+(zmienne kroje reagują na grubość). Pole treści: przy pisaniu nie wołaj
+`kompUI()` — ustawia `value` od nowa i gubi kursor; nazwa warstwy
+odświeżana punktowo. Bez obrazu „Dodaj napis” robi `utworzPusta()`.
+
 **Warstwa efektu** (`dodajEfekt` w warstwy.js): `zloz()` przy niej bierze
 dotąd złożone płótno, puszcza przez `uruchomEfekt()` ze stos.js (parametry
 podmieniane w S jak przy kopiach) i nakłada z kryciem i trybem warstwy. Nie ma
@@ -382,6 +415,35 @@ modułu do 0,45); `testy/qr.mjs` pilnuje tego odciskami i własnościami
 standardu, bez zależności. Ruszając koder albo `siatkaQR()`, sprawdź znowu
 dekoderem (jsQR w katalogu tymczasowym, nie w projekcie) i telefonem.
 Kwadraty kodu idą jako `wyn.dodatki` (kontury) obok punktów.
+
+**Znaki według tonu** (kształt `"tony"`): geometria dokłada poziom tonu
+siódmym elementem punktu (`[x,y,r,kąt,id|-1,kolor|null,poziom]`, helper
+`punkt()` w siatki.js — punkty bez poziomu mają dawną krótką postać, więc
+stare kształty co do bitu jak wcześniej). Poziom 0 = cienie. Kształt
+i kolor poziomu w `DEFAULTS` (`znakiS1…16`, `znakiK1…16`, wiersze panelu
+z `panelZnakow()` w app.js); obrazki to materiał w `ZNAKI` (znaki-tonu.js),
+nie w S ani w presecie. Grupowanie punktów (`znakiWGrupach()`) jest jedno
+dla płótna i SVG. Obrazek: przycięty do krycia, wpisany w kwadrat 2r,
+wersje przebarwione w rozmiarach potęg dwójki z pamięcią — bez niej
+skalowanie 512 px do kilku pikseli przy każdym punkcie było wolne.
+Zlewanie znaków nie łączy (zostają punkty), scalanie zachowuje poziom.
+SVG: `S.svgObrazki` (ustawienie zapisu, nie wygląd) — „osadz" (PNG
+w `<symbol>` + `<use>`, wygląda jak podgląd) albo „wektor" (sylwetka z SVG,
+bitmapy pominięte i zgłoszone w komunikacie). SVG ze znaku czyszczony
+(`wyczyscSVG()`): bez skryptów, zdarzeń i odwołań na zewnątrz, bo trafia
+na chwilę do strony. `konturySVG()` jest wspólne z własnym kształtem.
+Podmiana tonów (`podmienTony()`) w geometrii, po scalaniu: skrót położenia
+×4 w pikselach podglądu (nie numeru punktu — w filmie numery się
+przesuwają i układ by migotał), ziarno z `znakiUklad` i okresu
+`klatkaNr/znakiCzas`. Klawisz Q przestawia suwak „Układ" (zdarzenie input),
+więc trafia do historii i klatek kluczowych jak ruch myszą.
+
+**Ruch punktów** (`ruchPunktow()` w siatki.js): czas w sekundach
+z `S.czasKlatki` — ustawiany razem z `klatkaNr` (przyKlatce w app.js,
+zapis w video.js, oba z `klatki[i].t`, więc podgląd = eksport). Pulsowanie
+skaluje r przed zlewaniem (plamy pulsują), obrót dodawany w końcowym map
+geometrii po „obracaj z siatką" — inaczej wyłączenie tej opcji kasowałoby
+obrót. Wszystko neutralne → `null`, geometria co do bitu jak bez ruchu.
 
 **Zaokrąglanie rogów** (`zaokraglij()`): w `obrys()`, więc działa wszędzie,
 gdzie kształt idzie ścieżką; `sciezkowy()` przełącza dawne kształty na
@@ -529,7 +591,7 @@ puść odpowiedni po zmianie w module, który sprawdza: `palety-pliki` →
 palette-files.js, `zip` → zip.js, `efekty` → effects.js, `kontury` →
 contours.js, `szukanie-koloru` → palettes.js, `gif` → gif.js, `mp4` → mp4.js,
 `kolory` → biblioteka palet, tryb jasności i kwantyzacja.js, `siatki` →
-siatki.js i faktura-farby.js, `wycinanie` → wycinanie.js, `algorytmy` →
+siatki.js, faktura-farby.js i gradient papieru (papier.js), `wycinanie` → wycinanie.js, `algorytmy` →
 wszystkie algorytmy dodane po wzorze Dither Boya, `animacja` → animacja.js,
 `korekta` → image.js, głębia i Oklab, `stos` → stos.js i fx.js, `ascii` →
 ascii-znaki.js, `stabilizacja` → stabilizacja dyfuzji w dither-core.js,

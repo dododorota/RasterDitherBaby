@@ -19,6 +19,47 @@ const RODZAJE = {
   makulatura: [0.45, 160,  5, 900]
 };
 
+/* ---------- papier w gradiencie ----------
+   Tło rastra: jeden kolor (S.paper) albo gradient — liniowy pod kątem albo
+   promienisty od środka. Wektorowo z obu stron: na płótnie gradient
+   kontekstu, w SVG <linearGradient>/<radialGradient> o tej samej geometrii
+   (geometriaTla, w pikselach podglądu), więc plik zostaje czystym wektorem.
+   Punkty gradientu w S.papierGrad — tekst JSON [["#rrggbb", 0–100], …],
+   bo przechodzi przez presety; czytany nieufnie (stopnieTla). */
+export const GRADIENT_PAPIERU = [["#fff8e7", 0], ["#ffd3c4", 50], ["#c6d8ff", 100]];
+export const MAKS_STOPNI = 8;
+export function stopnieTla(){
+  let s = null;
+  try{ s = JSON.parse(S.papierGrad || "null"); }catch{ s = null; }
+  if(Array.isArray(s)) s = s.filter(p => Array.isArray(p) && /^#[0-9a-f]{6}$/i.test(p[0]) && typeof p[1] === "number" && isFinite(p[1]))
+                            .slice(0, MAKS_STOPNI).map(([k, p]) => [k.toLowerCase(), Math.max(0, Math.min(100, p))]);
+  if(!Array.isArray(s) || s.length < 2) s = GRADIENT_PAPIERU.map(p => [...p]);
+  return s.map((p, i) => [p, i]).sort((a, b) => a[0][1] - b[0][1] || a[1] - b[1]).map(p => p[0]);
+}
+export const tloGradientowe = () => S.papierTlo === "liniowy" || S.papierTlo === "promienisty";
+/* liniowy: odcinek przez środek kadru pod kątem (0° — od lewej, 90° — od góry),
+   tak długi, żeby rogi dostały skrajne kolory; promienisty — do rogów */
+export function geometriaTla(W, H){
+  if(S.papierTlo === "promienisty") return {r: Math.hypot(W, H)/2, cx: W/2, cy: H/2};
+  const a = (S.papierKat || 0)*Math.PI/180, d = (Math.abs(W*Math.cos(a)) + Math.abs(H*Math.sin(a)))/2;
+  return {x1: W/2 - Math.cos(a)*d, y1: H/2 - Math.sin(a)*d, x2: W/2 + Math.cos(a)*d, y2: H/2 + Math.sin(a)*d};
+}
+export function wypelnijTlo(ctx, W, H, z){
+  if(!tloGradientowe()){ ctx.fillStyle = S.paper; ctx.fillRect(0, 0, W*z, H*z); return; }
+  const g = geometriaTla(W, H);
+  const gr = g.r ? ctx.createRadialGradient(g.cx*z, g.cy*z, 0, g.cx*z, g.cy*z, g.r*z) : ctx.createLinearGradient(g.x1*z, g.y1*z, g.x2*z, g.y2*z);
+  for(const [k, p] of stopnieTla()) gr.addColorStop(p/100, k);
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W*z, H*z);
+}
+/* tło jako SVG: [definicja gradientu albo "", wypełnienie prostokąta] */
+export function svgTla(W, H){
+  if(!tloGradientowe()) return ["", S.paper];
+  const g = geometriaTla(W, H), n = v => Math.round(v*100)/100;
+  const st = stopnieTla().map(([k, p]) => `<stop offset="${n(p/100)}" stop-color="${k}"/>`).join("");
+  return [g.r ? `<radialGradient id="papier" gradientUnits="userSpaceOnUse" cx="${n(g.cx)}" cy="${n(g.cy)}" r="${n(g.r)}">${st}</radialGradient>`
+              : `<linearGradient id="papier" gradientUnits="userSpaceOnUse" x1="${n(g.x1)}" y1="${n(g.y1)}" x2="${n(g.x2)}" y2="${n(g.y2)}">${st}</linearGradient>`, "url(#papier)"];
+}
+
 export function papier(ctx, W, H, z){
   const ust = RODZAJE[S.papierRodzaj], s = (S.papierSila || 0)/100;
   if(!ust || !(s > 0)) return;

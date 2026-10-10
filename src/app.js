@@ -7,12 +7,16 @@ import { czytajPalete, paletaZDanych, domyslnaNazwa, MAX_KOLOROW } from "./palet
 import { przetworzFolder } from "./batch.js";
 import { renderuj, NAZWA_TRYBU } from "./render.js";
 import { K, TRYBY, utworz as utworzKomp, dodaj as dodajWarstwe, usun as usunWarstwe, przesun as przesunWarstwe,
-         zakoncz as zakonczKomp, zloz, trafiona, wytnij, kolorPod, maluj, wyczyscPedzel, kluczWarstwy, dodajEfekt as dodajWarstweEfektu, czyEfekt, wytnijAI } from "./warstwy.js";
+         zakoncz as zakonczKomp, zloz, trafiona, wytnij, kolorPod, maluj, wyczyscPedzel, kluczWarstwy, dodajEfekt as dodajWarstweEfektu, czyEfekt, wytnijAI,
+         utworzPusta, dodajTekst, czyTekst, podmienObraz } from "./warstwy.js";
+import { KROJE, WLASNE, nowyTekst, rysujTekst, zaladujKroj, wczytajKroj, unikalneZnaki, linie as linieNapisu } from "./tekst.js";
 import { tekstAscii, ZESTAWY } from "./ascii.js";
 import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, przelacz as przelaczEfekt, przesun as przesunEfekt,
          baza as bazaEfektu, kopie as kopieEfektow, ustawParametrKopii, czyMoznaDodac } from "./stos.js";
 import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
-import { normalizujKsztalt, biezacyQR } from "./siatki.js";
+import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS } from "./siatki.js";
+import { stopnieTla, tloGradientowe, MAKS_STOPNI } from "./papier.js";
+import { ZNAKI, wczytajZnak, usunZnak, saObrazki, konturySVG, liczbaPoziomow, wczytajObrazek } from "./znaki-tonu.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
 import { fit } from "./image.js";
 import { FAKTURY_TRYB, DAWNE_FAKTURY } from "./fx.js";
@@ -272,6 +276,12 @@ function risoUI(){
   document.querySelector("#superelipsa-opcje").classList.toggle("hidden", !ksz.includes("superelipsa"));
   document.querySelector("#znak-opcje").classList.toggle("hidden", !ksz.includes("znak"));
   document.querySelector("#wlasny-opcje").classList.toggle("hidden", !ksz.includes("wlasny"));
+  document.querySelector("#znaki-opcje").classList.toggle("hidden", !ksz.includes("tony"));
+  document.querySelector("#ruch-puls-opcje").classList.toggle("hidden", !(S.ruchPuls > 0));
+  tloUI();
+  document.querySelector("#ruch-obrot-opcje").classList.toggle("hidden", !S.ruchObrot);
+  document.querySelector("#ruch-animuj").classList.toggle("hidden", !!W.z || !S.img);
+  znakiUI();
   document.querySelector("#znak").value = S.znak;
   document.querySelector("#odkszt-opcje").classList.toggle("hidden", !(S.odksztalcenie > 0));
   document.querySelector("#stipple-opcje").classList.toggle("hidden", S.siatka !== "stipple");
@@ -294,38 +304,141 @@ function risoUI(){
   }
 }
 
+/* ---------- znaki według tonu: wiersz na ton ----------
+   Kształt i kolor tonu to wygląd (znakiS1…16, znakiK1…16 w DEFAULTS), więc
+   idą przez te same tabele co reszta panelu — wiersze powstają tu, przed
+   pierwszym syncUI() i przed zebraniem kluczy sekcji. Obrazek tonu to
+   materiał (znaki-tonu.js): wczytany zastępuje kształt z listy. */
+let tonObrazka = 0;                    /* ton, dla którego otwarto wybór pliku */
+(function panelZnakow(){
+  const lista = document.querySelector("#znaki-lista");
+  const opcje = [...document.querySelector("#shape").options].filter(o => o.value !== "tony" && o.value !== "pasy")
+    .map(o => `<option value="${o.value}">${o.textContent}</option>`).join("");
+  for(let i=1; i<=ZNAKI_MAKS; i++){
+    const w = document.createElement("div"); w.className = "znak-ton"; w.id = "znak-ton" + i;
+    w.innerHTML = `<span class="nr">${i}</span><select id="znakiS${i}" aria-label="Kształt tonu ${i}">${opcje}</select>
+      <input type="color" id="znakiK${i}" value="${DEFAULTS["znakiK" + i]}" aria-label="Kolor tonu ${i}">
+      <button class="btn obr" type="button" aria-label="Obrazek dla tonu ${i}" title="Obrazek dla tonu ${i} (albo przeciągnij plik na wiersz)">↥</button>
+      <button class="btn usun hidden" type="button" aria-label="Usuń obrazek tonu ${i}" title="Usuń obrazek">×</button>`;
+    lista.appendChild(w);
+    LISTY.push("znakiS" + i);
+    KOLORY.push({id: "znakiK" + i, key: "znakiK" + i});
+    w.querySelector(".obr").addEventListener("click", () => { tonObrazka = i - 1; document.querySelector("#znak-plik").click(); });
+    w.querySelector(".usun").addEventListener("click", () => { usunZnak(i - 1); komunikatZnakow(""); znakiUI(); schedule(); });
+    w.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); w.classList.add("over"); });
+    w.addEventListener("dragleave", () => w.classList.remove("over"));
+    w.addEventListener("drop", e => {
+      e.preventDefault(); e.stopPropagation(); w.classList.remove("over");
+      if(e.dataTransfer.files[0]) wczytajObrazekTonu(i - 1, e.dataTransfer.files[0]);
+    });
+  }
+  SUWAKI.push({id: "znakiIle", key: "znakiIle", opis: v => String(v)},
+    {id: "znakiPodmiana", key: "znakiPodmiana", opis: v => v ? v + "%" : "brak"},
+    {id: "znakiZasieg", key: "znakiZasieg", opis: v => v === 1 ? "o 1 ton" : "do " + v + " tonów"},
+    {id: "znakiUklad", key: "znakiUklad", opis: v => String(v)},
+    {id: "znakiCzas", key: "znakiCzas", opis: v => !v ? "stały" : v === 1 ? "każdą klatkę" : v + (v < 5 ? " klatki" : " klatek")});
+  LISTY.push("znakiBarwa", "znakiMiesz");
+})();
+/* ruch punktów (sekcja rastra) — zwykłe suwaki wyglądu, więc też animowalne */
+const sek = v => (v/10).toFixed(1).replace(".", ",") + " s";
+SUWAKI.push({id: "ruchPuls", key: "ruchPuls", opis: v => v ? v + "%" : "brak"},
+  {id: "ruchCykl", key: "ruchCykl", opis: sek},
+  {id: "ruchFala", key: "ruchFala", opis: v => v ? v + "%" : "brak"}, {id: "ruchFalaKat", key: "ruchFalaKat", opis: v => v + "°"},
+  {id: "ruchKat", key: "ruchKat", opis: v => v + "°"},
+  {id: "ruchObrot", key: "ruchObrot", opis: v => v ? v + "°/s" : "brak"},
+  {id: "ruchSkok", key: "ruchSkok", opis: v => v ? v + "°" : "płynnie"}, {id: "ruchPostoj", key: "ruchPostoj", opis: sek},
+  {id: "ruchDrzenie", key: "ruchDrzenie", opis: v => v ? v + "%" : "brak"});
+PTASZKI.push("ruchOdbicie");
+LISTY.push("ruchKrzywa", "papierTlo");
+SUWAKI.push({id: "papierKat", key: "papierKat", opis: v => v + "°"},
+  {id: "punktSzer", key: "punktSzer", opis: v => v + "%"}, {id: "punktWys", key: "punktWys", opis: v => v + "%"},
+  {id: "punktLosSzer", key: "punktLosSzer", opis: v => v ? v + "%" : "brak"}, {id: "punktLosWys", key: "punktLosWys", opis: v => v ? v + "%" : "brak"});
+/* ---------- papier w gradiencie: edytor punktów ----------
+   Punkty to tekst JSON w S.papierGrad (stopnieTla czyta go nieufnie); edytor
+   pisze cały tekst od nowa przy każdej zmianie, więc cofnij / ponów i presety
+   działają jak dla innych kluczy wyglądu. Przebudowa listy tylko przy
+   dodaniu / usunięciu punktu i z tloUI() — przeciąganie suwaka położenia
+   nie może przestawiać wierszy pod palcem. */
+function zapiszStopnie(st){ S.papierGrad = JSON.stringify(st); schedule(); }
+function tloUI(){
+  const grad = tloGradientowe();
+  document.querySelector("#tlo-grad-opcje").classList.toggle("hidden", !grad);
+  document.querySelector("#tlo-kat-opcje").classList.toggle("hidden", S.papierTlo !== "liniowy");
+  if(!grad) return;
+  const st = stopnieTla(), box = document.querySelector("#tlo-stopnie");
+  box.innerHTML = "";
+  st.forEach(([k, p], i) => {
+    const el = document.createElement("div"); el.className = "znak-ton";
+    el.innerHTML = `<input type="color" value="${k}" aria-label="Kolor ${i + 1} gradientu"><input type="range" min="0" max="100" value="${p}" aria-label="Położenie koloru ${i + 1}" style="flex:1 1 auto">` +
+      `<span class="val" style="flex:0 0 38px; text-align:right">${p}%</span><button class="btn usun" type="button" aria-label="Usuń kolor ${i + 1}" title="Usuń kolor"${st.length <= 2 ? " disabled" : ""}>×</button>`;
+    const [kol, suw] = el.querySelectorAll("input");
+    kol.addEventListener("input", () => { st[i][0] = kol.value; zapiszStopnie(st); });
+    suw.addEventListener("input", () => { st[i][1] = +suw.value; el.querySelector(".val").textContent = suw.value + "%"; zapiszStopnie(st); });
+    suw.addEventListener("change", tloUI);   /* po puszczeniu suwaka — kolejność wierszy wg położenia */
+    el.querySelector(".usun").addEventListener("click", () => { if(st.length > 2){ st.splice(i, 1); zapiszStopnie(st); tloUI(); } });
+    box.appendChild(el);
+  });
+  document.querySelector("#tlo-dodaj").disabled = st.length >= MAKS_STOPNI;
+}
+/* nowy punkt w największej przerwie, w kolorze pośrodku */
+document.querySelector("#tlo-dodaj").addEventListener("click", () => {
+  const st = stopnieTla();
+  if(st.length >= MAKS_STOPNI) return;
+  let n = 0; for(let i=1; i<st.length; i++) if(st[i][1] - st[i-1][1] > st[n+1][1] - st[n][1]) n = i - 1;
+  const [a, b] = [hex2rgb(st[n][0]), hex2rgb(st[n+1][0])];
+  st.splice(n + 1, 0, [rgb2hex(a.map((v, j) => Math.round((v + b[j])/2))), Math.round((st[n][1] + st[n+1][1])/2)]);
+  zapiszStopnie(st); tloUI();
+});
+document.querySelector("#ruch-animuj").addEventListener("click", () => document.querySelector("#animuj").click());
+function komunikatZnakow(t){ document.querySelector("#znaki-msg").textContent = t; }
+async function wczytajObrazekTonu(i, f){
+  try{ await wczytajZnak(i, f); komunikatZnakow("Ton " + (i + 1) + ": " + f.name); }
+  catch(e){ komunikatZnakow("Ton " + (i + 1) + ": " + e.message); }
+  znakiUI(); eksportUI(); schedule();
+}
+document.querySelector("#znak-plik").addEventListener("change", e => { if(e.target.files[0]) wczytajObrazekTonu(tonObrazka, e.target.files[0]); e.target.value = ""; });
+document.querySelector("#znaki-usun").addEventListener("click", () => {
+  for(let i=0; i<ZNAKI_MAKS; i++) usunZnak(i);
+  komunikatZnakow(""); znakiUI(); eksportUI(); schedule();
+});
+/* wiersze do liczby tonów, kolory tylko przy „własny kolor każdego tonu",
+   ton z obrazkiem: miniatura zamiast strzałki, lista kształtów wyszarzona */
+function znakiUI(){
+  const n = liczbaPoziomow(), poziom = S.znakiBarwa === "poziom";
+  for(let i=1; i<=ZNAKI_MAKS; i++){
+    const w = document.querySelector("#znak-ton" + i), z = ZNAKI[i - 1], obr = w.querySelector(".obr");
+    w.classList.toggle("hidden", i > n);
+    w.querySelector("input[type=color]").classList.toggle("hidden", !poziom);
+    const sel = w.querySelector("select");
+    sel.disabled = !!z;
+    sel.title = z ? "Ten ton rysuje obrazek " + z.nazwa : "";
+    w.querySelector(".usun").classList.toggle("hidden", !z);
+    obr.textContent = "";
+    if(z){
+      const c = document.createElement("canvas"); c.width = c.height = 36;
+      const s = 36/Math.max(z.obraz.width, z.obraz.height), cw = z.obraz.width*s, ch = z.obraz.height*s;
+      c.getContext("2d").drawImage(z.obraz, (36 - cw)/2, (36 - ch)/2, cw, ch);
+      obr.appendChild(c);
+      obr.title = z.nazwa + " — kliknij, żeby zmienić";
+    } else { obr.textContent = "↥"; obr.title = "Obrazek dla tonu " + i + " (albo przeciągnij plik na wiersz)"; }
+  }
+  document.querySelector("#znaki-podmiana-opcje").classList.toggle("hidden", !(S.znakiPodmiana > 0));
+  document.querySelector("#znaki-czas-opcje").classList.toggle("hidden", !W.z);
+  const sa = saObrazki();
+  document.querySelector("#znakiMiesz-opcje").classList.toggle("hidden", !sa || S.znakiBarwa === "oryginal");
+  document.querySelector("#znaki-usun").classList.toggle("hidden", !sa);
+}
+
 /* Własny kształt: plik SVG wstawiony na chwilę do strony (niewidoczny), żeby
-   przeglądarka sama policzyła geometrię — krzywe, łuki, przekształcenia.
-   Każdy kształt próbkowany po długości (getPointAtLength) w układzie
-   dokumentu (getCTM); skok między próbkami = nowy podkontur (polecenie M). */
+   przeglądarka sama policzyła geometrię — krzywe, łuki, przekształcenia
+   (konturySVG w znaki-tonu.js, wspólne ze znakami według tonu). */
 async function wczytajKsztaltSVG(f){
   const tekst = await f.text();
   const doc = new DOMParser().parseFromString(tekst, "image/svg+xml");
   const svg = doc.querySelector("svg");
   const info = document.querySelector("#wlasny-info");
   if(!svg){ info.textContent = "To nie jest plik SVG."; return; }
-  const box = document.createElement("div");
-  box.style.cssText = "position:absolute; left:-10000px; top:0; width:400px; height:400px; visibility:hidden";
-  const kopia = document.importNode(svg, true);
-  for(const s of kopia.querySelectorAll("script, foreignObject")) s.remove();
-  box.appendChild(kopia); document.body.appendChild(box);
-  const kontury = [];
-  try{
-    for(const el of kopia.querySelectorAll("path, polygon, polyline, rect, circle, ellipse, line")){
-      if(!el.getTotalLength) continue;
-      const L = el.getTotalLength(), m = el.getCTM();
-      if(!(L > 0) || !m) continue;
-      const n = Math.min(4000, Math.max(64, Math.round(L))), krok = L/n;
-      let biezacy = [], pop = null;
-      for(let i=0; i<=n; i++){
-        const p = el.getPointAtLength(Math.min(L, i*krok)), x = m.a*p.x + m.c*p.y + m.e, y = m.b*p.x + m.d*p.y + m.f;
-        if(pop && Math.hypot(x - pop[0], y - pop[1]) > krok*3*Math.hypot(m.a, m.b)){ if(biezacy.length > 2) kontury.push(biezacy); biezacy = []; }
-        biezacy.push([x, y]); pop = [x, y];
-      }
-      if(biezacy.length > 2) kontury.push(biezacy);
-    }
-  } finally { box.remove(); }
-  const k = normalizujKsztalt(kontury);
+  const k = normalizujKsztalt(konturySVG(svg));
   if(!k){ info.textContent = "Nie znalazłam w pliku zamkniętych kształtów."; return; }
   S.ksztaltWlasny = JSON.stringify(k);
   info.textContent = "Kształt: " + f.name + " — " + k.length + " " + (k.length === 1 ? "kontur" : "kontury") + ".";
@@ -718,7 +831,7 @@ $("#g-fx").addEventListener("click", e=>{
    określony: 1-bit, raster drukarski, ASCII. W ASCII tła po prostu nie
    rysujemy; w pozostałych zamieniamy piksele dokładnie w kolorze papieru —
    ziarno i efekty, które go zmieniły, zostają widoczne. */
-const mozePrzezroczyste = () => S.mode !== "dither" || S.pal === "bw";
+const mozePrzezroczyste = () => (S.mode !== "dither" || S.pal === "bw") && !(S.mode === "half" && tloGradientowe());
 function papierPrzezroczysty(){
   const [r, g, b] = hex2rgb(S.paper), d = octx.getImageData(0, 0, out.width, out.height), p = d.data;
   for(let i=0; i<p.length; i+=4) if(p[i] === r && p[i+1] === g && p[i+2] === b) p[i+3] = 0;
@@ -736,6 +849,10 @@ function eksportUI(){
   $("#przezroczyste").checked = !!S.przezroczyste;
   $("#save").textContent = NAPISY[S.fmt] || "Zapisz";
   $("#svg-opcje").classList.toggle("hidden", !(S.fmt==="svg" && S.mode==="dither"));
+  /* znaki według tonu z obrazkami: osadzić je w SVG czy zostawić same wektory */
+  const znaki = S.shape === "tony" || (S.inkmode === "riso" && [1, 2, 3, 4].slice(0, S.risoIle).some(i => S["risoS" + i] === "tony"));
+  $("#svg-znaki-opcje").classList.toggle("hidden", !(S.fmt==="svg" && S.mode==="half" && znaki && saObrazki()));
+  $("#svgObrazki").value = S.svgObrazki;
   $("#wygl-opcje").classList.toggle("hidden", S.wektor!=="kontury");
   $("#wektor").value = S.wektor;
   $("#mp4-opcje").classList.toggle("hidden", S.fmt!=="mp4");
@@ -795,7 +912,7 @@ for(const c of SUWAKI){
     S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
     if(c.key==="glebia") probkiUI();
-    if(c.key==="risoIle" || c.key==="risoLos" || c.key==="tonPowt" || c.key==="tonPrzes" || c.key==="odksztalcenie" || c.key==="scalanie" || c.key==="rozciag" || c.key==="pochyl" || c.key==="qrWersja") risoUI();
+    if(c.key==="risoIle" || c.key==="risoLos" || c.key==="znakiIle" || c.key==="znakiPodmiana" || c.key==="ruchPuls" || c.key==="ruchObrot" || c.key==="tonPowt" || c.key==="tonPrzes" || c.key==="odksztalcenie" || c.key==="scalanie" || c.key==="rozciag" || c.key==="pochyl" || c.key==="qrWersja") risoUI();
     /* parametr już animowany: ruszenie suwaka ustawia klatkę w bieżącym miejscu osi */
     if(W.z && czyAnimowany(c.key)){ ustawKlucz(c.key, czasOd(W.biezaca), +el.value); kluczeUI(); }
     schedule();
@@ -842,7 +959,9 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="sort") efektyUI();
   if(k==="faktura" && FAKTURY_TRYB[S.faktura]){ S.faktTryb = FAKTURY_TRYB[S.faktura]; $("#faktTryb").value = S.faktTryb; }
   if(k==="asciiZestaw" || k==="asciiTryb" || k==="asciiKolor") asciiUI();
-  if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k)) risoUI();
+  if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k) || k==="znakiBarwa" || k==="papierTlo") risoUI();
+  if(k==="papierTlo") eksportUI();
+  if(k==="shape" || /^risoS/.test(k)) eksportUI();
   schedule();
 });
 function koloryUI(){ for(const {id, key} of KOLORY) $("#"+id).value = S[key]; }
@@ -1177,7 +1296,7 @@ function setImage(img, nazwa){
   /* nowy obraz: zapamiętany oryginał sprzed kadrowania już nie dotyczy */
   KADR.oryginal = null; zakonczKadr();
   zamknijWideo();
-  S.klatkaNr = 0;
+  S.klatkaNr = 0; S.czasKlatki = 0;
   komunikatWczytania("");
   pokazObraz(img);
   wideoUI();
@@ -1245,8 +1364,11 @@ function wideoUI(){
   const z = W.z, stop = !!z && z.rodzaj === "stopklatka";
   $("#g-wideo").classList.toggle("hidden", !z);
   $("#os").classList.toggle("hidden", !z);
+  $("#znaki-czas-opcje").classList.toggle("hidden", !z);
   $(".panel").classList.toggle("animacja", !!z);
   $("#animuj").classList.toggle("hidden", !!z || !S.img);
+  $("#ruch-animuj").classList.toggle("hidden", !!z || !S.img);
+  $("#napis").classList.toggle("hidden", !!z || K.aktywna);
   kompUI();
   stage.classList.toggle("z-osia", !!z);
   opcjeFormatu();
@@ -1291,7 +1413,7 @@ function przyciskGraj(){
 }
 /* każda nowa klatka: animowane parametry na tę chwilę, potem przerysowanie */
 przyKlatce(i => {
-  S.klatkaNr = i;
+  S.klatkaNr = i; S.czasKlatki = czasOd(i);
   zastosujAnimacje(S, czasOd(i));
   suwakiAnimowane();
   suwakiWarstwy();
@@ -1389,7 +1511,7 @@ $("#anim-koniec").addEventListener("click", ()=>{
   if(!W.z || W.z.rodzaj !== "stopklatka") return;
   const img = W.z.kanwa;
   zamknijWideo();
-  S.klatkaNr = 0;
+  S.klatkaNr = 0; S.czasKlatki = 0;
   pokazObraz(img);
   wideoUI();
 });
@@ -1434,6 +1556,17 @@ document.addEventListener("keydown", e=>{
   const k = e.key.toLowerCase();
   if(k === "z" && !e.shiftKey){ e.preventDefault(); krokHistorii(-1); }
   else if((k === "z" && e.shiftKey) || k === "y"){ e.preventDefault(); krokHistorii(1); }
+});
+/* Q — następny układ podmiany tonów (jak w Ditherfy); przez suwak, więc
+   trafia do historii i — gdy „Układ" jest animowany — do klatki kluczowej */
+document.addEventListener("keydown", e=>{
+  if(e.key.toLowerCase() !== "q" || e.ctrlKey || e.metaKey || e.altKey || wTrakcie) return;
+  if(e.target.closest("input, select, textarea")) return;
+  const tony = S.shape === "tony" || (S.inkmode === "riso" && [1, 2, 3, 4].slice(0, S.risoIle).some(i => S["risoS" + i] === "tony"));
+  if(S.mode !== "half" || !tony || !(S.znakiPodmiana > 0)) return;
+  const el = $("#znakiUklad");
+  el.value = (+el.value % +el.max) + 1;
+  el.dispatchEvent(new Event("input"));
 });
 document.addEventListener("keydown", e=>{
   if(e.code !== "Space" || !W.z || wTrakcie) return;
@@ -1555,6 +1688,7 @@ function ustawFormat(){
     : "");
 }
 $("#wektor").addEventListener("change", e=>{ S.wektor=e.target.value; eksportUI(); });
+$("#svgObrazki").addEventListener("change", e=>{ S.svgObrazki=e.target.value; });
 $("#jakosc").addEventListener("change", e=>{ S.jakosc=e.target.value; });
 $("#przezroczyste").addEventListener("change", e=>{ S.przezroczyste=e.target.checked; });
 $("#dzwiek").addEventListener("change", e=>{ S.dzwiek=e.target.checked; });
@@ -1658,6 +1792,7 @@ const WL = [["komp-x", "x", v => Math.round(v) + " px"], ["komp-y", "y", v => Ma
 function kompUI(){
   const film = W.z && W.z.rodzaj !== "stopklatka";
   $("#komp-start").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
+  $("#napis").classList.toggle("hidden", K.aktywna || !!W.z);
   kadrUI();
   $("#usun-tlo").classList.toggle("hidden", K.aktywna || !S.img || !!W.z);
   $("#g-warstwy").classList.toggle("hidden", !K.aktywna || film);
@@ -1689,6 +1824,10 @@ function kompUI(){
   const ef = czyEfekt(w);
   $("#komp-efektowe").classList.toggle("hidden", !ef);
   for(const el of document.querySelectorAll("#komp-wlasciwosci .tylko-obraz")) el.classList.toggle("hidden", ef);
+  const napis = czyTekst(w);
+  $("#komp-tekstowe").classList.toggle("hidden", !napis);
+  for(const el of document.querySelectorAll("#komp-wlasciwosci .tylko-zdjecie")) el.classList.toggle("hidden", napis);
+  if(napis) napisUI(w);
   if(ef) kartaWarstwyEfektu(w);
   $("#komp-x").max = K.szer; $("#komp-y").max = K.wys;
   for(const [id, k, opis] of WL){ $("#" + id).value = w[k]; $("#" + id + "-v").textContent = opis(w[k]); }
@@ -1816,6 +1955,7 @@ function rozmiarPlotna(sz, wy){
   sz = Math.max(16, Math.min(4000, Math.round(sz) || K.szer)); wy = Math.max(16, Math.min(4000, Math.round(wy) || K.wys));
   for(const w of K.warstwy){ w.x *= sz/K.szer; w.y *= wy/K.wys; }
   K.szer = sz; K.wys = wy;
+  for(const w of K.warstwy) if(czyTekst(w)) przerysujNapis(w);
   kompUI(); odswiezKomp();
 }
 $("#komp-format").addEventListener("change", e=>{ if(e.target.value){ const [a, b] = e.target.value.split("x").map(Number); rozmiarPlotna(a, b); } });
@@ -1834,6 +1974,117 @@ $("#komp-plik").addEventListener("change", async e=>{
   kompUI(); odswiezKomp();
 });
 /* koniec: kompozycja zostaje jako zwykły obraz (spłaszczona), warstwy znikają */
+/* ---------- napis ----------
+   Warstwa kompozycji rysowana z ustawień napisu (tekst.js). „Dodaj napis"
+   bez kompozycji zaczyna ją: z bieżącego obrazu (napis na nim) albo z pustego
+   białego płótna. Każda zmiana ustawień rysuje obraz warstwy od nowa; kontrolki
+   piszą do w.tekst, nie do S — napis to materiał, nie wygląd. */
+const NAPIS_SUWAKI = [["napis-interlinia", "interlinia", v => v + "%"], ["napis-odstep", "odstep", v => v > 0 ? "+" + v : String(v)],
+  ["napis-szer", "szer", v => v + "%"], ["napis-wys", "wys", v => v + "%"], ["napis-rozmycie", "rozmycie", v => v ? v + "%" : "brak"]];
+const bokNapisu = () => Math.min(4096, 2*Math.max(K.szer, K.wys));
+const napisWybrany = () => { const w = K.aktywna && K.warstwy[K.wybrana]; return czyTekst(w) ? w : null; };
+async function przerysujNapis(w){
+  await zaladujKroj(w.tekst);
+  if(!K.warstwy.includes(w)) return;
+  podmienObraz(w, rysujTekst(w.tekst, bokNapisu()));
+  if(w.nazwaAuto){
+    w.nazwa = "Napis: " + (linieNapisu(w.tekst).join(" ").trim().slice(0, 24) || "pusty");
+    /* sama nazwa w liście — pełne kompUI ustawiłoby pole treści od nowa i zgubiło kursor */
+    const el = $('#komp-lista .warstwa[data-i="' + K.warstwy.indexOf(w) + '"] .nazwa');
+    if(el) el.textContent = w.nazwa;
+  }
+  odswiezKomp();
+}
+async function dodajNapis(){
+  if(wTrakcie) return;
+  if(W.z){ komunikatWczytania("Napis dodasz do zdjęcia albo pustego płótna — najpierw zamknij film lub animację."); return; }
+  if(!K.aktywna){
+    KADR.oryginal = null; zakonczKadr();
+    if(S.img) utworzKomp(S.img, nazwaObrazu);
+    else { utworzPusta(1920, 1080, "#ffffff"); nazwaObrazu = "napis"; }
+  }
+  const t = nowyTekst();
+  await zaladujKroj(t);
+  const w = dodajTekst(rysujTekst(t, bokNapisu()), t);
+  w.nazwa = "Napis: " + t.tresc;
+  komunikatWczytania("");
+  pokazObraz(zloz());
+  kompUI(); wideoUI();
+  $("#napis-tresc").focus(); $("#napis-tresc").select();
+}
+$("#napis").addEventListener("click", dodajNapis);
+$("#komp-dodaj-napis").addEventListener("click", dodajNapis);
+/* panel napisu z ustawień zaznaczonej warstwy */
+function napisUI(w){
+  const t = w.tekst, sel = $("#napis-kroj");
+  sel.innerHTML = KROJE.map(([v, n]) => `<option value="${v}">${n}</option>`).join("");
+  if(WLASNE.length){
+    const g = document.createElement("optgroup"); g.label = "Wczytane";
+    for(const k of WLASNE){ const o = document.createElement("option"); o.value = k.rodzina; o.textContent = k.nazwa; g.appendChild(o); }
+    sel.appendChild(g);
+  }
+  sel.value = t.kroj;
+  $("#napis-tresc").value = t.tresc;
+  $("#napis-waga").value = String(t.waga); $("#napis-wyrownanie").value = t.wyrownanie;
+  $("#napis-kolor").value = t.kolor; $("#napis-kursywa").checked = t.kursywa;
+  for(const [id, k, opis] of NAPIS_SUWAKI){ $("#" + id).value = t[k]; $("#" + id + "-v").textContent = opis(t[k]); }
+  napisZnakiUI(w);
+}
+/* obrazki zamiast liter: wiersz na każdą literę napisu (jak tony znaków) */
+let literaObrazka = "";
+function napisZnakiUI(w){
+  const box = $("#napis-znaki"), znaki = unikalneZnaki(w.tekst);
+  box.innerHTML = "";
+  for(const z of znaki){
+    const o = w.tekst.obrazki[z], el = document.createElement("div");
+    el.className = "znak-ton";
+    el.innerHTML = `<span class="litera"></span><button class="btn obr" type="button"></button><button class="btn usun${o ? "" : " hidden"}" type="button" title="Usuń obrazek">×</button>`;
+    el.querySelector(".litera").textContent = z;
+    el.querySelector(".usun").setAttribute("aria-label", "Usuń obrazek litery " + z);
+    const b = el.querySelector(".obr");
+    b.setAttribute("aria-label", "Obrazek zamiast litery " + z);
+    if(o){
+      const c = document.createElement("canvas"); c.width = c.height = 36;
+      const s = 36/Math.max(o.obraz.width, o.obraz.height);
+      c.getContext("2d").drawImage(o.obraz, (36 - o.obraz.width*s)/2, (36 - o.obraz.height*s)/2, o.obraz.width*s, o.obraz.height*s);
+      b.append(c, document.createTextNode(o.nazwa)); b.title = o.nazwa + " — kliknij, żeby zmienić";
+    } else { b.textContent = "↥ obrazek"; b.title = "Obrazek zamiast litery " + z + " (albo przeciągnij plik na wiersz)"; }
+    b.addEventListener("click", () => { literaObrazka = z; $("#napis-znak-plik").click(); });
+    el.querySelector(".usun").addEventListener("click", () => { delete w.tekst.obrazki[z]; napisZnakiUI(w); przerysujNapis(w); });
+    el.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); el.classList.add("over"); });
+    el.addEventListener("dragleave", () => el.classList.remove("over"));
+    el.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); el.classList.remove("over"); if(e.dataTransfer.files[0]) obrazekLitery(w, z, e.dataTransfer.files[0]); });
+    box.appendChild(el);
+  }
+}
+async function obrazekLitery(w, z, f){
+  try{ const {obraz} = await wczytajObrazek(f); w.tekst.obrazki[z] = {obraz, nazwa: f.name}; $("#napis-msg").textContent = ""; }
+  catch(e){ $("#napis-msg").textContent = "„" + z + "”: " + e.message; return; }
+  napisZnakiUI(w); przerysujNapis(w);
+}
+$("#napis-znak-plik").addEventListener("change", e => { const w = napisWybrany(), f = e.target.files[0]; e.target.value = ""; if(w && f) obrazekLitery(w, literaObrazka, f); });
+$("#napis-tresc").addEventListener("input", e => {
+  const w = napisWybrany(); if(!w) return;
+  w.tekst.tresc = linieNapisu({tresc: e.target.value}).join("\n");
+  napisZnakiUI(w); przerysujNapis(w);
+});
+for(const [id, k, zamiana] of [["napis-kroj", "kroj", v => v], ["napis-waga", "waga", v => +v], ["napis-wyrownanie", "wyrownanie", v => v]])
+  $("#" + id).addEventListener("change", e => { const w = napisWybrany(); if(!w) return; w.tekst[k] = zamiana(e.target.value); przerysujNapis(w); });
+$("#napis-kolor").addEventListener("input", e => { const w = napisWybrany(); if(!w) return; w.tekst.kolor = e.target.value; przerysujNapis(w); });
+$("#napis-kursywa").addEventListener("change", e => { const w = napisWybrany(); if(!w) return; w.tekst.kursywa = e.target.checked; przerysujNapis(w); });
+for(const [id, k, opis] of NAPIS_SUWAKI) $("#" + id).addEventListener("input", e => {
+  const w = napisWybrany(); if(!w) return;
+  w.tekst[k] = +e.target.value; $("#" + id + "-v").textContent = opis(w.tekst[k]);
+  przerysujNapis(w);
+});
+$("#napis-kroj-wczytaj").addEventListener("click", () => $("#napis-kroj-plik").click());
+$("#napis-kroj-plik").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  const w = napisWybrany(); if(!w || !f) return;
+  try{ w.tekst.kroj = await wczytajKroj(f); $("#napis-msg").textContent = "Krój: " + f.name; }
+  catch(err){ $("#napis-msg").textContent = err.message; return; }
+  napisUI(w); przerysujNapis(w);
+});
 $("#komp-koniec").addEventListener("click", ()=>{
   pedzel = ""; pedzelUI();
   const plaski = document.createElement("canvas"); plaski.width = K.szer; plaski.height = K.wys;
@@ -2132,7 +2383,9 @@ function znacznikiSekcji(){
   try{ otwarte = JSON.parse(localStorage.getItem("raster.sekcje") || "{}") || {}; }catch{ otwarte = {}; }
   SEKCJE = [];
   for(const d of document.querySelectorAll("details.pod")){
-    const klucze = [...new Set([...d.querySelectorAll("input[id], select[id]")].map(el => opisKontrolki(el.id)).filter(o => o && o.key in DEFAULTS).map(o => o.key))];
+    /* data-klucze: klucze bez kontrolki z tabel (np. punkty gradientu papieru — własny edytor) */
+    const klucze = [...new Set([...[...d.querySelectorAll("input[id], select[id]")].map(el => opisKontrolki(el.id)).filter(o => o && o.key in DEFAULTS).map(o => o.key),
+                                ...(d.dataset.klucze || "").split(",").filter(k => k in DEFAULTS)])];
     SEKCJE.push([d, klucze]);
     if(d.dataset.pod in otwarte) d.open = !!otwarte[d.dataset.pod];
     d.addEventListener("toggle", () => {
@@ -2147,3 +2400,6 @@ function znacznikiSekcji(){
   }
   znacznikiSekcji();
 })();
+/* stan startowy jako pierwszy krok historii — bez niego pierwszej zmiany
+   po uruchomieniu (albo tuż po wczytaniu obrazu) nie dało się cofnąć */
+utrwalStan();
