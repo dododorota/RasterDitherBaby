@@ -175,12 +175,17 @@ export function warstwaPoswiaty(p, w, h, jednostka){
   const sigma = Math.max(0.5, S.glowR/2*jednostka);
   const B = new Float32Array(L);
   rozmyj(B, w, h, Math.max(0.5, sigma/4));
-  rozmyj(L, w, h, sigma);
+  /* rozciągnięcie (z wtyczki VFX Dither 1.6, Glow Stretch): daleka warstwa
+     węższa w poprzek i wyciągnięta w smugę wzdłuż kąta, trochę mocniejsza,
+     bo światło rozkłada się na dłuższy pas. Przy 0 — poświata jak dawniej. */
+  const st = Math.max(0, Math.min(1, (S.glowRozciag || 0)/100));
+  rozmyj(L, w, h, sigma*(1 - 0.75*st));
+  if(st > 0){ const a = (S.glowKatSmugi || 0)*Math.PI/180; rozmyjKierunkowo(L, w, h, Math.cos(a), Math.sin(a), sigma*st*40); }
   /* szeroka warstwa rozkłada to samo światło na pole rosnące z σ², więc bez
      wzmocnienia rosnącego z promieniem duży promień znaczył po prostu słabiej;
      pierwiastek, a nie σ wprost, bo duże jasne plamy i tak by się przepaliły.
      Liczone w pikselach obrazu (σ/jednostka), żeby pikselizacja nie zmieniała siły. */
-  const daleka = DALEKA*Math.sqrt(Math.max(1, sigma/jednostka/2));
+  const daleka = DALEKA*Math.sqrt(Math.max(1, sigma/jednostka/2))*(1 + 0.5*st);
   for(let o=0; o<n*4; o+=4){
     L[o]   = B[o]*BLISKA   + L[o]*daleka;
     L[o+1] = B[o+1]*BLISKA + L[o+1]*daleka;
@@ -194,7 +199,72 @@ export function nalozPoswiate(P, L){
     for(let c=0; c<3; c++){ const a = P[o+c]; P[o+c] = a + L[o+c]*(1 - a/255); }
   }
 }
+/* Rozmycie wzdłuż kierunku (ux, uy), jak directionalBlur we wtyczce: przebiegi
+   ¼·½·¼ z przesunięciem 1, 2, 4… ≤ dł/2 (σ ≈ 0,27·dł, koszt rośnie z log dł).
+   Odczyt dwuliniowy; poza obrazem ciemno, więc smuga gaśnie przy brzegu.
+   Przesunięcie jest to samo dla każdego piksela, więc wagi liczone raz. */
+function rozmyjKierunkowo(L, w, h, ux, uy, dl){
+  const s = new Float32Array(L.length);
+  for(let o=1; o <= dl*0.5; o *= 2){
+    s.set(L);
+    const probki = [-1, 1].map(zn => { const dx = zn*ux*o, dy = zn*uy*o, ix = Math.floor(dx), iy = Math.floor(dy);
+      return {ix, iy, fx: dx - ix, fy: dy - iy}; });
+    for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+      const q = (y*w + x)*4;
+      let r = 0, g = 0, b = 0;
+      for(const {ix, iy, fx, fy} of probki){
+        for(let j=0; j<2; j++){
+          const yy = y + iy + j, wy = j ? fy : 1 - fy;
+          if(yy < 0 || yy >= h || wy === 0) continue;
+          for(let i=0; i<2; i++){
+            const xx = x + ix + i, wg = (i ? fx : 1 - fx)*wy;
+            if(xx < 0 || xx >= w || wg === 0) continue;
+            const z = (yy*w + xx)*4;
+            r += s[z]*wg; g += s[z+1]*wg; b += s[z+2]*wg;
+          }
+        }
+      }
+      L[q] = 0.5*s[q] + 0.25*r; L[q+1] = 0.5*s[q+1] + 0.25*g; L[q+2] = 0.5*s[q+2] + 0.25*b;
+    }
+  }
+}
 export function poswiata(P, w, h, jednostka){
   const L = warstwaPoswiaty(P, w, h, jednostka);
   if(L) nalozPoswiate(P, L);
+}
+
+/* ---------- ekran CRT ----------
+   Z wtyczki VFX Dither 1.6 (crtPass): ciemne linie kineskopu i pionowa maska
+   z pasków R, G, B. Linia ma ciemność 0,5 − 0,5·cos(2π(u − ¾)) uśrednioną po
+   pikselu (przy okresie 2 px wiersze na zmianę ciemne i jasne), a w jasnych
+   miejscach jest cieńsza — jak szersza plamka wiązki na kineskopie. Maska
+   zabiera ok. ⅔ światła z każdego kanału, więc część jasności wraca
+   (× (1 + 0,6·maska)).
+   Odstęp w pikselach bufora — w ditheringu to piksele ditheringu, jak we
+   wtyczce, więc linie trzymają się dużych pikseli. z — powiększenie (raster
+   zapisywany w skali): linie i paski w tych samych miejscach co w podglądzie,
+   tylko liczone na drobniejszych pikselach (gładsze), jak we wtyczce. */
+const ciemnoscLinii = (u0, u1) => { const k = 2*Math.PI; return 0.5 - 0.5*(Math.sin(k*(u1 - 0.75)) - Math.sin(k*(u0 - 0.75)))/(k*(u1 - u0)); };
+/* część przedziału u0..u1 (u w szerokościach trójki) leżąca w tercji c (0 = R, 1 = G, 2 = B) */
+const pokrycieMaski = (u0, u1, c) => {
+  const F = u => { const fl = Math.floor(u); return fl/3 + Math.min(1/3, Math.max(0, u - fl - c/3)); };
+  return (F(u1) - F(u0))/(u1 - u0);
+};
+export function ekranCRT(p, w, h, z = 1){
+  const linie = Math.max(0, Math.min(1, S.crtLinie/100)), maska = Math.max(0, Math.min(1, S.crtMaska/100));
+  if(!(linie > 0) && !(maska > 0)) return;
+  const P = Math.max(1, S.crtOdstep)*z, T = Math.max(3, S.crtOdstep)*z, komp = 1 + 0.6*maska;
+  const M = new Float32Array(w*3).fill(1);
+  if(maska > 0) for(let x=0; x<w; x++){
+    const v0 = x/T;
+    for(let c=0; c<3; c++) M[x*3 + c] = (1 - maska*(1 - pokrycieMaski(v0, v0 + 1/T, c)))*komp;
+  }
+  for(let y=0; y<h; y++){
+    const u0 = y/P, dk = linie*ciemnoscLinii(u0, u0 + 1/P);
+    for(let x=0, o=y*w*4; x<w; x++, o+=4){
+      if(p[o+3] === 0) continue;
+      const g = 1 - dk*(1 - 0.6*(0.299*p[o] + 0.587*p[o+1] + 0.114*p[o+2])/255);
+      p[o] = p[o]*g*M[x*3]; p[o+1] = p[o+1]*g*M[x*3+1]; p[o+2] = p[o+2]*g*M[x*3+2];
+    }
+  }
 }

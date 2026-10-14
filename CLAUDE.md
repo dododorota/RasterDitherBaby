@@ -373,8 +373,25 @@ Czas: `S.czasKlatki × stylPredkosc/10`; jasności smug losowane co klatkę
 tylko przy `czasSzum > 0` (odpowiednik Animate). Sprawdzone: 232 kombinacje
 dawnych algorytmów co do bajtu jak przed zmianą, worker = główny wątek dla
 5 stylów × 2 trybów. Topografia to warstwice, nie ton — testuj ją liczbą
-linii, nie udziałem bieli. Etap 2 (Checkers, Block Tone, Radial Burst) —
-czeka na wtyczkę.
+linii, nie udziałem bieli. Etap 2 (VFX Dither 1.5) przeniesiony 14.10:
+`wzorSzachownicy()` (BAYER4 na kratkach 2/4/8), `wzorKwadratow()`,
+`wzorPromieni()` (środek `stylSrodekX/Y` — procent połowy kadru, jak
+`srodekX/Y` rastra); wszystkie przez `progowy()`, lista `WZORY_LINII`.
+Kwadraty tonu rosną skokami co pierścień pikseli — ton testuj na dużym
+odstępie.
+
+**Ekran CRT i poświata w smugę** (VFX Dither 1.6, 14.10): `ekranCRT()`
+w effects.js — efekt „crt” w stosie (stos.js), w kolejności „po staremu”
+między „rgb” a „glow” (tak jak we wtyczce: RGB Split → CRT → Glow). Odstęp
+w pikselach bufora (w ditheringu = piksele ditheringu); w `wSkali` linie
+i maska liczone na dużym obrazie z okresem × z — w tych samych miejscach,
+ale gładsze, więc to nie jest dokładne powiększenie małego. Poświata:
+`glowRozciag` zwęża daleką warstwę (σ·(1 − 0,75·s)) i rozmywa ją
+`rozmyjKierunkowo()` (przebiegi ¼·½·¼, przesunięcia 1, 2, 4… ≤ 20·σ·s),
+siła × (1 + 0,5·s); przy 0 obraz co do bajtu jak dawniej. RGB Split
+i palety z Dither 1.6 nie przeniesione — apka ma przesunięcie RGB
+i palety CGA / Pico-8 / monitory / sepię. Resolution (Raster 1.8–1.9)
+nie dotyczy apki: obraz zawsze jest zmniejszany do `MAX` = 1400.
 
 **Historia startuje od stanu po uruchomieniu** (`utrwalStan()` na końcu
 app.js) — wcześniej pierwszej zmiany nie dało się cofnąć.
@@ -431,9 +448,17 @@ wersją). Rysowanie kształtów: `rysujGrupe()` w halftone.js i `svgGrupa()`
 w vector.js — te same rozgałęzienia (znak / ścieżka / wprost); `sciezkowy()`
 decyduje, kiedy dawne kształty idą konturami (obrys).
 
-**Stippling, zlewanie, scalanie** (siatki.js): stippling (`stipple()`) to
-Lloyd na siatce próbek, z pamięcią ostatnich 4 układów (klucz: odcisk
+**Stippling, zlewanie, scalanie** (siatki.js): stippling (`stipple()`) od
+14.10 jak we wtyczce VFX Raster 1.7: gęstość ((k − 0,06)/0,94)^1,5 · 1,2 na
+pole kropki o promieniu `promienStipple()` = 0,3 · komórka · wielkość, na
+drobnej siatce co pół odstępu kropek (próbki przez `pokrycie()`); start
+z progu `niebieskiSzum()` + drganie ze skrótu, potem `S.stipIter` kroków
+Lloyda (domyślnie 5). Najbliższa kropka: pierścienie kubełków, przerwane,
+gdy najbliższa jest bliżej niż pr·komórka (dokładne, ~4× szybciej niż
+przeglądanie zawsze 5×5). Pamięć ostatnich 4 układów (klucz: odcisk
 pokrycia + parametry) — bez niej każdy render liczył relaksację od nowa.
+Słonecznik (`slonecznik`, gałąź `OD_SRODKA` w `kropki()`): spirala Vogela,
+c = komórka/√π; linie na nim — proste jak na kwadratowej.
 Zlewanie (`metaballe()`) zamienia punkty na `wyn.plamy` (kontury); warstwica
 liczona na −f^(−1/w), nie na f (na f plamy wychodziły o 70% za duże), a
 promień poprawiony o stratę pola wielokąta wpisanego (test: pojedynczy punkt

@@ -19,7 +19,7 @@ export const DEFAULTS = {
   siatka:"kwadrat", srodekX:0, srodekY:0, fala:0, gladkosc:0, liniaMin:0, liniaMax:100,
   szorstkosc:0, rozlanie:0, plamy:0, dziury:0, walek:0,
   chmury:0, nierowne:0, drganie:0, postrzep:0, rasterGrad:"g-zachod", gradOdwroc:false, rozmiarJasnosc:false,
-  pustePrzezr:true, zaokraglenie:0, qrTekst:"https://", qrKorekcja:"H", qrWersja:1, qrRozmiar:80, scalanie:0, zlewanie:0, stipIter:8, ksztaltWlasny:"", obrotZSiatka:true, boki:5, wciecie:0, wykladnik:40, znak:"★", obrys:0,
+  pustePrzezr:true, zaokraglenie:0, qrTekst:"https://", qrKorekcja:"H", qrWersja:1, qrRozmiar:80, scalanie:0, zlewanie:0, stipIter:5, ksztaltWlasny:"", obrotZSiatka:true, boki:5, wciecie:0, wykladnik:40, znak:"★", obrys:0,
   tonPowt:1, tonRodzaj:"pila", tonPrzes:0, odpowiedz:100, minPunkt:0,
   odksztalcenie:0, odksztSkala:60, odksztPrzes:0, rozciag:100, pochyl:0, papierRodzaj:"gladki", papierSila:50,
   risoIle:2, risoLos:0, risoWariant:1,
@@ -42,7 +42,8 @@ export const DEFAULTS = {
   papierTlo:"kolor", papierKat:90, papierGrad:"",
   punktSzer:100, punktWys:100, punktLosSzer:0, punktLosWys:0,
   fakturaSkala:100, fakturaCzas:false, ekspozycja:0, czern:0, biel:255,
-  stylOdstep:8, stylKat:0, stylWygiecie:50, stylFala:0, stylFalaDl:24, stylSila:60, stylPredkosc:0
+  stylOdstep:8, stylKat:0, stylWygiecie:50, stylFala:0, stylFalaDl:24, stylSila:60, stylPredkosc:0, stylSrodekX:0, stylSrodekY:0,
+  crtLinie:0, crtOdstep:2, crtMaska:0, glowRozciag:0, glowKatSmugi:0
 };
 /* Znaki według tonu: kształt i kolor każdego z 16 poziomów (od cieni do
    świateł) — część wyglądu, więc w presecie. Obrazki poziomów to materiał

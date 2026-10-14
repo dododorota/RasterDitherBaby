@@ -4,6 +4,17 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — 14 października 2026
+
+**Przeniesione funkcje z wtyczek VFX (Dither 1.6, Raster 1.9, Riso 1.6)**
+— punkt 29 niżej, checklista w `PLAN-WTYCZKI.md` (wszystko odhaczone,
+poza commitem — robi go użytkowniczka). Apka jest teraz w zgodzie
+z wtyczką do commitu wtyczki **`152ebcc`** (2026-10-14 00:53); przy
+następnym przenoszeniu: `git diff 152ebcc -- raster-dither` w folderze
+`AE Plugin Land`. Do obejrzenia przez użytkowniczkę — lista „Z 14.10”
+w „Do przetestowania na koniec”. Sekcja niżej (11.10) to stan sprzed
+tego planu; jej punkty 1, 3 i 4 z „Do zrobienia” są już zrobione.
+
 ## Wznowienie — handover z 11 października 2026 (wieczór)
 
 Ta sekcja jest na początek następnej sesji. Pod nią — dawny stan i pełna
@@ -270,6 +281,20 @@ to przegląd bez zmian w kodzie.
     dwubarwny jako 1-bit według jasności). Etap 2 (wzory) jeszcze nie gotowy
     we wtyczce. Przy okazji: „Przywróć całą korektę” zeruje też ekspozycję
     i punkty czerni / bieli.
+29. **Reszta z wtyczek VFX: Dither 1.5–1.6, Raster 1.7 / Riso 1.4** (14.10)
+    — plan z checklistą w `PLAN-WTYCZKI.md`. Wzory jak Dither Boy:
+    szachownica mała / średnia / duża, kwadraty tonu, promienie od środka
+    (suwaki środka), presety Szachownica i Promienie. Efekt „Ekran CRT”
+    (linie kineskopu, maska RGB) w stosie efektów, poświata z rozciągnięciem
+    w smugę i kątem, presety Monitor CRT, Zielony terminal, RGB glitch,
+    Smuga światła, CRT na jasne. Raster: stippling od nowa (kropki 0,3 ·
+    komórka, jasne miejsca czyste, start z niebieskiego szumu, domyślnie
+    5 kroków wyrównania) i siatka słonecznik. Nie przeniesione: Resolution
+    (apka ma MAX 1400), RGB Split i palety (apka ma odpowiedniki).
+    Sprawdzone: 306 dawnych wyników ditheringu (34 algorytmy × palety
+    i efekty) co do bajtu jak przed zmianą, wszystkie testy w Node
+    i `przegladarka.mjs` (worker = główny wątek dla nowych wzorów i CRT),
+    zrzuty na portrecie z testów wtyczki.
 
 ## Do przetestowania na koniec
 
@@ -296,6 +321,12 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
 - **Style linii** (Waveform, Topografia, Fala, Pęknięcia, Smugi) na
   prawdziwych zdjęciach i w filmie z prędkością linii — porównanie
   z wtyczką VFX Dither na tym samym kadrze.
+- **Z 14.10:** wzory (szachownica, kwadraty tonu, promienie) i presety CRT
+  na jasnym i na ciemnym zdjęciu; siła linii CRT i maski w zapisie PNG
+  w powiększeniu (linie są tam gładsze niż w podglądzie); smuga poświaty
+  w filmie; nowy stippling — czy gęstość i wielkość kropek się podobają
+  (dawniej kropki były większe i było ich mniej), także w risografie;
+  słonecznik z różnymi kształtami punktu.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 

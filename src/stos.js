@@ -13,11 +13,12 @@
    parametry podmieniamy w S (zKopia), potem wracają — funkcje efektów nic
    o kopiach nie wiedzą, a worker dostaje ten sam tekst w migawce S.
 
-   Pusty S.efekty to „po staremu": sortowanie, przesunięcie RGB i poświata
-   w tej stałej kolejności, o ile mają niezerowe parametry. Dzięki temu presety
+   Pusty S.efekty to „po staremu": sortowanie, przesunięcie RGB, ekran CRT
+   i poświata w tej stałej kolejności (CRT przed poświatą, jak we wtyczce
+   VFX Dither — presety CRT z niego korzystają), o ile mają niezerowe parametry. Dzięki temu presety
    i pliki sprzed stosu dają obraz co do bajtu taki jak wcześniej. */
 import { S, DEFAULTS } from "./state.js";
-import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, warstwaPoswiaty, nalozPoswiate } from "./effects.js";
+import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, warstwaPoswiaty, nalozPoswiate, ekranCRT } from "./effects.js";
 import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka } from "./fx.js";
 
 /* id, nazwa w panelu, klucze w S, ustawienia przy dodaniu, czy zostaje w SVG
@@ -26,10 +27,11 @@ import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka } from ".
 export const EFEKTY = [
   {id:"sort",    nazwa:"Sortowanie pikseli", klucze:["sort","sortOd","sortDo"], start:{sort:"poziomo"}, wektor:true},
   {id:"rgb",     nazwa:"Przesunięcie RGB",   klucze:["rgb","rgbKat"], start:{rgb:6}, wektor:true},
+  {id:"crt",     nazwa:"Ekran CRT",          klucze:["crtLinie","crtOdstep","crtMaska"], start:{crtLinie:60}},
   {id:"chrom",   nazwa:"Aberracja chromatyczna", klucze:["chrom"], start:{chrom:12}},
   {id:"jpeg",    nazwa:"JPEG glitch",        klucze:["jpegJakosc","jpegGlitch","jpegZiarno"], start:{jpegJakosc:12, jpegGlitch:30}},
   {id:"tint",    nazwa:"Zabarwienie",        klucze:["tint","tintKolor","tintTryb"], start:{tint:70}},
-  {id:"glow",    nazwa:"Poświata",           klucze:["glow","glowR","glowProg","glowZrodlo","glowKolor"], start:{glow:90}},
+  {id:"glow",    nazwa:"Poświata",           klucze:["glow","glowR","glowProg","glowZrodlo","glowKolor","glowRozciag","glowKatSmugi"], start:{glow:90}},
   {id:"gwiazdy", nazwa:"Gwiazdki",           klucze:["gwiazdy","gwProg","gwRamiona","gwDlugosc","gwKat"], start:{gwiazdy:120}},
   {id:"faktura", nazwa:"Faktura",            klucze:["faktura","faktSkala","faktTryb","faktKrycie"], start:{faktura:"papier"}},
   {id:"post",    nazwa:"Obróbka końcowa",    klucze:["postJas","postKon","postNas","winieta","postZiarno"], start:{winieta:45}},
@@ -72,6 +74,7 @@ function zKopia(inst, fn, kp){
 /* czy efekt przy bieżących parametrach w ogóle coś zmienia */
 const DZIALA = {
   sort: () => S.sort !== "brak", rgb: () => S.rgb > 0, glow: () => S.glow > 0,
+  crt: () => S.crtLinie > 0 || S.crtMaska > 0,
   chrom: () => S.chrom > 0, jpeg: () => true, tint: () => S.tint > 0, gwiazdy: () => S.gwiazdy > 0,
   faktura: () => S.faktura !== "brak" && S.faktKrycie > 0,
   post: () => !!(S.postJas || S.postKon || S.postNas || S.winieta || S.postZiarno),
@@ -81,7 +84,7 @@ const DZIALA = {
 /* [{id, widoczny}] w kolejności stosu */
 export function lista(){
   if(!S.efekty){
-    return ["sort", "rgb", "glow"].filter(id => DZIALA[id]()).map(id => ({id, widoczny: true}));
+    return ["sort", "rgb", "crt", "glow"].filter(id => DZIALA[id]()).map(id => ({id, widoczny: true}));
   }
   const wyn = [], byly = new Set();
   for(const kawalek of String(S.efekty).split(",")){
@@ -161,6 +164,7 @@ function naBuforze(id, p, w, h, jednostka){
   if(id === "sort"){ const perm = permutacjaSortu(p, w, h); if(perm) zastosujPermutacje(p, perm, w, h, 1); }
   else if(id === "rgb"){ const [dx, dy] = przesuniecieRGB(jednostka); przesunRGB(p, w, h, dx, dy); }
   else if(id === "glow"){ const L = warstwaPoswiaty(p, w, h, jednostka); if(L) nalozPoswiate(p, L); }
+  else if(id === "crt") ekranCRT(p, w, h, 1);
   else if(id === "gwiazdy"){ const L = warstwaGwiazd(p, w, h, jednostka); if(L) nalozPoswiate(p, L); }
   else if(id === "chrom") aberracja(p, w, h);
   else if(id === "jpeg") jpeg(p, w, h);
@@ -195,6 +199,8 @@ function wSkali(id, duzy, maly, W, H, z){
   } else if(id === "glow" || id === "gwiazdy"){
     const L = id === "glow" ? warstwaPoswiaty(maly, W, H, 1) : warstwaGwiazd(maly, W, H, 1);
     if(L){ nalozPoswiate(duzy, jeden ? L : powiekszGladko(L, W, H, z)); if(!jeden) nalozPoswiate(maly, L); }
+  } else if(id === "crt"){
+    ekranCRT(duzy, OW, OH, z); if(!jeden) ekranCRT(maly, W, H, 1);
   } else if(id === "chrom"){
     aberracja(duzy, OW, OH); if(!jeden) aberracja(maly, W, H);
   } else if(id === "tint"){

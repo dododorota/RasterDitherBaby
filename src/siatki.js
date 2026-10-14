@@ -16,6 +16,7 @@
 import { S } from "./state.js";
 import { skrot } from "./fx.js";
 import { kodQR } from "./qr.js";
+import { niebieskiSzum } from "./kernels.js";
 
 /* pokrycie farby w punkcie podglądu — najbliższa próbka, jak w collectScreen().
    Przezroczysty piksel (PNG z alfą, kompozycja z przezroczystym tłem) to
@@ -270,8 +271,9 @@ function kropki(smp, W, H, ink, u){
   const out = [], cell = u.cell, maxR = 0.564*cell*u.dot, a = ink.ang*Math.PI/180, ca = Math.cos(a), sa = Math.sin(a);
   const off = ink.off || [0, 0];
   /* punkt stipplingu: ton jest w gęstości punktów, więc rozmiar stały
-     (nierówność, drganie i postrzępienie działają jak przy siatce) */
-  const rStaly = 0.564*cell*u.dot*0.85;
+     (nierówność, drganie i postrzępienie działają jak przy siatce) — ten sam
+     promień, z którego stipple() liczy gęstość */
+  const rStaly = promienStipple(u);
   const dodajStaly = (px, py, kat) => {
     if(u.odk) [px, py] = przesuniecie(px, py, u);
     if(px < -cell || py < -cell || px > W + cell || py > H + cell) return;
@@ -358,10 +360,21 @@ function kropki(smp, W, H, ink, u){
         zapas -= d;
       }
     }
-  } else if(u.siatka === "okregi" || u.siatka === "spirala" || u.siatka === "promienie"){
+  } else if(OD_SRODKA.includes(u.siatka)){
     const cx = W/2 + u.sx*W/2 + off[0], cy = H/2 + u.sy*H/2 + off[1];
     const maks = Math.max(Math.hypot(cx, cy), Math.hypot(W - cx, cy), Math.hypot(cx, H - cy), Math.hypot(W - cx, H - cy)) + cell;
-    if(u.siatka === "promienie"){
+    if(u.siatka === "slonecznik"){
+      /* słonecznik — pestki w spirali Vogela (z wtyczki VFX Raster 1.7):
+         punkt i w r = c·√(i + ½), kąt i·złoty kąt + kąt farby; c = komórka/√π,
+         więc na punkt przypada pole komórki jak na kwadratowej. Łuki widać
+         w całym kadrze — spirala Archimedesa już kilka zwojów od środka
+         wygląda jak okręgi. Punkt obrócony stycznie. */
+      const c = cell/Math.sqrt(Math.PI), zloty = Math.PI*(3 - Math.sqrt(5)), n = Math.ceil(maks*maks/(c*c));
+      for(let i=0; i<n; i++){
+        const r = c*Math.sqrt(i + 0.5), f = i*zloty + a;
+        dodaj(cx + r*Math.cos(f), cy + r*Math.sin(f), f + Math.PI/2);
+      }
+    } else if(u.siatka === "promienie"){
       /* punkty co komórkę wzdłuż promieni; w poprzek odstęp rośnie z
          odległością, więc pole punktu mnożone przez ten odstęp */
       const n = promienie(maks, cell);
@@ -510,6 +523,9 @@ function linie(smp, W, H, ink, u){
   return {linie: out};
 }
 
+/* siatki ze środkiem (suwaki środka X / Y); linie na słoneczniku — proste,
+   jak na kwadratowej (linie() go nie wymienia) */
+export const OD_SRODKA = ["okregi", "spirala", "promienie", "slonecznik"];
 /* liczba promieni: odstęp równy komórce w połowie zasięgu */
 const promienie = (maks, cell) => Math.max(8, Math.round(Math.PI*maks/cell));
 
@@ -870,54 +886,68 @@ export function izolinia(f, sw, sh, krok, x0, y0, prog){
 }
 
 /* ---------- stippling ----------
-   Ważone diagramy Woronoja (Secord, „Weighted Voronoi Stippling", NPAR 2002):
-   punkty losowane z gęstością proporcjonalną do pokrycia, potem kilka
-   przebiegów relaksacji Lloyda — każdy punkt przesuwa się do środka ciężkości
-   (ważonego pokryciem) swojego obszaru, więc punkty rozkładają się równo, bez
-   kratki i bez zlepków. Liczba punktów: na pełną czerń jeden na komórkę².
-   Losowanie ze skrótu — ten sam obraz przy każdym renderze; wynik w pamięci
+   Rysunek piórkiem z kropek (z wtyczki VFX Raster 1.7 / Riso 1.4). Kropki
+   jednej wielkości (promień 0,3 · komórka · wielkość punktu), ton z ich
+   gęstości: do 6% pokrycia nic — jasne miejsca czyste jak na rysunku — dalej
+   krzywa ^1,5, a w czerni kropki lekko zachodzą (×1,2 pola). Gęstość liczona
+   na drobnej siatce próbek co pół średniego odstępu kropek.
+   Start z progu niebieskiego szumu 64×64: próbka staje się kropką, gdy próg
+   jest niższy niż jej gęstość, z drganiem ±½ próbki ze skrótu — punkty od razu
+   rozłożone równo, bez grudek. Potem ważona relaksacja Lloyda (Secord,
+   „Weighted Voronoi Stippling", NPAR 2002): każdy punkt idzie do środka
+   ciężkości swojego obszaru. Suwak „wyrównanie rozkładu” to liczba kroków
+   (wtyczka: 5). Wcześniej: losowanie z odrzucaniem i Lloyd na próbkach rastra
+   — kropki zbijały się w grudki i sznurki, a białe tło było pełne kropek.
+   Bez losowości — ten sam obraz przy każdym renderze; wynik w pamięci
    (ostatnie 4 układy), bo relaksacja trwa do kilkuset ms, a większość zmian
    w panelu (kolor papieru, kształt) układu punktów nie zmienia. */
+const promienStipple = u => Math.max(0.6, 0.3*u.cell*u.dot);
 const pamiecStipple = new Map();
 function stipple(smp, W, H, ink, u){
-  const {sw, sh, step, d} = smp, n = sw*sh, iter = Math.max(0, Math.min(30, S.stipIter ?? 8));
-  /* pokrycie próbek (z przezroczystością jak pokrycie()) */
-  const k = new Float64Array(n);
-  let suma = 0, odcisk = 0;
-  for(let i=0; i<n; i++){
-    const a = d[i*4 + 3], v = ink.cov(d[i*4], d[i*4 + 1], d[i*4 + 2]);
-    k[i] = Math.min(1, Math.max(0, a === 255 || a === undefined || S.pustePrzezr === false ? v : v*a/255));
-    suma += k[i];
-    odcisk = (odcisk*31 + Math.round(k[i]*255)) >>> 0;
+  const iter = Math.max(0, Math.min(30, S.stipIter ?? 5));
+  const r0 = promienStipple(u), poleKropki = Math.PI*r0*r0, g = Math.max(1, Math.sqrt(poleKropki)*0.5);
+  const gw = Math.max(1, Math.ceil(W/g)), gh = Math.max(1, Math.ceil(H/g)), n = gw*gh;
+  /* oczekiwana liczba kropek na próbkę (pole g²) */
+  const dens = new Float64Array(n);
+  let odcisk = 0;
+  for(let j=0; j<gh; j++) for(let i=0; i<gw; i++){
+    const k = Math.min(1, Math.max(0, pokrycie(smp, ink.cov, (i + 0.5)*g, (j + 0.5)*g)));
+    dens[j*gw + i] = k <= 0.06 ? 0 : Math.pow((k - 0.06)/0.94, 1.5)*1.2*g*g/poleKropki;
+    odcisk = (odcisk*31 + Math.round(k*255)) >>> 0;
   }
-  const klucz = [sw, sh, step, W, H, u.cell, iter, u.ziarno, odcisk].join(",");
+  const klucz = [gw, gh, g, W, H, iter, u.ziarno, odcisk].join(",");
   if(pamiecStipple.has(klucz)) return pamiecStipple.get(klucz);
-  const N = Math.round(suma*step*step/(u.cell*u.cell));
-  /* losowanie z odrzucaniem: kandydat w losowym miejscu, przyjęty z prawdopodobieństwem pokrycia */
-  const px = new Float64Array(N), py = new Float64Array(N);
-  for(let i=0, proba=0; i<N && proba < N*60; proba++){
-    const x = skrot(proba, 1, u.ziarno + 401)*W, y = skrot(proba, 2, u.ziarno + 401)*H;
-    const sx = Math.min(sw - 1, Math.floor(x/step)), sy = Math.min(sh - 1, Math.floor(y/step));
-    if(skrot(proba, 3, u.ziarno + 401) < k[sy*sw + sx]){ px[i] = x; py[i] = y; i++; }
+  /* start: próg z niebieskiego szumu (≤ 0,29 przy kroku = pół odstępu), przyklejony do siatki próbek */
+  const bn = niebieskiSzum(), ziarno = u.ziarno + 401, sx0 = [], sy0 = [];
+  for(let j=0; j<gh; j++) for(let i=0; i<gw; i++){
+    const d = dens[j*gw + i];
+    if(d <= 0 || (bn[j & 63][i & 63] + 0.5)/4096 >= d) continue;
+    const id = j*92821 + i;
+    sx0.push((i + 0.5 + skrot(id, 1, ziarno) - 0.5)*g);
+    sy0.push((j + 0.5 + skrot(id, 2, ziarno) - 0.5)*g);
   }
-  /* Lloyd: przypisanie próbek do najbliższego punktu przez kubełki co komórkę */
+  const N = sx0.length, px = Float64Array.from(sx0), py = Float64Array.from(sy0);
+  /* Lloyd: każda próbka do najbliższej kropki (kubełki co komórkę), kropka do środka ciężkości */
   const B = u.cell, bw = Math.ceil(W/B) + 1, bh = Math.ceil(H/B) + 1;
-  const sx = new Float64Array(N), sy = new Float64Array(N), sw8 = new Float64Array(N);
-  for(let it=0; it<iter; it++){
+  const ax = new Float64Array(N), ay = new Float64Array(N), aw = new Float64Array(N);
+  for(let it=0; it<iter && N > 0; it++){
     const glowa = new Int32Array(bw*bh).fill(-1), nast = new Int32Array(N);
     for(let i=0; i<N; i++){
       const b = Math.min(bh - 1, Math.max(0, Math.floor(py[i]/B)))*bw + Math.min(bw - 1, Math.max(0, Math.floor(px[i]/B)));
       nast[i] = glowa[b]; glowa[b] = i;
     }
-    sx.fill(0); sy.fill(0); sw8.fill(0);
-    for(let j=0; j<sh; j++) for(let i=0; i<sw; i++){
-      const wgt = k[j*sw + i];
+    ax.fill(0); ay.fill(0); aw.fill(0);
+    for(let j=0; j<gh; j++) for(let i=0; i<gw; i++){
+      const wgt = dens[j*gw + i];
       if(wgt <= 0) continue;
-      const x = (i + 0.5)*step, y = (j + 0.5)*step, bx = Math.floor(x/B), by = Math.floor(y/B);
+      const x = (i + 0.5)*g, y = (j + 0.5)*g, bx = Math.floor(x/B), by = Math.floor(y/B);
+      /* pierścienie kubełków coraz dalej; kropki spoza kwadratu pr są dalej
+         niż pr·B, więc można przerwać, gdy najbliższa jest bliżej */
       let best = -1, bd = Infinity;
-      for(let pr=1; pr<=4 && (best < 0 || pr <= 2); pr++){
+      for(let pr=1; pr<=4 && (best < 0 || bd > pr*pr*B*B); pr++){
         for(let yy = by - pr; yy <= by + pr; yy++) for(let xx = bx - pr; xx <= bx + pr; xx++){
           if(xx < 0 || yy < 0 || xx >= bw || yy >= bh) continue;
+          if(pr > 1 && Math.abs(xx - bx) < pr && Math.abs(yy - by) < pr) continue;     /* środek już przejrzany */
           for(let q = glowa[yy*bw + xx]; q >= 0; q = nast[q]){
             const dx = px[q] - x, dy = py[q] - y, dd = dx*dx + dy*dy;
             if(dd < bd){ bd = dd; best = q; }
@@ -925,9 +955,9 @@ function stipple(smp, W, H, ink, u){
         }
       }
       if(best < 0) continue;
-      sx[best] += x*wgt; sy[best] += y*wgt; sw8[best] += wgt;
+      ax[best] += x*wgt; ay[best] += y*wgt; aw[best] += wgt;
     }
-    for(let i=0; i<N; i++) if(sw8[i] > 0){ px[i] = sx[i]/sw8[i]; py[i] = sy[i]/sw8[i]; }
+    for(let i=0; i<N; i++) if(aw[i] > 0){ px[i] = ax[i]/aw[i]; py[i] = ay[i]/aw[i]; }
   }
   const wyn = Array.from({length: N}, (_, i) => [px[i], py[i]]);
   if(pamiecStipple.size >= 4) pamiecStipple.delete(pamiecStipple.keys().next().value);

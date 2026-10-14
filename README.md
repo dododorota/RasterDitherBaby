@@ -121,7 +121,7 @@ src/faktura-farby.js szorstkość, rozlanie, plamy i dziury farby
 src/wycinanie.js  usuwanie tła po kolorze (maska), bez DOM-u
 src/papier.js     faktura papieru pod farbą w rastrze
 src/qr.js         koder kodów QR (do siatki QR w rastrze), bez DOM-u
-src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata
+src/effects.js    efekty po rastrze: sortowanie pikseli, przesunięcie RGB, poświata, ekran CRT
 src/vector.js     eksport SVG — scalanie prostokątów i emisja kształtów
 src/znaki-tonu.js obrazki tonów (materiał): wczytywanie, przebarwianie, grupy znaków
 src/tekst.js      napis jako obraz warstwy: układ wierszy, kroje z plików, obrazki zamiast liter
@@ -161,10 +161,12 @@ funkcją `ditherPixels()`, więc wynik jest co do bajtu ten sam.
 - **Siatka** — kwadratowa (klasyczna), heksagonalna (punkty w trójkątach,
   równe odstępy we wszystkich kierunkach), trójkątna (punkty w trójkątach
   na przemian w górę i w dół — trójkątny kształt składa się w mozaikę),
-  **stippling** (punkty jednej wielkości rozłożone gęstością — ważone
+  **stippling** (rysunek piórkiem: kropki jednej wielkości rozłożone
+  gęstością, jasne miejsca czyste; start z niebieskiego szumu i ważone
   diagramy Woronoja, Secord 2002; suwak wyrównania rozkładu), koncentryczne
-  okręgi, spirala, promienie (słońce) albo „wzdłuż kształtu"; okręgi, spirala i promienie od
-  środka przesuniętego suwakami.
+  okręgi, spirala, **słonecznik** (pestki w spirali Vogela — łuki widać
+  w całym kadrze), promienie (słońce) albo „wzdłuż kształtu"; okręgi,
+  spirala, słonecznik i promienie od środka przesuniętego suwakami.
 - **Wzdłuż kształtu** — równe linie pod kątem farby, które obraz wygina:
   zaginają się wokół form i zagęszczają na krawędziach, jak rytowane linie
   obchodzące policzek. Siłę ustawia „Odkształcenie", gładkość upraszcza
@@ -398,7 +400,14 @@ Poza klasyką dyfuzji błędu i Bayerem:
   fala i jej długość, siła stylu, prędkość linii (płyną w filmie i po „Animuj
   obraz”). Długości w pikselach ditheringu — rosną z pikselizacją. Presety:
   CRT, Topo neon, Fala, Pęknięcia, Smugi. Na jasnych zdjęciach linie
-  wypełniają kadr — pomaga negatyw albo niższa ekspozycja.
+  wypełniają kadr — pomaga negatyw albo niższa ekspozycja (preset *CRT na
+  jasne*).
+- **Wzory — jak Dither Boy** (z wtyczki VFX Dither 1.5): **Szachownica**
+  mała / średnia / duża — Bayer 4×4 na kratkach 2 / 4 / 8 px, w półtonie
+  szachownica kwadratów; **Kwadraty tonu** — kwadratowy punkt w komórce
+  (odstęp i kąt z suwaków linii); **Promienie od środka** — promienie
+  skręcane jasnością, środek z suwaków, prędkość je obraca. Presety:
+  Szachownica, Promienie.
 
 - **Ostromukhov — zmienne wagi** (SIGGRAPH 2001). Wagi rozprowadzania błędu
   zależą od jasności piksela, z tabeli autora — mniej regularnych „robaków"
@@ -558,7 +567,13 @@ ustawienia; animować da się tylko pierwszą. „Zmienności w czasie" kopiowa�
 nie da.
 
 Stare presety i pliki (sprzed stosu) dostają kolejność sortowanie →
-przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
+przesunięcie RGB → ekran CRT → poświata, czyli dokładnie ten obraz co
+wcześniej (CRT jest w nich wyłączony).
+
+- **Ekran CRT** (z wtyczki VFX Dither 1.6) — ciemne linie kineskopu,
+  w jasnych miejscach cieńsze, i maska z pionowych pasków R, G, B. Odstęp
+  linii w ditheringu liczy się w dużych pikselach. Presety ditheringu:
+  *Monitor CRT*, *Zielony terminal*, *RGB glitch*.
 
 - **Aberracja chromatyczna** — czerwień i błękit rozjeżdżają się promieniście
   od środka, jak w tanim obiektywie.
@@ -602,7 +617,8 @@ przesunięcie RGB → poświata, czyli dokładnie ten obraz co wcześniej.
   trybem „screen" (tylko rozjaśnia). *Promień* to zasięg halo, *Świeci powyżej
   jasności* — od jakiej jasności piksel zaczyna świecić. Siła ponad 100%
   przepala halo do bieli. Halo ma dwie warstwy: jasny rdzeń tuż przy świecącym
-  miejscu i szeroką mgiełkę. Najlepiej wychodzi na ciemnych zdjęciach i filmach;
+  miejscu i szeroką mgiełkę. *Rozciągnięcie w smugę* wyciąga mgiełkę w pas
+  pod wybranym kątem (preset *Smuga światła*). Najlepiej wychodzi na ciemnych zdjęciach i filmach;
   na jasnych trzeba podnieść próg. Tworzy kolory spoza palety, więc GIF
   z poświatą idzie przez redukcję kolorów.
 

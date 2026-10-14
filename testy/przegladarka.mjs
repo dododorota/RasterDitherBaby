@@ -356,7 +356,11 @@ try{
       {pal: "g-poswiata", mapa: "jasnosc", algo: "floyd", glow: 120, glowR: 20, glowProg: 30},
       {pal: "pico8", mapa: "kolor", algo: "atkinson", glow: 80, sort: "poziomo", rgb: 4},
       {pal: "bw", mapa: "jasnosc", algo: "bayer8", pix: 3, glow: 60, glowR: 40},
-      {pal: "g-termo", mapa: "jasnosc", algo: "jjn", serp: false, thr: 20, str: 0.8}
+      {pal: "g-termo", mapa: "jasnosc", algo: "jjn", serp: false, thr: 20, str: 0.8},
+      {pal: "bw", mapa: "jasnosc", algo: "promienie", pix: 2, stylSrodekX: 30, stylWygiecie: 80},
+      {pal: "pico8", mapa: "kolor", algo: "szachownica2"},
+      {pal: "g-termo", mapa: "jasnosc", algo: "kwadraty", stylKat: 30, stylOdstep: 12},
+      {pal: "m-zielony", mapa: "jasnosc", algo: "atkinson", crtLinie: 60, crtMaska: 30, glow: 80, glowRozciag: 50, glowKatSmugi: 30}
     ]){
       for(const k of LOOK) S[k] = DEFAULTS[k];
       Object.assign(S, ust);

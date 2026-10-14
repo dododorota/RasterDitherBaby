@@ -259,5 +259,57 @@ console.log("--- style linii (z wtyczki VFX Dither 1.4) ---");
   sprawdz(Math.abs(biale(pk) - 140/255) < 0.03, `pęknięcia przy sile 37%: ton zachowany (${(biale(pk)*100).toFixed(1)}%)`);
 }
 
+console.log("--- wzory jak Dither Boy (z wtyczki VFX Dither 1.5) ---");
+{
+  const W = 160, H = 120;
+  const obraz = f => { const p = new Uint8ClampedArray(W*H*4); for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const o=(y*W+x)*4, v = f(x, y); p[o]=p[o+1]=p[o+2]=v; p[o+3]=255; } return p; };
+  const biale = p => { let s = 0; for(let i=0;i<p.length;i+=4) s += p[i] > 127 ? 1 : 0; return s/(p.length/4); };
+  const kolumnyBiel = p => { const k = []; for(let x0=0; x0<W; x0+=32){ let s = 0, n = 0; for(let y=0;y<H;y++) for(let x=x0;x<x0+32;x++){ s += p[(y*W+x)*4] > 127 ? 1 : 0; n++; } k.push(s/n); } return k; };
+  const WZ = ["szachownica1", "szachownica2", "szachownica3", "kwadraty", "promienie"];
+  for(const algo of WZ) for(const mapa of ["jasnosc", "kolor"]){
+    ustaw({algo, pal: "bw", mapa, ink: "#000000", paper: "#ffffff"});
+    const a = obraz(x => Math.round(x*255/(W-1))); ditherPixels(a, W, H);
+    const b = obraz(x => Math.round(x*255/(W-1))); ditherPixels(b, W, H);
+    const tylko2 = (() => { for(let i=0;i<a.length;i+=4) if(!((a[i]===0&&a[i+1]===0&&a[i+2]===0) || (a[i]===255&&a[i+1]===255&&a[i+2]===255))) return false; return true; })();
+    const k = kolumnyBiel(a), rosnie = k.every((v, i) => !i || v >= k[i-1] - 0.06) && k[k.length-1] - k[0] > 0.4;
+    sprawdz(tylko2 && a.every((v, i) => v === b[i]) && rosnie, `${algo} (${mapa}): tylko kolory palety, powtarzalnie, jaśniej — więcej bieli (${k.map(v => v.toFixed(2)).join(" ")})`);
+  }
+  /* ton na płaskiej szarości i czysta czerń / biel */
+  for(const algo of WZ){
+    /* kwadrat rośnie skokami co pierścień pikseli (przy odstępie 8: 4, 16, 36 z 64),
+       więc ton sprawdzamy na dużym odstępie, gdzie skoki są drobne */
+    ustaw({algo, pal: "bw", mapa: "jasnosc", stylOdstep: algo === "kwadraty" ? 40 : 8});
+    const sz = obraz(() => 96), cz = obraz(() => 0), bi = obraz(() => 255);
+    ditherPixels(sz, W, H); ditherPixels(cz, W, H); ditherPixels(bi, W, H);
+    /* promienie przy środku zbiegają się — tolerancja większa */
+    const tol = algo === "promienie" ? 0.06 : 0.03;
+    sprawdz(Math.abs(biale(sz) - 96/255) < tol && biale(cz) === 0 && biale(bi) === 1,
+            `${algo}: szarość 96 → ${(biale(sz)*100).toFixed(1)}% bieli (oczekiwane ${(96/255*100).toFixed(1)}%), czerń czarna, biel biała`);
+  }
+  /* szachownica w półtonie: kwadraty n×n na przemian */
+  for(const [algo, n] of [["szachownica1", 2], ["szachownica2", 4], ["szachownica3", 8]]){
+    ustaw({algo, pal: "bw", mapa: "jasnosc"});
+    const p = obraz(() => 128); ditherPixels(p, W, H);
+    let dobrze = true;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++) if((p[(y*W+x)*4] > 127) !== (((Math.floor(x/n) + Math.floor(y/n)) & 1) === 1)) dobrze = false;
+    sprawdz(dobrze, `${algo}: w półtonie szachownica kwadratów ${n}×${n}`);
+  }
+  /* kwadraty: obrót o 90° to ta sama siatka */
+  const kw = kat => { ustaw({algo: "kwadraty", pal: "bw", mapa: "jasnosc", stylKat: kat, stylOdstep: 10}); const p = obraz(() => 100); ditherPixels(p, W, H); return p; };
+  const k0 = kw(0), k45 = kw(45);
+  sprawdz(k0.some((v, i) => v !== k45[i]), "kwadraty: kąt obraca siatkę");
+  /* promienie: środek przesuwa wzór, prędkość obraca, po pełnej sekundzie przy 1/s wraca */
+  const pr = (o, t) => { ustaw(Object.assign({algo: "promienie", pal: "bw", mapa: "jasnosc"}, o)); S.czasKlatki = t || 0; const p = obraz(() => 110); ditherPixels(p, W, H); S.czasKlatki = 0; return p; };
+  const p0 = pr({}), pS = pr({stylSrodekX: 50}), r0 = pr({stylPredkosc: 10}, 0), r1 = pr({stylPredkosc: 10}, 0.3), r2 = pr({stylPredkosc: 10}, 1);
+  sprawdz(p0.some((v, i) => v !== pS[i]), "promienie: środek przesuwa wzór");
+  sprawdz(r0.some((v, i) => v !== r1[i]) && r0.every((v, i) => v === r2[i]), "promienie: prędkość obraca, po pełnym okresie wracają");
+  /* liczba promieni na okręgu o promieniu 40 px przy odstępie 8: round(2π·64/8) = 50 */
+  ustaw({algo: "promienie", pal: "bw", mapa: "jasnosc", stylOdstep: 8, stylWygiecie: 0});
+  const pp = obraz(() => 128); ditherPixels(pp, W, H);
+  const okrag = Array.from({length: 2000}, (_, i) => { const a = i/2000*2*Math.PI; return pp[(Math.round(60 + 40*Math.sin(a))*W + Math.round(80 + 40*Math.cos(a)))*4] > 127 ? 1 : 0; });
+  const ile = okrag.filter((v, i) => v && !okrag[(i + 1999) % 2000]).length;
+  sprawdz(Math.abs(ile - 50) <= 2, `promienie: ${ile} promieni przy odstępie 8 (oczekiwane 50)`);
+}
+
 console.log("\nBŁĘDÓW:", bledy);
 process.exitCode = bledy ? 1 : 0;

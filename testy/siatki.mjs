@@ -42,7 +42,7 @@ for(const [ang, off, z] of [[45, [0, 0], 1], [15, [2.3, -1.1], 3], [72, [0, 0], 
 }
 
 console.log("--- zapis w skali = dokładne powiększenie ---");
-for(const siatka of ["kwadrat", "heks", "okregi", "spirala", "promienie", "warstwice"]) for(const ksztalt of ["circle", "pasy"]){
+for(const siatka of ["kwadrat", "heks", "okregi", "spirala", "promienie", "slonecznik", "warstwice"]) for(const ksztalt of ["circle", "pasy"]){
   ustaw({cell: 8, siatka, shape: ksztalt, fala: 60, srodekX: 20, srodekY: -30, gladkosc: 40, liniaMin: 10, liniaMax: 120});
   const ink = {ang: 20, cov, off: [1.5, -2], obrot: 2.5};
   const g1 = geometria(gradient, W, H, ink, 1), g3 = geometria(gradient, W, H, ink, 3);
@@ -62,6 +62,17 @@ console.log("--- układ siatek ---");
   ustaw({cell: 10, siatka: "okregi"});
   const o = geometria(pelny, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
   sprawdz(o.every(p => { const r = Math.hypot(p[0] - W/2, p[1] - H/2); return Math.abs(r/10 - Math.round(r/10)) < 1e-9; }), "okręgi: każdy punkt na okręgu o promieniu k·komórka");
+  /* słonecznik: na punkt pole komórki (w kole o promieniu 50 — π·50²/100 punktów), środek z suwaków */
+  ustaw({cell: 10, siatka: "slonecznik"});
+  const s = geometria(pelny, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
+  const wKole = s.filter(p => Math.hypot(p[0] - W/2, p[1] - H/2) < 50).length;
+  sprawdz(Math.abs(wKole - Math.PI*2500/100) <= 2, `słonecznik: w kole r=50 ${wKole} punktów (≈${(Math.PI*25).toFixed(1)} — pole komórki na punkt)`);
+  ustaw({cell: 10, siatka: "slonecznik", srodekX: 50});
+  const s2 = geometria(pelny, W, H, {ang: 0, cov, off: [0, 0]}, 1).kropki;
+  const najblizszy = kr => kr.reduce((m, p) => Math.hypot(p[0] - 150, p[1] - H/2) < Math.hypot(m[0] - 150, m[1] - H/2) ? p : m);
+  /* pierwsza pestka leży c·√½ ≈ 4 px od środka */
+  const odl = Math.hypot(najblizszy(s2)[0] - 150, najblizszy(s2)[1] - H/2);
+  sprawdz(Math.abs(odl - 10/Math.sqrt(Math.PI)*Math.sqrt(0.5)) < 1e-9, `słonecznik: środek przesunięty suwakiem (x = 150, pierwsza pestka ${odl.toFixed(2)} px od niego)`);
 }
 
 console.log("--- raster liniowy ---");
@@ -285,14 +296,20 @@ console.log("--- stippling ---");
   const szary = v => probki(W, H, 4, () => v);
   ustaw({cell: 8, siatka: "stipple"});
   const n25 = geometria(szary(191), W, H, ink, 1).kropki.length, n75 = geometria(szary(64), W, H, ink, 1).kropki.length;
-  const oczek = c => W*H*c/64;
+  /* gęstość jak we wtyczce VFX Raster 1.7: ((k − 0,06)/0,94)^1,5 · 1,2 na pole kropki o promieniu 0,3·komórka */
+  const oczek = c => W*H*Math.pow((c - 0.06)/0.94, 1.5)*1.2/(Math.PI*(0.3*8)**2);
   sprawdz(Math.abs(n25/oczek(cov(191,191,191)) - 1) < 0.08 && Math.abs(n75/oczek(cov(64,64,64)) - 1) < 0.08,
           `liczba punktów z tonu: 25% → ${n25} (≈${oczek(cov(191,191,191)).toFixed(0)}), 75% → ${n75} (≈${oczek(cov(64,64,64)).toFixed(0)})`);
+  const jasne = geometria(szary(242), W, H, ink, 1).kropki.length, bialy = geometria(szary(255), W, H, ink, 1).kropki.length;
+  sprawdz(jasne === 0 && bialy === 0, `jasne miejsca czyste: pokrycie 5% → ${jasne} kropek, biel → ${bialy}`);
+  const r = geometria(szary(64), W, H, ink, 1).kropki.map(p => p[2]);
+  sprawdz(r.every(v => Math.abs(v - 0.3*8) < 1e-9), `kropki jednej wielkości (promień ${r[0]} = 0,3 · komórka)`);
   const minOdl = kr => { const w = kr.filter(p => p[0] > 20 && p[0] < W - 20 && p[1] > 20 && p[1] < H - 20); let m = 0;
     for(const p of w){ let d = Infinity; for(const q of kr) if(q !== p) d = Math.min(d, Math.hypot(p[0]-q[0], p[1]-q[1])); m += d; } return m/w.length; };
   ustaw({cell: 8, siatka: "stipple", stipIter: 0}); const los = minOdl(geometria(szary(128), W, H, ink, 1).kropki);
   ustaw({cell: 8, siatka: "stipple", stipIter: 12}); const rown = minOdl(geometria(szary(128), W, H, ink, 1).kropki);
-  sprawdz(rown > los*1.3, `Lloyd rozsuwa punkty: średni najbliższy sąsiad ${los.toFixed(2)} → ${rown.toFixed(2)} px`);
+  /* start z niebieskiego szumu jest już równy, więc Lloyd tylko dociąga */
+  sprawdz(rown > los*1.08, `Lloyd rozsuwa punkty: średni najbliższy sąsiad ${los.toFixed(2)} → ${rown.toFixed(2)} px`);
   const s1 = geometria(gradient, W, H, ink, 1).kropki, s3 = geometria(gradient, W, H, ink, 3).kropki, s1b = geometria(gradient, W, H, ink, 1).kropki;
   sprawdz(JSON.stringify(s1) === JSON.stringify(s1b) && s1.length === s3.length && s1.every((p, i) => Math.abs(p[0]*3 - s3[i][0]) < 1e-9 && Math.abs(p[2]*3 - s3[i][2]) < 1e-9),
           `powtarzalnie i z=3 dokładnie ×3 (${s1.length} punktów)`);

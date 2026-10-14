@@ -43,7 +43,7 @@ export function ditherPixels(p, w, h, opcje){
   korektaPrzestrzenna(p, w, h, 1/S.pix);
   if(zmiennoscCzynna()) zmiennoscPrzed(p, w, h, 1/S.pix);
   if(S.algo === "ostromoukhov" || S.algo === "riemersma" || S.algo === "knuth"){ ditherSpecjalny(p, w, h); return; }
-  if(S.algo === "waveform" || S.algo === "topografia" || S.algo === "smugi"){ ditherLinii(p, w, h); return; }
+  if(WZORY_LINII.includes(S.algo)){ ditherLinii(p, w, h); return; }
   if(S.mapa === "jasnosc"){ ditherJasnosci(p, w, h, opcje); zapamietaj(p, w, h, opcje); return; }
 
   const pal = palette(), q = quantizer(), bias = S.thr*2.55;
@@ -186,8 +186,15 @@ function ditherJasnosci(p, w, h, opcje){
    - Topografia: warstwice jasności stałej grubości,
    - Fala w dyfuzji: Floyd z progiem przesuniętym wzorem Waveform,
    - Pęknięcia: dyfuzja z błędem spływającym po skosie,
-   - Smugi: proste linie, każda z własną jasnością, ze smugą światła. */
-export const STYLE_LINII = ["waveform", "topografia", "falaDyfuzja", "pekniecia", "smugi"];
+   - Smugi: proste linie, każda z własną jasnością, ze smugą światła.
+   Wzory z VFX Dither 1.5 (checkersTemplate, blockTemplate, burstTemplate):
+   - Szachownica mała / średnia / duża: Bayer 4×4 na kratkach 2 / 4 / 8 px,
+   - Kwadraty tonu: kwadratowy punkt w komórce (odstęp i kąt linii),
+   - Promienie: promienie od środka, skręcane jasnością, obracane w czasie. */
+export const STYLE_LINII = ["waveform", "topografia", "falaDyfuzja", "pekniecia", "smugi",
+  "szachownica1", "szachownica2", "szachownica3", "kwadraty", "promienie"];
+/* style kwantowane progiem ze wzoru (reszta to dyfuzja) */
+const WZORY_LINII = ["waveform", "topografia", "smugi", "szachownica1", "szachownica2", "szachownica3", "kwadraty", "promienie"];
 const lum = (p, o) => 0.299*p[o] + 0.587*p[o+1] + 0.114*p[o+2];
 /* rozmycie ≈ Gauss: trzy przebiegi pudełkowe w poziomie i w pionie (boxBlur3 z wtyczki, 1 kanał) */
 function rozmyjPudelka(d, w, h, sigma){
@@ -298,9 +305,47 @@ function smugi(p, w, h){
   }
   progowy(p, w, h, t, val);
 }
+/* Szachownica: macierz Bayera 4×4 na kratkach n×n — w półtonie szachownica
+   kwadratów n×n, w innych tonach jej uporządkowane odmiany */
+function wzorSzachownicy(w, h, n){
+  const t = new Float32Array(w*h);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++) t[y*w + x] = (BAYER4[Math.floor(y/n) % 4][Math.floor(x/n) % 4] + 0.5)/16;
+  return t;
+}
+/* Kwadraty tonu: kwadrat w każdej komórce (odstęp, kąt), pole rośnie liniowo
+   z jasnością: t = 1 − (2·max(|u|,|v|))² */
+function wzorKwadratow(w, h){
+  const u = ustLinii(), c = Math.cos(u.th), s = Math.sin(u.th), t = new Float32Array(w*h);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const gx = x + 0.5, gy = y + 0.5;
+    let a = (gx*c + gy*s)/u.P, b = (-gx*s + gy*c)/u.P;
+    a -= Math.floor(a) + 0.5; b -= Math.floor(b) + 0.5;
+    const d = 2*Math.max(Math.abs(a), Math.abs(b));
+    t[y*w + x] = 1 - d*d;
+  }
+  return t;
+}
+/* Promienie: liczba = obwód koła o promieniu 64 px / odstęp (przy 8 ~50),
+   wygięcie skręca je jasnością (3 okresy), prędkość obraca. Środek z suwaków
+   jak w rastrze: procent połowy kadru od środka. */
+function wzorPromieni(p, w, h){
+  const u = ustLinii(), N = Math.max(4, Math.round(2*Math.PI*64/u.P)), L = jasnoscGladka(p, w, h, u.P*0.6);
+  const cx = w/2*(1 + (S.stylSrodekX || 0)/100), cy = h/2*(1 + (S.stylSrodekY || 0)/100), bendK = u.bend*3;
+  const t = new Float32Array(w*h);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const i = y*w + x;
+    const f = Math.atan2(y + 0.5 - cy, x + 0.5 - cx)/(2*Math.PI)*N + bendK*L[i]/255 - u.faza;
+    t[i] = 1 - 2*Math.abs(f - Math.floor(f + 0.5));
+  }
+  return t;
+}
 function ditherLinii(p, w, h){
-  if(S.algo === "smugi") smugi(p, w, h);
-  else progowy(p, w, h, S.algo === "waveform" ? wzorFali(p, w, h) : wzorWarstwic(p, w, h));
+  const a = S.algo;
+  if(a === "smugi"){ smugi(p, w, h); return; }
+  const t = a === "waveform" ? wzorFali(p, w, h) : a === "topografia" ? wzorWarstwic(p, w, h)
+    : a === "kwadraty" ? wzorKwadratow(w, h) : a === "promienie" ? wzorPromieni(p, w, h)
+    : wzorSzachownicy(w, h, a === "szachownica1" ? 2 : a === "szachownica2" ? 4 : 8);
+  progowy(p, w, h, t);
 }
 /* Fala w dyfuzji i pęknięcia — wchodzą w zwykłą pętlę dyfuzji: przesunięcie
    progu (wzór Waveform × 1,2 kroku × siła) albo jądro, w którym błąd

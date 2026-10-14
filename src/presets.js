@@ -13,7 +13,15 @@ export const PRESETS = {
     ["Topo neon", {algo:"topografia", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#3dfff0", con:20, glow:70, glowR:12, glowProg:30, stylOdstep:6}],
     ["Fala", {algo:"falaDyfuzja", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:25}],
     ["Pęknięcia", {algo:"pekniecia", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:25, stylSila:100}],
-    ["Smugi", {algo:"smugi", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:40, glowR:16, glowProg:60, stylOdstep:5, stylKat:90}]
+    ["Smugi", {algo:"smugi", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:40, glowR:16, glowProg:60, stylOdstep:5, stylKat:90}],
+    ["Szachownica", {algo:"szachownica2", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:20}],
+    ["Promienie", {algo:"promienie", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffffff", con:25}],
+    /* z wtyczki VFX Dither 1.6 — ekran CRT i poświata w smugę (rgb: 3 px ditheringu × pikselizacja 2) */
+    ["Monitor CRT", {algo:"bayer4", str:1, pix:2, pal:"m-bursztyn", mapa:"jasnosc", con:20, glow:70, glowR:14, glowProg:30, crtLinie:70, crtOdstep:2}],
+    ["Zielony terminal", {algo:"atkinson", str:1, pix:2, pal:"m-zielony", mapa:"jasnosc", con:25, glow:80, glowR:12, glowProg:35, crtLinie:60, crtOdstep:2, crtMaska:30}],
+    ["RGB glitch", {algo:"bayer4", str:1, pix:2, pal:"rgb3", mapa:"kolor", con:15, rgb:6, crtLinie:30, crtOdstep:2}],
+    ["Smuga światła", {algo:"bayer8", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:60, glowR:16, glowProg:60, glowRozciag:60}],
+    ["CRT na jasne", {algo:"waveform", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ff3df2", con:35, glow:60, glowR:14, glowProg:35, stylOdstep:6, stylWygiecie:60, ekspozycja:-0.6, swiatla:-60}]
   ],
   ascii:[
     ["Terminal", {asciiZestaw:"standard", asciiRozmiar:10, asciiKolor:"jeden", ink:"#33ff66", paper:"#000000", con:20}],

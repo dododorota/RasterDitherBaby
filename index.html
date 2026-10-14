@@ -352,6 +352,13 @@
           <option value="pekniecia">Pęknięcia — dyfuzja po skosie</option>
           <option value="smugi">Smugi światła</option>
         </optgroup>
+        <optgroup label="Wzory — jak Dither Boy">
+          <option value="szachownica1">Szachownica mała</option>
+          <option value="szachownica2">Szachownica średnia</option>
+          <option value="szachownica3">Szachownica duża</option>
+          <option value="kwadraty">Kwadraty tonu</option>
+          <option value="promienie">Promienie od środka</option>
+        </optgroup>
         <optgroup label="Bez ditheringu">
           <option value="threshold">Próg</option>
         </optgroup>
@@ -364,13 +371,21 @@
       <input type="range" id="thr" min="-80" max="80" value="0">
       <label class="check"><input type="checkbox" id="serp" checked> Skanowanie wężykiem</label>
       <div id="linie-opcje" class="hidden">
-        <div data-styl="waveform topografia falaDyfuzja smugi">
+        <div data-styl="waveform topografia falaDyfuzja smugi kwadraty promienie">
           <div class="row" style="margin-top:12px"><label for="stylOdstep">Odstęp linii</label><span class="val" id="stylOdstep-v">8 px</span></div>
           <input type="range" id="stylOdstep" min="2" max="40" value="8">
+        </div>
+        <div data-styl="waveform topografia falaDyfuzja smugi kwadraty">
           <div class="row"><label for="stylKat">Kąt linii</label><span class="val" id="stylKat-v">0°</span></div>
           <input type="range" id="stylKat" min="0" max="180" value="0">
         </div>
-        <div data-styl="waveform falaDyfuzja">
+        <div data-styl="promienie">
+          <div class="row"><label for="stylSrodekX">Środek — poziomo</label><span class="val" id="stylSrodekX-v">0%</span></div>
+          <input type="range" id="stylSrodekX" min="-100" max="100" value="0">
+          <div class="row"><label for="stylSrodekY">Środek — pionowo</label><span class="val" id="stylSrodekY-v">0%</span></div>
+          <input type="range" id="stylSrodekY" min="-100" max="100" value="0">
+        </div>
+        <div data-styl="waveform falaDyfuzja promienie">
           <div class="row"><label for="stylWygiecie">Wygięcie</label><span class="val" id="stylWygiecie-v">50%</span></div>
           <input type="range" id="stylWygiecie" min="0" max="200" value="50">
         </div>
@@ -384,7 +399,7 @@
           <div class="row"><label for="stylSila">Siła stylu</label><span class="val" id="stylSila-v">60%</span></div>
           <input type="range" id="stylSila" min="0" max="100" value="60">
         </div>
-        <div data-styl="waveform topografia falaDyfuzja smugi">
+        <div data-styl="waveform topografia falaDyfuzja smugi promienie">
           <div class="row"><label for="stylPredkosc">Prędkość linii</label><span class="val" id="stylPredkosc-v">stoją</span></div>
           <input type="range" id="stylPredkosc" min="-40" max="40" value="0">
         </div>
@@ -633,6 +648,7 @@
           <option value="qr">Kod QR — skanowalny raster</option>
           <option value="okregi">Okręgi — obręcze</option>
           <option value="spirala">Spirala</option>
+          <option value="slonecznik">Słonecznik — spirale pestek</option>
           <option value="promienie">Promienie</option>
           <option value="warstwice">Wzdłuż kształtu — warstwice</option>
         </select>
@@ -653,9 +669,9 @@
           <p class="hint" id="qr-info">Środek każdego modułu niesie kod, reszta to raster obrazu. Sprawdź telefonem przed drukiem — przy jasnym obrazie i małym kodzie skanuje się najpewniej.</p>
         </div>
         <div id="stipple-opcje" class="hidden">
-          <div class="row" style="margin-top:12px"><label for="stipIter">Wyrównanie rozkładu</label><span class="val" id="stipIter-v">8</span></div>
-          <input type="range" id="stipIter" min="0" max="30" value="8">
-          <p class="hint">Punkty jednej wielkości, ton z ich gęstości. 0 — losowo, więcej — równo, bez zlepków (dłużej liczy).</p>
+          <div class="row" style="margin-top:12px"><label for="stipIter">Wyrównanie rozkładu</label><span class="val" id="stipIter-v">5</span></div>
+          <input type="range" id="stipIter" min="0" max="30" value="5">
+          <p class="hint">Kropki jednej wielkości jak rysunek piórkiem, ton z ich gęstości; jasne miejsca zostają czyste. 0 — prosto z niebieskiego szumu, więcej — równiej (dłużej liczy). Wielkość punktu zmienia kropki.</p>
         </div>
         <div id="srodek-opcje" class="hidden">
           <div class="row" style="margin-top:12px"><label for="srodekX">Środek — poziomo</label><span class="val" id="srodekX-v">0%</span></div>
@@ -895,6 +911,16 @@
         <input type="range" id="rgbKat" min="0" max="180" value="0">
       </div></div>
 
+      <div class="fx hidden" data-fx="crt"><div class="fx-cialo">
+        <div class="row"><label for="crtLinie">Linie kineskopu</label><span class="val" id="crtLinie-v">brak</span></div>
+        <input type="range" id="crtLinie" min="0" max="100" value="0">
+        <div class="row"><label for="crtOdstep">Odstęp linii</label><span class="val" id="crtOdstep-v">2 px</span></div>
+        <input type="range" id="crtOdstep" min="1" max="20" value="2">
+        <div class="row"><label for="crtMaska">Maska RGB</label><span class="val" id="crtMaska-v">brak</span></div>
+        <input type="range" id="crtMaska" min="0" max="100" value="0">
+        <p class="hint">Ciemne linie jak na kineskopie (w jasnych miejscach cieńsze) i pionowe paski czerwieni, zieleni i błękitu. W ditheringu odstęp jest w dużych pikselach.</p>
+      </div></div>
+
       <div class="fx hidden" data-fx="chrom"><div class="fx-cialo">
         <div class="row"><label for="chrom">Siła</label><span class="val" id="chrom-v">brak</span></div>
         <input type="range" id="chrom" min="0" max="60" value="0">
@@ -931,6 +957,10 @@
         <input type="range" id="glowR" min="1" max="80" value="12">
         <div class="row"><label for="glowProg">Świeci powyżej jasności</label><span class="val" id="glowProg-v">50%</span></div>
         <input type="range" id="glowProg" min="0" max="95" value="50">
+        <div class="row"><label for="glowRozciag">Rozciągnięcie w smugę</label><span class="val" id="glowRozciag-v">brak</span></div>
+        <input type="range" id="glowRozciag" min="0" max="100" value="0">
+        <div class="row"><label for="glowKatSmugi">Kierunek smugi</label><span class="val" id="glowKatSmugi-v">0°</span></div>
+        <input type="range" id="glowKatSmugi" min="0" max="180" value="0">
         <div class="swatches" style="margin-top:10px">
           <select id="glowZrodlo" aria-label="Kolor poświaty">
             <option value="obraz" selected>Kolor z obrazu</option>

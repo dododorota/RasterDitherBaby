@@ -152,6 +152,11 @@ const SUWAKI = [
   {id:"glow",     key:"glow",     opis:v=>v?v+"%":"brak"},
   {id:"glowR",    key:"glowR",    opis:v=>v+" px"},
   {id:"glowProg", key:"glowProg", opis:v=>v+"%"},
+  {id:"glowRozciag",  key:"glowRozciag",  opis:v=>v?v+"%":"brak"},
+  {id:"glowKatSmugi", key:"glowKatSmugi", opis:v=>v+"°"},
+  {id:"crtLinie",  key:"crtLinie",  opis:v=>v?v+"%":"brak"},
+  {id:"crtOdstep", key:"crtOdstep", opis:v=>v+" px"},
+  {id:"crtMaska",  key:"crtMaska",  opis:v=>v?v+"%":"brak"},
   {id:"chrom",      key:"chrom",      opis:v=>v?(v/10).toFixed(1).replace(".", ",")+"%":"brak"},
   {id:"jpegJakosc", key:"jpegJakosc", opis:v=>String(v)},
   {id:"jpegGlitch", key:"jpegGlitch", opis:v=>v?v+"%":"brak"},
@@ -270,7 +275,7 @@ function risoUI(){
   }
   const linie = S.shape === "pasy" || (riso && [1, 2, 3, 4].slice(0, ile).some(i => S["risoS" + i] === "pasy"));
   document.querySelector("#fala-opcje").classList.toggle("hidden", !linie);
-  document.querySelector("#srodek-opcje").classList.toggle("hidden", !(S.siatka === "okregi" || S.siatka === "spirala" || S.siatka === "promienie"));
+  document.querySelector("#srodek-opcje").classList.toggle("hidden", !(S.siatka === "okregi" || S.siatka === "spirala" || S.siatka === "promienie" || S.siatka === "slonecznik"));
   document.querySelector("#riso-wariant-opcje").classList.toggle("hidden", !(S.risoLos > 0));
   document.querySelector("#papier-opcje").classList.toggle("hidden", S.papierRodzaj === "gladki");
   document.querySelector("#ton-opcje").classList.toggle("hidden", !(S.tonPowt > 1 || S.tonPrzes > 0));
@@ -357,12 +362,17 @@ PTASZKI.push("ruchOdbicie");
 SUWAKI.push({id: "stylOdstep", key: "stylOdstep", opis: v => v + " px"}, {id: "stylKat", key: "stylKat", opis: v => v + "°"},
   {id: "stylWygiecie", key: "stylWygiecie", opis: v => v + "%"}, {id: "stylFala", key: "stylFala", opis: v => v ? v + "%" : "brak"},
   {id: "stylFalaDl", key: "stylFalaDl", opis: v => v + " px"}, {id: "stylSila", key: "stylSila", opis: v => v + "%"},
-  {id: "stylPredkosc", key: "stylPredkosc", opis: v => v ? (v > 0 ? "+" : "") + (v/10).toFixed(1).replace(".", ",") + " linii/s" : "stoją"});
-/* widoczne tylko suwaki, z których korzysta wybrany styl */
+  {id: "stylPredkosc", key: "stylPredkosc", opis: v => v ? (v > 0 ? "+" : "") + (v/10).toFixed(1).replace(".", ",") + " linii/s" : "stoją"},
+  {id: "stylSrodekX", key: "stylSrodekX", opis: v => v + "%"}, {id: "stylSrodekY", key: "stylSrodekY", opis: v => v + "%"});
+/* widoczne tylko suwaki, z których korzysta wybrany styl (szachownica nie ma żadnego) */
 function stylUI(){
-  const styl = ["waveform", "topografia", "falaDyfuzja", "pekniecia", "smugi"].includes(S.algo);
-  document.querySelector("#linie-opcje").classList.toggle("hidden", !styl);
-  for(const el of document.querySelectorAll("#linie-opcje [data-styl]")) el.classList.toggle("hidden", !el.dataset.styl.split(" ").includes(S.algo));
+  let jakis = false;
+  for(const el of document.querySelectorAll("#linie-opcje [data-styl]")){
+    const jest = el.dataset.styl.split(" ").includes(S.algo);
+    el.classList.toggle("hidden", !jest);
+    jakis ||= jest;
+  }
+  document.querySelector("#linie-opcje").classList.toggle("hidden", !jakis);
 }
 LISTY.push("ruchKrzywa", "papierTlo");
 SUWAKI.push({id: "papierKat", key: "papierKat", opis: v => v + "°"},

@@ -1,7 +1,7 @@
 /* Efekty po rastrze: sortowanie kontra naiwna referencja, skala z×z co do bajtu, przesunięcie RGB, poświata.
    Uruchom z katalogu projektu: node testy/efekty.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, poswiata } from "../src/effects.js";
+import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, poswiata, ekranCRT } from "../src/effects.js";
 import { efektyPo } from "../src/stos.js";
 
 let ziarno = 42;
@@ -158,5 +158,38 @@ spr(!efektyPo(), "siła 0 = efekty wyłączone");
   console.log((ok ? "  ok    " : "  ŹLE   ") + `szara kropka, własny kolor #0040ff: halo niebieskie (${p[o]},${p[o+1]},${p[o+2]})`);
   if(!ok) b4++;
 }
-console.log("\nBŁĘDÓW RAZEM:", bledy+b2+b3+obce+b4);
-process.exitCode = (bledy+b2+b3+obce+b4) ? 1 : 0;
+console.log("--- ekran CRT i poświata w smugę (z wtyczki VFX Dither 1.6) ---");
+let b5 = 0;
+{
+  const ok = (w, o) => { console.log((w ? "  ok    " : "  ŹLE   ") + o); if(!w) b5++; };
+  const plaski = (w, h, v) => { const p = new Uint8ClampedArray(w*h*4); for(let i=0;i<p.length;i+=4){ p[i]=p[i+1]=p[i+2]=v; p[i+3]=255; } return p; };
+  Object.assign(S, DEFAULTS);
+  const nic = plaski(12, 12, 128); ekranCRT(nic, 12, 12);
+  ok(nic.every((v, i) => v === (i % 4 === 3 ? 255 : 128)), "linie 0 i maska 0 — obraz bez zmian");
+  Object.assign(S, DEFAULTS, {crtLinie: 100, crtOdstep: 2});
+  const sz = plaski(12, 12, 128), bi = plaski(12, 12, 255); ekranCRT(sz, 12, 12); ekranCRT(bi, 12, 12);
+  /* średnia ciemności po wierszu: 0,5 ± 1/π, czyli ~82% i ~18% (× 0,7 na szarości 128) */
+  ok(Math.abs(sz[0] - 128*(1 - 0.818*0.7)) <= 1 && Math.abs(sz[12*4] - 128*(1 - 0.182*0.7)) <= 1 && sz[24*4] === sz[0],
+     `odstęp 2 — wiersze na zmianę ciemny / jasny (${sz[0]}, ${sz[12*4]}, ${sz[24*4]})`);
+  ok((255 - bi[0])/255 < (128 - sz[0])/128, `w jasnym linia cieńsza (biel −${255 - bi[0]}, szarość −${128 - sz[0]})`);
+  Object.assign(S, DEFAULTS, {crtMaska: 100, crtOdstep: 2});
+  const m = plaski(12, 1, 255); ekranCRT(m, 12, 1);
+  const dom = x => { const o = x*4; return [m[o], m[o+1], m[o+2]].indexOf(Math.max(m[o], m[o+1], m[o+2])); };
+  ok([0,1,2,3,4,5].map(dom).join() === "0,1,2,0,1,2", `maska: paski R, G, B co piksel (${[0,1,2].map(x => m.slice(x*4, x*4+3).join("/")).join("  ")})`);
+  /* poświata w smugę: jasna kropka na czerni, kąt 0 — halo szersze w poziomie niż w pionie */
+  const W = 81, H = 81, kropka = () => { const p = plaski(W, H, 0); for(let y=38;y<43;y++) for(let x=38;x<43;x++){ const o=(y*W+x)*4; p[o]=p[o+1]=p[o+2]=255; } return p; };
+  const zasieg = (p, dx, dy) => { let k = 0; for(let s=3; s<40; s++){ const o = ((40 + dy*s)*W + 40 + dx*s)*4; if(p[o] > 8) k = s; } return k; };
+  Object.assign(S, DEFAULTS, {glow: 100, glowR: 10, glowProg: 50});
+  const zwykla = kropka(); poswiata(zwykla, W, H, 1);
+  Object.assign(S, DEFAULTS, {glow: 100, glowR: 10, glowProg: 50, glowRozciag: 80, glowKatSmugi: 0});
+  const smuga = kropka(); poswiata(smuga, W, H, 1);
+  Object.assign(S, DEFAULTS, {glow: 100, glowR: 10, glowProg: 50, glowRozciag: 80, glowKatSmugi: 90});
+  const pion = kropka(); poswiata(pion, W, H, 1);
+  ok(zasieg(zwykla, 1, 0) === zasieg(zwykla, 0, 1), `bez rozciągnięcia halo okrągłe (${zasieg(zwykla, 1, 0)} / ${zasieg(zwykla, 0, 1)} px)`);
+  ok(zasieg(smuga, 1, 0) > zasieg(zwykla, 1, 0) && zasieg(smuga, 1, 0) > 2*zasieg(smuga, 0, 1),
+     `rozciągnięcie 80%, kąt 0° — smuga pozioma (w bok ${zasieg(smuga, 1, 0)} px, w górę ${zasieg(smuga, 0, 1)} px)`);
+  ok(zasieg(pion, 0, 1) > 2*zasieg(pion, 1, 0), `kąt 90° — smuga pionowa (${zasieg(pion, 0, 1)} / ${zasieg(pion, 1, 0)} px)`);
+  Object.assign(S, DEFAULTS);
+}
+console.log("\nBŁĘDÓW RAZEM:", bledy+b2+b3+obce+b4+b5);
+process.exitCode = (bledy+b2+b3+obce+b4+b5) ? 1 : 0;
