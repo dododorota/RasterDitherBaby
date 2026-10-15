@@ -232,8 +232,8 @@
         <button role="tab" id="tab-half" aria-selected="false" title="Raster drukarski">Raster</button>
         <button role="tab" id="tab-ascii" aria-selected="false">ASCII</button>
       </div>
-      <div class="presets" style="margin-top:10px" id="presets"></div>
-      <div class="btns" style="margin-top:8px">
+      <div class="presets odstep-duzy" id="presets"></div>
+      <div class="btns odstep-sredni">
         <input type="text" id="preset-name" maxlength="40" placeholder="Nazwa własnego presetu" aria-label="Nazwa własnego presetu">
         <button class="btn" id="preset-keep" style="width:auto">Zapamiętaj</button>
       </div>
@@ -242,7 +242,7 @@
         <button class="btn" id="preset-load">Wczytaj plik</button>
       </div>
       <input type="file" id="preset-file" accept="application/json,.json" class="hidden">
-      <button class="btn" id="look-reset" style="margin-top:8px">Przywróć wszystko do domyślnych</button>
+      <button class="btn odstep-duzy" id="look-reset">Przywróć wszystko do domyślnych</button>
       <p class="hint" id="preset-msg"></p>
     </div>
 
@@ -518,7 +518,8 @@
     <div class="group hidden" id="g-half">
       <h2>Siatka rastra</h2>
       <div class="row"><label for="cell">Gęstość (px)</label><span class="val" id="cell-v">8</span></div>
-      <input type="range" id="cell" min="3" max="40" value="8">
+      <input type="range" id="cell" min="2" max="40" step="0.5" value="8">
+      <p class="hint">Oczko siatki: mniej — drobniejszy raster. Poniżej ~3 px podgląd robi się szary; kropki widać w zapisie w większej skali (Eksport → Skala).</p>
       <div class="row"><label for="ang">Kąt</label><span class="val" id="ang-v">45°</span></div>
       <input type="range" id="ang" min="0" max="90" value="45">
       <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>

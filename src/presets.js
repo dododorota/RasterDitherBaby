@@ -21,7 +21,7 @@ export const PRESETS = {
     ["Zielony terminal", {algo:"atkinson", str:1, pix:2, pal:"m-zielony", mapa:"jasnosc", con:25, glow:80, glowR:12, glowProg:35, crtLinie:60, crtOdstep:2, crtMaska:30}],
     ["RGB glitch", {algo:"bayer4", str:1, pix:2, pal:"rgb3", mapa:"kolor", con:15, rgb:6, crtLinie:30, crtOdstep:2}],
     ["Smuga światła", {algo:"bayer8", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:60, glowR:16, glowProg:60, glowRozciag:60}],
-    ["CRT na jasne", {algo:"waveform", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ff3df2", con:35, glow:60, glowR:14, glowProg:35, stylOdstep:6, stylWygiecie:60, ekspozycja:-0.6, swiatla:-60}]
+    ["CRT na jasne", {algo:"waveform", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ff3df2", con:35, glow:60, glowR:14, glowProg:35, stylOdstep:6, stylWygiecie:60, ekspozycja:-0.6, swiatla:-40}]
   ],
   ascii:[
     ["Terminal", {asciiZestaw:"standard", asciiRozmiar:10, asciiKolor:"jeden", ink:"#33ff66", paper:"#000000", con:20}],

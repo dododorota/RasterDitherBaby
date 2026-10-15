@@ -28,6 +28,21 @@ for(const [k, v] of [["cienie", 100], ["cienie", -100], ["swiatla", 100], ["swia
   const sr = k === "cienie" ? t[64] - 64 : t[192] - 192;
   sprawdz(rosnie && kraj && Math.sign(sr) === Math.sign(v), `${k} ${v > 0 ? "+" : ""}${v}: rośnie, czerń i biel na miejscu, ${k === "cienie" ? "poziom 64" : "poziom 192"} → ${k === "cienie" ? t[64] : t[192]}`);
 }
+/* suwak ma działać tam, gdzie obiecuje nazwa: głębokie cienie (poziom 25)
+   i jasne światła (230) przesuwają się wyraźnie, druga strona skali prawie
+   wcale. Do 16.10 cienie +100 zmieniały poziom 25 tylko o kilka poziomów. */
+{
+  ustaw({cienie: 100}); const c = lut();
+  ustaw({swiatla: -100}); const s = lut();
+  sprawdz(c[25] - 25 >= 40 && Math.abs(c[230] - 230) <= 2, `cienie +100 w głębokich cieniach: 25 → ${c[25]}, światła bez zmian: 230 → ${c[230]}`);
+  sprawdz(230 - s[230] >= 40 && Math.abs(s[25] - 25) <= 2, `światła −100 w jasnych światłach: 230 → ${s[230]}, cienie bez zmian: 25 → ${s[25]}`);
+  let rosnie = true;
+  for(const cienie of [-100, -50, 50, 100]) for(const swiatla of [-100, -50, 50, 100]){
+    ustaw({cienie, swiatla}); const t = lut();
+    if(!t.every((x, i) => !i || x >= t[i-1]) || t[0] !== 0 || t[255] !== 255) rosnie = false;
+  }
+  sprawdz(rosnie, "cienie i światła razem (±50, ±100): krzywa rośnie, czerń i biel na miejscu");
+}
 
 console.log("--- barwa ---");
 {

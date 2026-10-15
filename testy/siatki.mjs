@@ -51,6 +51,15 @@ for(const siatka of ["kwadrat", "heks", "okregi", "spirala", "promienie", "slone
   sprawdz(ok, `${siatka}, ${ksztalt === "pasy" ? "linie" : "punkty"} (z obrotem płyty): ${a.length} ${ksztalt === "pasy" ? "punktów linii" : "punktów"}, z=3 dokładnie ×3`);
 }
 
+console.log("--- drobna gęstość (od 16.10 suwak od 2 px co 0,5) ---");
+for(const cell of [2, 2.5, 3.5]) for(const siatka of ["kwadrat", "heks", "okregi", "slonecznik", "stipple"]){
+  ustaw({cell, siatka});
+  const ink = {ang: 15, cov, off: [0, 0]};
+  const g1 = geometria(gradient, W, H, ink, 1).kropki, g3 = geometria(gradient, W, H, ink, 3).kropki;
+  const ok = g1.length > 0 && g1.length === g3.length && g1.every((p, i) => Math.abs(p[0]*3 - g3[i][0]) < 1e-9 && Math.abs(p[2]*3 - g3[i][2]) < 1e-9) && g1.every(p => p.slice(0, 3).every(Number.isFinite));
+  sprawdz(ok, `komórka ${cell}, ${siatka}: ${g1.length} punktów, z=3 dokładnie ×3`);
+}
+
 console.log("--- układ siatek ---");
 {
   const pelny = probki(W, H, 4, () => 0);           /* czerń: każdy punkt jest */

@@ -356,7 +356,9 @@ rozsiane równo — test liczy największą spójną dziurę: było 1457 px, jes
 < 60); `fakturaSkala` mnoży skale szumu faktury farby i papieru (papier:
 kadr /ks, płótno ×ks); `fakturaCzas` — ziarno faktury farby co klatkę
 (`ziarnoFaktury()`); ekspozycja i punkt czerni / bieli na początku `lut()`,
-przed jasnością; kształty gwiazda5, kwiat, serce (wielokąty o polu koła)
+przed jasnością (cienie / światła od 16.10 mają w apce mocniejszą krzywą —
+`podnies` / `opusc` w image.js; wtyczki VFX dalej starą, więc korekta
+z cieniami / światłami ≠ 0 nie jest już co do piksela jak we wtyczce); kształty gwiazda5, kwiat, serce (wielokąty o polu koła)
 i cyfra (7 segmentów, cyfra ze skrótu `id` — dla punktów bez numeru geometria
 nadaje kod położenia, `kodyPolozenia()`). Pozostałe z VFX Raster 1.5
 (mieszanie kształtów, gradient koloru, tryby mieszania, próg, Black Wear) —
@@ -641,6 +643,11 @@ Wzór: Figma „dither ui (Community)”, plik `zaZ1q7i4lCsgls4fLpoCE4`, plansza
   Cienie kart (`.fx::before`, `.drop::before`) mają `z-index:-1`, dlatego
   `.panel` i `.stage` mają `isolation:isolate` — bez tego cień wchodzi pod
   tekst albo znika pod tłem.
+- Rozwijane listy: `appearance: base-select` w `@supports` — wygląd listy
+  z Figmy, podświetlenie `--wybor` (jedyny kolor interfejsu). Ptaszek
+  wybranej opcji to tło `option:checked`, nie `::checkmark` (nie rysował się).
+  Zrzut otwartej listy wymaga `showPicker()` z gestem użytkownika
+  (`userGesture: true` w `Runtime.evaluate`).
 - Nazwa apki w nagłówku zostaje w Archivo: halftone.js rysuje znaki
   Archivo na płótnie bez czekania na krój, więc coś w dokumencie musi go
   używać, żeby był wczytany.

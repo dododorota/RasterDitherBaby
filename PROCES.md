@@ -4,6 +4,12 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — 16 października 2026
+
+Poprawki po pierwszych testach (punkt 31 niżej): odstępy w „Trybie”,
+rozwijane listy, mocniejsze cienie / światła, gęstość rastra od 2 px.
+Do obejrzenia — lista „Z 16.10”.
+
 ## Wznowienie — 15 października 2026
 
 **Nowy wygląd interfejsu jak „dither ui” z Figmy** (punkt 30 niżej),
@@ -313,6 +319,33 @@ to przegląd bez zmian w kodzie.
     wypełniony jak zakładka, nie w kropki (kropki pod literami źle się
     czytały). Sprawdzone: zrzuty jasny / ciemny / wąskie okno / skala 150%,
     `przegladarka.mjs` 0 błędów, Electron startuje.
+31. **Poprawki po pierwszych testach użytkowniczki** (16.10):
+    - Grupa „Tryb”: odstępy zakładki | presety | własny preset | „Przywróć
+      wszystko…” (klasy `odstep-duzy` 22 px, `odstep-sredni` 14 px). Panel
+      342 px i węższy pasek przewijania — z widocznym paskiem długie
+      przyciski łamały się na dwie linie.
+    - Rozwijane listy (`appearance: base-select`, Chrome 135+ / Electron):
+      wygląd listy z Figmy, podświetlenie nasyconym niebieskim `#1f45ff`
+      zamiast systemowego bladego, ptaszek przy wybranej (tło opcji —
+      `::checkmark` w Chrome 155 się nie rysował).
+    - **Cienie / światła słabe** (zgłoszenie z rastra): pomiar na portrecie —
+      cienie +100 zmieniały pokrycie farbą w cieniach o 4,6 punktu (mniej niż
+      jasność +5), bo garb krzywej był w półtonach i ograniczony do ±38
+      poziomów. Nowa krzywa w `lut()`: podniesienie u + 3c·u(1−u)⁴ (szczyt
+      w głębokich cieniach), przyciemnienie jako jego odwrotność (zawsze
+      rośnie), światła w lustrze. Cienie +100: poziom 25 → 75. Preset „CRT na
+      jasne”: światła −60 → −40 (ten sam wygląd co dawniej, średnio
+      6 poziomów różnicy). **Wtyczki VFX mają dalej starą krzywą** (Shadow /
+      Highlight Detail) — przy następnym przenoszeniu do wtyczki: `podnies` /
+      `opusc` z `image.js`.
+    - **Gęstość rastra od 2 px co 0,5** (było od 3 co 1) — główna siatka
+      i farby risografu. Obraz roboczy ma najwyżej 1400 px, więc drobny raster
+      do druku to małe oczko + zapis w skali (×3 przy oczku 2,5 daje
+      wyraźne kropki). Suwak zostaje w pikselach, a nie w skali nieliniowej:
+      klatki kluczowe zapisują wartość suwaka, więc zmiana skali zepsułaby
+      animacje w starych plikach.
+    - Błąd z 14.10: stippling przy bardzo małych kropkach brał układ
+      z pamięci podręcznej dla innej wielkości (klucz bez promienia kropki).
 
 ## Do przetestowania na koniec
 
@@ -350,6 +383,9 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   na zrzutach — sprawdzone tylko 100% i 150%); czy wersaliki na długich
   przyciskach nie męczą; tło podglądu w kropki — czy nie przeszkadza
   w ocenie ditheringu (łatwo zamienić na gładkie: `.stage` w styles.css).
+- **Z 16.10:** nowe cienie / światła na kilku zdjęciach (czy +100 nie jest
+  za mocne); gęstość 2–3 px z zapisem w skali ×2–×4 na zdjęciu ze stocku;
+  rozwijane listy w Electronie (inny Chromium niż Chrome).
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 

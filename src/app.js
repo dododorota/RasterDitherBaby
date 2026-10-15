@@ -137,7 +137,7 @@ const SUWAKI = [
   {id:"pix",   key:"pix",   opis:v=>v+"×"},
   {id:"str",   key:"str",   opis:v=>Math.round(v*100)+"%", zS:v=>v/100, naS:v=>Math.round(v*100)},
   {id:"thr",   key:"thr",   opis:v=>v},
-  {id:"cell",  key:"cell",  opis:v=>v},
+  {id:"cell",  key:"cell",  opis:v=>String(v).replace(".", ",")},
   {id:"ang",   key:"ang",   opis:v=>v+"°"},
   {id:"dot",   key:"dot",   opis:v=>v.toFixed(2),        zS:v=>v/100, naS:v=>Math.round(v*100)},
   {id:"blur",  key:"blur",  opis:v=>v?v+" px":"brak"},
@@ -200,18 +200,18 @@ let farbaRiso = 1;
     const b = document.createElement("button"); b.setAttribute("role", "tab"); b.id = "riso-z" + i;
     b.innerHTML = "<i></i>" + i; b.setAttribute("aria-label", "Farba " + i);
     zak.appendChild(b);
-    const suwak = (k, et, min, max) => `<div class="row"><label for="${k}${i}">${et}</label><span class="val" id="${k}${i}-v"></span></div>
-      <input type="range" id="${k}${i}" min="${min}" max="${max}" value="${DEFAULTS[k + i]}">`;
+    const suwak = (k, et, min, max, krok = 1) => `<div class="row"><label for="${k}${i}">${et}</label><span class="val" id="${k}${i}-v"></span></div>
+      <input type="range" id="${k}${i}" min="${min}" max="${max}" step="${krok}" value="${DEFAULTS[k + i]}">`;
     const d = document.createElement("div"); d.className = "riso-warstwa hidden"; d.id = "riso-w" + i;
     d.innerHTML = `<div class="swatches"><input type="color" id="risoK${i}" value="${DEFAULTS["risoK" + i]}" aria-label="Kolor farby ${i}">
         <select id="risoT${i}" class="tusz" aria-label="Tusz riso dla farby ${i}"><option value="">Tusz riso…</option>${TUSZE_RISO.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</select></div>
       <div class="row"><label for="risoZ${i}">Skąd ilość farby</label></div>
       <select id="risoZ${i}">${ZRODLA_RISO.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select>
-      ${suwak("risoA", "Kąt", 0, 180)}${suwak("risoC", "Gęstość (px)", 3, 40)}
+      ${suwak("risoA", "Kąt", 0, 180)}${suwak("risoC", "Gęstość (px)", 2, 40, 0.5)}
       <div class="row"><label for="risoS${i}">Kształt</label></div><select id="risoS${i}">${ksztalty}</select>
       ${suwak("risoO", "Krycie", 0, 100)}${suwak("risoX", "Pasowanie — poziomo", -30, 30)}${suwak("risoY", "Pasowanie — pionowo", -30, 30)}${suwak("risoR", "Pasowanie — obrót", -50, 50)}`;
     box.appendChild(d);
-    for(const [k, opis] of [["risoA", v => v + "°"], ["risoC", v => String(v)], ["risoO", v => v + "%"],
+    for(const [k, opis] of [["risoA", v => v + "°"], ["risoC", v => String(v).replace(".", ",")], ["risoO", v => v + "%"],
                             ["risoX", v => v + " px"], ["risoY", v => v + " px"], ["risoR", v => (v/10).toFixed(1).replace(".", ",") + "°"]])
       SUWAKI.push({id: k + i, key: k + i, opis});
     LISTY.push("risoZ" + i, "risoS" + i);

@@ -9,6 +9,20 @@ import { rozmyj } from "./rozmycie.js";
    w korektaPrzestrzenna(). Każdy krok przy wartości neutralnej jest pomijany
    w całości: dotychczasowe ustawienia dają obraz co do bajtu taki jak przed
    dodaniem nowych suwaków. */
+/* Cienie (w lustrze — światła): podniesienie u + k·u(1−u)⁴, garb ze szczytem
+   przy u = 0,2, czyli w głębokich cieniach; przy k = 3 (suwak 100) ciemna
+   szarość 0,1 idzie do 0,3, a od 0,7 w górę prawie nic się nie zmienia.
+   Nachylenie 1 + k(1−u)³(1−5u) ≥ 1 − 0,22k, więc do k ≈ 4,6 krzywa rośnie.
+   Przyciemnienie to dokładna odwrotność podniesienia (bisekcja) — garb
+   odjęty wprost miałby przy zerze nachylenie 1 − k < 0 i odwracałby ton.
+   Do 16.10 garb 0,25·4u(1−u)² z oboma kierunkami wprost: najwyżej ±38 poziomów
+   i to w półtonach, więc w cieniach suwak prawie nic nie robił. */
+const podnies = (u, k) => u + k*u*(1-u)**4;
+function opusc(v, k){
+  let lo = 0, hi = v;
+  for(let i=0; i<40; i++){ const m = (lo + hi)/2; if(podnies(m, k) < v) lo = m; else hi = m; }
+  return (lo + hi)/2;
+}
 export function lut(){
   const t=new Uint8ClampedArray(256);
   const c = S.con, f = (259*(c+255))/(255*(259-c));
@@ -23,12 +37,12 @@ export function lut(){
     v = v + S.bri*2.55;
     v = f*(v-128)+128;
     if(cien || swiatla){
-      /* cienie i światła: przesunięcie ważone garbem w dolnej albo górnej
-         części skali — czerń i biel zostają na miejscu. Garb 4u(1−u)² ma
-         nachylenie najwyżej 4, więc ze współczynnikiem 0,25 krzywa rośnie
-         w całym zakresie suwaków (nachylenie ≥ 0), a przesuwa do ±38 poziomów */
-      const u = Math.max(0, Math.min(1, v/255));
-      v = 255*(u + 0.25*(cien*4*u*(1-u)*(1-u) + swiatla*4*u*u*(1-u)));
+      /* cienie i światła: czerń i biel zostają na miejscu, krzywa zawsze rośnie.
+         Najpierw cienie, potem światła (to samo w lustrze: 1 − u). */
+      let u = Math.max(0, Math.min(1, v/255));
+      if(cien) u = cien > 0 ? podnies(u, 3*cien) : opusc(u, -3*cien);
+      if(swiatla) u = 1 - (swiatla > 0 ? opusc(1 - u, 3*swiatla) : podnies(1 - u, -3*swiatla));
+      v = 255*u;
     }
     v = 255*Math.pow(Math.max(0,Math.min(255,v))/255, 1/S.gam);
     t[i] = S.inv ? 255-v : v;

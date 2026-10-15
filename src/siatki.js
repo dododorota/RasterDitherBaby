@@ -915,7 +915,9 @@ function stipple(smp, W, H, ink, u){
     dens[j*gw + i] = k <= 0.06 ? 0 : Math.pow((k - 0.06)/0.94, 1.5)*1.2*g*g/poleKropki;
     odcisk = (odcisk*31 + Math.round(k*255)) >>> 0;
   }
-  const klucz = [gw, gh, g, W, H, iter, u.ziarno, odcisk].join(",");
+  /* r0 osobno: przy małych kropkach krok g jest przycięty do 1 px, więc sam g
+     nie odróżnia wielkości (gęstość 2 i 3,5 dawały ten sam układ z pamięci) */
+  const klucz = [gw, gh, g, r0, u.cell, W, H, iter, u.ziarno, odcisk].join(",");
   if(pamiecStipple.has(klucz)) return pamiecStipple.get(klucz);
   /* start: próg z niebieskiego szumu (≤ 0,29 przy kroku = pół odstępu), przyklejony do siatki próbek */
   const bn = niebieskiSzum(), ziarno = u.ziarno + 401, sx0 = [], sy0 = [];
