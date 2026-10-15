@@ -621,6 +621,30 @@ z niego `null` i lecą skanem — owijanie ich domknięciem wychodziło wolniej 
 sam skan. Jeśli dodasz paletę będącą pełnym iloczynem poziomów, dopisz ją tam;
 jeśli nieregularną, zostaw `null`.
 
+## Wygląd interfejsu (od 15.10)
+
+Wzór: Figma „dither ui (Community)”, plik `zaZ1q7i4lCsgls4fLpoCE4`, plansza
+„light” (7:64); plan i decyzje w `PLAN-UI.md`. Wszystko w `src/styles.css`:
+- Kolory tylko ze zmiennych (`--paper`, `--ink`, `--soft`, `--szary`), ciemny
+  motyw je zamienia. Nowy element — bez kolorów na sztywno, bez magenty
+  (akcentem jest tusz; fokus to przerywana ramka 2 px z `:focus-visible`).
+- Wzory ditheringu jako gradienty CSS w kolorze motywu: `--szach` (kafel
+  2 px — cień przycisku, uchwyt suwaka), `--kropka` / `--kropka-szara`
+  (kafel 4 px, dwie warstwy przesunięte o 2 px — cień karty, najechanie,
+  wyłączone, tło podglądu). PNG-ów wzorów z Figmy nie używamy: mają białe
+  tło na stałe i nie działają w ciemnym motywie.
+- Ikony z Figmy w `src/ui/` (`check`, `chevron`, `pointer` — kursor);
+  `*-jasny.svg` to te same pliki z kolorem zamienionym na `#FEFEFE`
+  (ciemny motyw, przez `--ikona-check`, `--ikona-chevron`).
+- `.btn` ma cień w `::after` (3 px pod spodem, `margin-bottom:3px`) — małe
+  przyciski w ciasnych wierszach go wyłączają (`.pal-lista .btn::after`).
+  Cienie kart (`.fx::before`, `.drop::before`) mają `z-index:-1`, dlatego
+  `.panel` i `.stage` mają `isolation:isolate` — bez tego cień wchodzi pod
+  tekst albo znika pod tłem.
+- Nazwa apki w nagłówku zostaje w Archivo: halftone.js rysuje znaki
+  Archivo na płótnie bez czekania na krój, więc coś w dokumencie musi go
+  używać, żeby był wczytany.
+
 ## Czego nie ruszać bez powodu
 
 - Macierze w `kernels.js` — to kanoniczne wagi z literatury, dzielniki muszą się

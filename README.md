@@ -48,8 +48,14 @@ certyfikatem, więc przy pierwszym uruchomieniu Windows SmartScreen pokaże
 ostrzeżenie — „Więcej informacji" → „Uruchom mimo to". Ikona powstaje
 skryptem: `npm run ikona`.
 
-Krój Archivo leży w `fonty/` (licencja SIL OFL obok), więc apka nie łączy
-się z Google Fonts i bez sieci wygląda tak samo.
+Kroje Archivo (teksty na obrazie i nazwa apki) i Inter (interfejs) leżą
+w `fonty/` (licencje SIL OFL obok), więc apka nie łączy się z Google Fonts
+i bez sieci wygląda tak samo.
+
+Wygląd interfejsu wzorowany na „dither ui” z Figmy (społecznościowy zestaw
+komponentów): jednobitowy, ramki 1 px, cienie i stany z ditheringu
+(szachownica, rzadkie kropki), wersaliki na przyciskach. Dwa motywy —
+czarne na białym i białe na czarnym — przełącza przycisk w nagłówku.
 
 ## Co robi
 

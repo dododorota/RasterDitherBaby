@@ -4,6 +4,13 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — 15 października 2026
+
+**Nowy wygląd interfejsu jak „dither ui” z Figmy** (punkt 30 niżej),
+w dwóch motywach. Checklista w `PLAN-UI.md`, zasady wyglądu w `CLAUDE.md`
+(„Wygląd interfejsu”). Czeka na ocenę użytkowniczki — lista „Z 15.10”
+w „Do przetestowania na koniec”.
+
 ## Wznowienie — 14 października 2026
 
 **Przeniesione funkcje z wtyczek VFX (Dither 1.6, Raster 1.9, Riso 1.6)**
@@ -295,6 +302,17 @@ to przegląd bez zmian w kodzie.
     i efekty) co do bajtu jak przed zmianą, wszystkie testy w Node
     i `przegladarka.mjs` (worker = główny wątek dla nowych wzorów i CRT),
     zrzuty na portrecie z testów wtyczki.
+30. **Wygląd jak „dither ui” z Figmy** (15.10) — plan w `PLAN-UI.md`.
+    Cały `styles.css` od nowa przy tych samych selektorach (JS i markup bez
+    zmian): Inter w interfejsie, tusz `#121314` / papier `#fefefe`, ramki
+    1 px, przyciski wersalikami z cieniem w szachownicę, karty efektów jak
+    okno dialogowe (ramka 2 px, cień z kropek), suwak z uchwytem jak
+    przełącznik z Figmy, własne pole wyboru i strzałka listy (ikony z Figmy
+    w `src/ui/`), kursor-strzałka, tło podglądu w rzadkie kropki. Oba
+    motywy (przycisk w nagłówku). Odstępstwo od wzoru: wybrany preset
+    wypełniony jak zakładka, nie w kropki (kropki pod literami źle się
+    czytały). Sprawdzone: zrzuty jasny / ciemny / wąskie okno / skala 150%,
+    `przegladarka.mjs` 0 błędów, Electron startuje.
 
 ## Do przetestowania na koniec
 
@@ -327,6 +345,11 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   w filmie; nowy stippling — czy gęstość i wielkość kropek się podobają
   (dawniej kropki były większe i było ich mniej), także w risografie;
   słonecznik z różnymi kształtami punktu.
+- **Z 15.10:** nowy wygląd interfejsu w obu motywach, na swoim ekranie
+  (przy skalowaniu Windowsa 125–150% wzory 1 px mogą wyglądać inaczej niż
+  na zrzutach — sprawdzone tylko 100% i 150%); czy wersaliki na długich
+  przyciskach nie męczą; tło podglądu w kropki — czy nie przeszkadza
+  w ocenie ditheringu (łatwo zamienić na gładkie: `.stage` w styles.css).
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 

@@ -1,158 +1,225 @@
 /* Archivo z katalogu fonty/ (SIL OFL, licencja obok) — bez Google Fonts,
    żeby apka na pulpicie i bez sieci wyglądała tak samo. Jeden plik
-   zmienny na zakres znaków: wagi 400–700 z jednego pliku. */
+   zmienny na zakres znaków: wagi 400–700 z jednego pliku.
+   Archivo rysuje teksty na płótnie (znaki rastra, ASCII, napisy) — halftone.js
+   nie czeka na wczytanie kroju, więc musi go używać coś w dokumencie: nazwa
+   apki w nagłówku. Interfejs — Inter (też OFL, `OFL-Inter.txt`). */
 @font-face{font-family:Archivo; font-style:normal; font-weight:100 900; font-display:swap;
   src:url(../fonty/archivo-latin-ext.woff2) format("woff2");
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:Archivo; font-style:normal; font-weight:100 900; font-display:swap;
   src:url(../fonty/archivo-latin.woff2) format("woff2");
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(../fonty/inter-latin-ext.woff2) format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(../fonty/inter-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* ---------- wygląd jak „dither ui” (Figma) ----------
+   Jednobitowy: tusz i papier, ramki 1 px, cienie i stany z ditheringu
+   zamiast przezroczystości. Szachownica 1 px (cień przycisku) i rzadkie
+   kropki 1 px co 4 px (cień okna, zaznaczenie, wyłączone) liczone
+   gradientami w kolorze motywu — wzory z Figmy to PNG z białym tłem na
+   stałe, więc w ciemnym motywie by nie działały. Ikony z Figmy w src/ui/,
+   do ciemnego motywu kopie w jasnym kolorze. Ciemny motyw = te same kolory
+   zamienione miejscami. */
 :root{
-  --paper:#ffffff;
-  --ink:#000000;
-  --soft:rgba(0,0,0,.55);
-  --rule:rgba(0,0,0,.18);
-  --field:rgba(0,0,0,.05);
+  --paper:#fefefe;
+  --ink:#121314;
+  --soft:#4f4f4f;
+  --szary:#898989;
+  --rule:#121314;
+  --field:#fefefe;
   --cyan:#00AEEF;
   --magenta:#EC008C;
   --yellow:#FFE800;
-  --stage:#e9e9e6;
+  --stage:#fefefe;
+  --ikona-check:url(ui/check.svg);
+  --ikona-chevron:url(ui/chevron.svg);
+  --kursor:url(ui/pointer.svg) 5 1, pointer;
+  /* wzory: obraz (rozmiar kafla obok) */
+  --szach:repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%);
+  --kropka:conic-gradient(from 270deg at 1px 1px, var(--ink) 25%, transparent 0);
+  --kropka-szara:conic-gradient(from 270deg at 1px 1px, var(--szary) 25%, transparent 0);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#0b0b0b; --ink:#f4f4f2;
-    --soft:rgba(244,244,242,.6);
-    --rule:rgba(244,244,242,.22);
-    --field:rgba(244,244,242,.08);
-    --stage:#151515;
+    --paper:#121314; --ink:#fefefe; --soft:#b4b4b4; --rule:#fefefe; --field:#121314; --stage:#121314;
+    --ikona-check:url(ui/check-jasny.svg); --ikona-chevron:url(ui/chevron-jasny.svg);
   }
 }
 :root[data-theme="dark"]{
-  --paper:#0b0b0b; --ink:#f4f4f2;
-  --soft:rgba(244,244,242,.6);
-  --rule:rgba(244,244,242,.22);
-  --field:rgba(244,244,242,.08);
-  --stage:#151515;
+  --paper:#121314; --ink:#fefefe; --soft:#b4b4b4; --rule:#fefefe; --field:#121314; --stage:#121314;
+  --ikona-check:url(ui/check-jasny.svg); --ikona-chevron:url(ui/chevron-jasny.svg);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0; background:var(--paper); color:var(--ink);
-  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
-  font-size:14px; line-height:1.45;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  font-size:14px; line-height:1.4;
   -webkit-font-smoothing:antialiased;
 }
+button, select, summary, label.check, input[type=range], input[type=checkbox], input[type=color], [role=tab]{cursor:var(--kursor)}
+button:disabled, select:disabled, input:disabled{cursor:not-allowed}
+:focus-visible{outline:2px dashed var(--ink); outline-offset:2px}
+
 header{
-  display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
-  padding:14px 18px; border-bottom:1px solid var(--rule);
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:12px 18px 14px; border-bottom:1px solid var(--rule);
 }
 h1{
-  font-family:"Archivo Expanded",Archivo,sans-serif;
-  font-weight:700; font-size:20px; letter-spacing:-.01em; margin:0;
+  font-family:Archivo,Inter,sans-serif;
+  font-weight:800; font-size:20px; letter-spacing:-.01em; margin:0;
 }
 .reg{display:flex; gap:5px; align-items:center; margin-left:auto}
 .reg i{width:9px;height:9px;border-radius:50%;display:block;mix-blend-mode:multiply}
 :root[data-theme="dark"] .reg i{mix-blend-mode:normal}
-header .motyw{width:auto; padding:3px 10px; font-size:12px; align-self:center}
-header .motyw:disabled{opacity:.35; cursor:default}
+header .motyw{width:auto; min-width:36px; padding:5px 10px; font-size:11px}
+header #cofnij, header #ponow{font-size:15px; padding:2px 8px 1px; line-height:1.3}
 .tagline{color:var(--soft); font-size:13px}
 
 /* kolumna: nagłówek tyle, ile zajmie, reszta ekranu dla panelu i podglądu —
    bez liczenia wysokości nagłówka na sztywno */
 body{display:flex; flex-direction:column}
-.layout{display:grid; grid-template-columns:320px 1fr; flex:1 1 auto; min-height:0}
+.layout{display:grid; grid-template-columns:330px 1fr; flex:1 1 auto; min-height:0}
 @media (max-width:820px){ body{display:block} .layout{grid-template-columns:1fr} }
 
-.panel{border-right:1px solid var(--rule); overflow-y:auto; padding-bottom:40px}
+/* isolation: cienie kart (z-index −1) rysują się nad tłem panelu */
+.panel{border-right:1px solid var(--rule); overflow-y:auto; padding-bottom:40px; isolation:isolate}
 @media (max-width:820px){ .panel{border-right:0; border-bottom:1px solid var(--rule)} }
 
-.group{border-bottom:1px solid var(--rule); padding:14px 18px}
-.group h2{font-size:13px; font-weight:700; margin:0 0 10px; letter-spacing:.01em}
+.group{border-bottom:1px solid var(--rule); padding:14px 18px 18px}
+.group h2{font-size:12px; font-weight:700; margin:0 0 12px; letter-spacing:.06em; text-transform:uppercase}
 
-.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:9px 0}
-.row label{color:var(--soft); flex:0 0 auto}
-.val{font-variant-numeric:tabular-nums; color:var(--soft); min-width:42px; text-align:right}
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0 4px}
+.row label{color:var(--ink); flex:0 0 auto; font-size:13px}
+.val{font-variant-numeric:tabular-nums; color:var(--soft); font-size:13px; min-width:42px; text-align:right}
 
-input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; margin:0; height:18px}
-input[type=range]::-webkit-slider-runnable-track{height:2px; background:var(--rule)}
-input[type=range]::-moz-range-track{height:2px; background:var(--rule)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:12px; height:12px; background:var(--ink); margin-top:-5px; border:0}
-input[type=range]::-moz-range-thumb{width:12px; height:12px; background:var(--ink); border:0; border-radius:0}
-input[type=range]:focus-visible{outline:2px solid var(--magenta); outline-offset:3px}
+/* suwak jak przełącznik z Figmy: tor w ramce, uchwyt — kółko z dolną
+   połową w szachownicy */
+input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; margin:0; height:22px}
+input[type=range]::-webkit-slider-runnable-track{height:8px; background:var(--paper); border:1px solid var(--ink); border-radius:4px}
+input[type=range]::-moz-range-track{height:6px; background:var(--paper); border:1px solid var(--ink); border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; margin-top:-6px; border:1px solid var(--ink); border-radius:50%;
+  background:linear-gradient(var(--paper) 0 50%, transparent 50%), var(--szach) 0 0/2px 2px, var(--paper)}
+input[type=range]::-moz-range-thumb{width:16px; height:16px; border:1px solid var(--ink); border-radius:50%;
+  background:linear-gradient(var(--paper) 0 50%, transparent 50%), var(--szach) 0 0/2px 2px, var(--paper)}
+input[type=range]:active::-webkit-slider-thumb{background:var(--ink)}
+input[type=range]:active::-moz-range-thumb{background:var(--ink)}
 
 select, .btn, input[type=text], textarea{
   font:inherit; color:var(--ink); background:var(--field);
-  border:1px solid var(--rule); border-radius:0; padding:6px 8px; width:100%;
+  border:1px solid var(--rule); border-radius:6px; padding:7px 12px; width:100%;
 }
-select:focus-visible,.btn:focus-visible{outline:2px solid var(--magenta); outline-offset:2px}
-.btn{cursor:pointer; text-align:center; background:transparent}
-.btn:hover{background:var(--field)}
-.btn.solid{background:var(--ink); color:var(--paper); border-color:var(--ink); font-weight:500}
-.btn.solid:hover{opacity:.85}
+input[type=text]::placeholder, textarea::placeholder{color:var(--szary)}
+select{-webkit-appearance:none; appearance:none; padding-right:32px;
+  background:var(--ikona-chevron) right 10px center/14px 14px no-repeat, var(--field)}
+
+/* przycisk: ramka, wersaliki, pod spodem pasek szachownicy jak cień;
+   wciśnięty schodzi w cień */
+.btn{
+  position:relative; text-align:center; background:var(--paper);
+  border-radius:4px; padding:7px 10px 6px; margin-bottom:3px;
+  font-size:12px; font-weight:600; letter-spacing:.03em; text-transform:uppercase;
+}
+.btn::after{content:""; position:absolute; left:1px; right:1px; bottom:-4px; height:3px; border-radius:0 0 4px 4px;
+  background:var(--szach) 0 0/2px 2px; pointer-events:none}
+.btn:hover{background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px, var(--paper)}
+.btn:active:not(:disabled){transform:translateY(2px)}
+.btn:active:not(:disabled)::after{bottom:-2px; height:1px}
+.btn.solid{background:var(--ink); color:var(--paper); border-color:var(--ink); font-weight:700}
+.btn.solid:hover{background:var(--ink); opacity:.88}
+.btn:disabled{color:var(--szary); border-color:var(--szary);
+  background:var(--kropka-szara) 0 0/4px 4px, var(--kropka-szara) 2px 2px/4px 4px, var(--paper)}
+.btn:disabled::after{display:none}
 .btns{display:flex; gap:8px}
 
-.tabs{display:flex; border:1px solid var(--ink)}
+/* zakładki: grupa przycisków z Figmy — wspólna ramka i cień, wybrana wypełniona */
+.tabs{display:flex; position:relative; border:1px solid var(--ink); border-radius:4px; margin-bottom:3px; background:var(--paper)}
+.tabs::after{content:""; position:absolute; left:1px; right:1px; bottom:-4px; height:3px; border-radius:0 0 4px 4px;
+  background:var(--szach) 0 0/2px 2px; pointer-events:none}
 .tabs button{
-  flex:1; font:inherit; font-weight:500; padding:8px 4px; cursor:pointer;
+  flex:1; font:inherit; font-size:12px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:8px 4px;
   background:transparent; color:var(--ink); border:0; border-right:1px solid var(--ink);
 }
-.tabs button:last-child{border-right:0}
+.tabs button:first-child{border-radius:3px 0 0 3px}
+.tabs button:last-child{border-right:0; border-radius:0 3px 3px 0}
+.tabs button:hover{background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px}
 .tabs button[aria-selected=true], .tabs button[aria-pressed=true]{background:var(--ink); color:var(--paper)}
 
-.check{display:flex; align-items:center; gap:8px; color:var(--soft); cursor:pointer; margin:9px 0}
-.check input{accent-color:var(--magenta); width:15px; height:15px}
+/* pole wyboru z Figmy: kwadrat 18 px z ptaszkiem */
+.check{display:flex; align-items:center; gap:10px; color:var(--ink); font-size:13px; margin:10px 0}
+.check input{-webkit-appearance:none; appearance:none; flex:0 0 18px; width:18px; height:18px; margin:0;
+  border:1px solid var(--ink); border-radius:4px; background:var(--paper)}
+.check input:checked{background:var(--ikona-check) center/18px 18px no-repeat, var(--paper)}
+.check input:disabled{border-color:var(--szary)}
 
 .swatches{display:flex; gap:8px; align-items:center}
 .probki{display:flex; flex-wrap:wrap; gap:3px; margin-top:12px}
 .probki button{
-  display:block; width:22px; height:22px; padding:0; cursor:pointer;
-  border:0; box-shadow:inset 0 0 0 1px var(--rule);
+  display:block; width:22px; height:22px; padding:0;
+  border:0; box-shadow:inset 0 0 0 1px var(--rule); border-radius:2px;
 }
 .probki button[aria-pressed=true]{outline:2px solid var(--ink); outline-offset:1px}
-.probki button:focus-visible{outline:2px solid var(--magenta); outline-offset:1px}
+.probki button:focus-visible{outline:2px dashed var(--ink); outline-offset:1px}
 .probki.gesto button{width:14px; height:14px}
 .pal-wybor{display:flex; gap:6px}
-.pal-wybor .btn{width:34px; flex:0 0 auto; padding:6px 0}
+.pal-wybor .btn{width:36px; flex:0 0 auto; padding:7px 0 6px}
 .pal-wybor select{flex:1 1 auto; min-width:0}
-.edycja .btn{padding:5px 4px; font-size:12px}
+.edycja .btn{padding:6px 4px 5px; font-size:11px}
 /* wybierak koloru dla próbek: musi być w układzie, bo przy nim otwiera się okno */
 .kolor-ukryty{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:0; padding:0}
-input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rule); background:none; cursor:pointer}
+input[type=color]{width:36px; height:34px; padding:3px; border:1px solid var(--rule); border-radius:6px; background:var(--paper)}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0; border-radius:3px}
 
 /* znaki według tonu: wiersz na ton — numer, kształt, kolor, obrazek */
-.znaki-lista{display:grid; gap:4px; margin-top:12px}
+.znaki-lista{display:grid; gap:5px; margin-top:12px}
 .znak-ton{display:flex; gap:4px; align-items:center; outline-offset:2px}
-.znak-ton.over{outline:1px dashed var(--magenta)}
+.znak-ton.over{outline:2px dashed var(--ink)}
 .znak-ton .nr{flex:0 0 20px; font-size:11px; color:var(--soft); text-align:right; font-variant-numeric:tabular-nums}
-.znak-ton select{flex:1 1 auto; min-width:0; padding:4px 6px}
-.znak-ton select:disabled{opacity:.45}
-.znak-ton input[type=color]{flex:0 0 28px; width:28px; height:28px}
-.znak-ton .obr{flex:0 0 auto; width:auto; padding:4px 8px; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; display:flex; gap:4px; align-items:center}
+.znak-ton select{flex:1 1 auto; min-width:0; padding:5px 28px 5px 8px; background-position:right 7px center}
+.znak-ton select:disabled{color:var(--szary); border-color:var(--szary)}
+.znak-ton input[type=color]{flex:0 0 30px; width:30px; height:30px}
+.znak-ton .obr{flex:0 0 auto; width:auto; padding:5px 8px 4px; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; display:flex; gap:4px; align-items:center}
 .znak-ton .obr canvas{width:18px; height:18px; flex:0 0 18px; object-fit:contain}
-.znak-ton .usun{flex:0 0 26px; width:26px; padding:4px 0; color:var(--soft)}
+.znak-ton .usun{flex:0 0 28px; width:28px; padding:5px 0 4px; color:var(--soft)}
 
-.presets{display:flex; flex-wrap:wrap; gap:6px}
-.presets .btn[aria-pressed=true]{background:var(--ink); color:var(--paper)}
-.presets .btn{width:auto; flex:1 1 auto; padding:5px 9px; font-size:13px}
+/* presety */
+.presets{display:flex; flex-wrap:wrap; gap:6px 6px}
+/* wybrany preset wypełniony jak wybrana zakładka — kropki (zaznaczenie z Figmy)
+   wchodziły pod litery i źle się czytały */
+.presets .btn[aria-pressed=true]{background:var(--ink); color:var(--paper); border-color:var(--ink); font-weight:700}
+.presets .btn{width:auto; flex:1 1 auto; padding:6px 8px 5px; font-size:11px}
 .presets .moj{display:flex; flex:1 1 auto}
 .presets .moj .btn{border-style:dashed}
-.presets .moj .usun{flex:0 0 auto; padding:5px 8px; border-left:0; color:var(--soft)}
+.presets .moj .btn:first-child{border-radius:4px 0 0 4px}
+.presets .moj .usun{flex:0 0 auto; padding:6px 9px 5px; border-left:0; border-radius:0 4px 4px 0; color:var(--soft)}
 .presets .moj .usun:hover{color:var(--ink)}
 .btns input[type=text]{flex:1 1 auto; min-width:0}
 
+/* podgląd: papier w rzadkie szare kropki, obraz w ramce */
 .stage{
-  background:var(--stage); display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center;
-  padding:22px; overflow:auto; min-height:60vh; position:relative;
+  background:var(--kropka-szara) 0 0/4px 4px, var(--kropka-szara) 2px 2px/4px 4px, var(--stage);
+  display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center;
+  padding:22px; overflow:auto; min-height:60vh; position:relative; isolation:isolate;
 }
-#out{max-width:100%; max-height:calc(100vh - 140px); display:block; box-shadow:0 1px 0 var(--rule)}
+#out{max-width:100%; max-height:calc(100vh - 140px); display:block; outline:1px solid var(--ink)}
 .pixelated{image-rendering:pixelated; image-rendering:crisp-edges}
 .drop{
-  border:1px dashed var(--rule); padding:34px 26px; text-align:center; color:var(--soft);
+  position:relative; background:var(--paper);
+  border:2px solid var(--ink); border-radius:6px; padding:30px 26px; text-align:center; color:var(--soft);
   max-width:360px;
 }
-.drop strong{display:block; color:var(--ink); font-size:16px; margin-bottom:6px}
-.stage.over{outline:2px solid var(--magenta); outline-offset:-10px}
-.hint{color:var(--soft); font-size:12px; margin:8px 0 0}
+/* cień okna z Figmy: rzadkie kropki wystające spod ramki */
+.drop::before{content:""; position:absolute; left:-6px; right:-6px; top:6px; bottom:-8px; z-index:-1; border-radius:8px;
+  background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px}
+.drop strong{display:block; color:var(--ink); font-size:16px; font-weight:600; margin-bottom:6px}
+.stage.over{outline:2px dashed var(--ink); outline-offset:-10px}
+.hint{color:var(--soft); font-size:12px; margin:8px 0 0; line-height:1.45}
 .hidden{display:none !important}
 
 /* przetwarzanie folderu i zapis filmu: reszta panelu przygaszona i wyłączona (inert) */
@@ -160,8 +227,8 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 
 /* oś czasu filmu pod podglądem */
 .stage.z-osia #out{max-height:calc(100vh - 196px)}
-.os{display:flex; align-items:center; gap:12px; width:min(100%, 720px)}
-.os .btn{width:38px; flex:0 0 auto; padding:5px 0; font-size:13px}
+.os{display:flex; align-items:center; gap:12px; width:min(100%, 720px); background:var(--paper); border:1px solid var(--ink); border-radius:6px; padding:6px 10px 3px}
+.os .btn{width:38px; flex:0 0 auto; padding:5px 0 4px; font-size:13px}
 .os input[type=range]{flex:1 1 auto}
 .os .val{flex:0 0 auto; min-width:118px}
 .os[inert]{opacity:.4}
@@ -170,81 +237,88 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 #g-pal{position:relative}
 
 /* lista kolorów palety z kodami */
-.pal-szczegoly{margin-top:10px}
-.pal-szczegoly summary{cursor:pointer; color:var(--soft); font-size:13px}
-.pal-lista{max-height:240px; overflow-y:auto; margin-top:6px; display:flex; flex-direction:column; gap:3px}
+.pal-szczegoly{margin-top:12px}
+.pal-szczegoly summary{color:var(--soft); font-size:13px}
+.pal-lista{max-height:240px; overflow-y:auto; margin-top:6px; display:flex; flex-direction:column; gap:4px}
 .pal-lista .wiersz{display:flex; align-items:center; gap:4px}
-.pal-lista .wiersz > button.probka{width:22px; height:22px; flex:0 0 auto; padding:0; border:0; cursor:pointer; box-shadow:inset 0 0 0 1px var(--rule)}
-.pal-lista input[type=text]{flex:1 1 auto; min-width:0; padding:3px 6px; font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace; font-size:12px}
-.pal-lista input[type=text][aria-invalid=true]{outline:2px solid var(--magenta)}
-.pal-lista .btn{width:24px; flex:0 0 auto; padding:2px 0; font-size:12px}
-.pal-lista .btn:disabled{opacity:.3; cursor:default}
+.pal-lista .wiersz > button.probka{width:24px; height:24px; flex:0 0 auto; padding:0; border:0; border-radius:3px; box-shadow:inset 0 0 0 1px var(--rule)}
+.pal-lista input[type=text]{flex:1 1 auto; min-width:0; padding:3px 8px; font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace; font-size:12px; border-radius:4px}
+.pal-lista input[type=text][aria-invalid=true]{outline:2px dashed var(--ink); outline-offset:1px}
+.pal-lista .btn{width:26px; flex:0 0 auto; padding:3px 0 2px; font-size:12px; margin-bottom:0}
+.pal-lista .btn::after{display:none}
 
 /* klatki kluczowe: ◆ przy suwakach i ścieżki pod osią czasu */
 .klucz{display:none; flex:0 0 auto; width:20px; height:20px; padding:0; margin-left:auto; margin-right:-4px;
-  border:0; background:transparent; color:var(--rule); cursor:pointer; font-size:13px; line-height:20px}
+  border:0; background:transparent; color:var(--szary); font-size:13px; line-height:20px}
 .panel.animacja .klucz{display:inline-block}
 .klucz.animowany{color:var(--soft)}
-.klucz[aria-pressed=true]{color:var(--magenta)}
+.klucz[aria-pressed=true]{color:var(--ink); text-shadow:0 0 0 var(--ink), 1px 1px 0 var(--szary)}
 .klucz:hover{color:var(--ink)}
-.klucz:focus-visible{outline:2px solid var(--magenta)}
 /* ścieżki mają ten sam układ co oś nad nimi (przycisk 38 px, suwak, licznik
    118 px), żeby znaczniki i głowica stały dokładnie pod suwakiem osi; tor jest
    węższy o pół uchwytu suwaka z każdej strony, bo tyle suwak traci na brzegach */
-.os-sciezki{width:min(100%, 720px); display:flex; flex-direction:column; gap:4px; margin-top:-6px}
+.os-sciezki{width:min(100%, 720px); display:flex; flex-direction:column; gap:4px; margin-top:-6px;
+  background:var(--paper); border:1px solid var(--ink); border-radius:6px; padding:6px 10px}
 .sciezka{display:flex; align-items:center; gap:12px; font-size:12px; color:var(--soft)}
 .sciezka::before{content:""; flex:0 0 38px}
 .sciezka .nazwa{flex:0 0 66px; order:3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .sciezka .krzywa{order:4; width:20px; height:20px; margin-left:-8px}
 .sciezka .usun{order:5}
-.sciezka .tor{position:relative; flex:1 1 auto; height:16px; margin:0 6px; border-bottom:1px solid var(--rule)}
+.sciezka .tor{position:relative; flex:1 1 auto; height:16px; margin:0 9px; border-bottom:1px solid var(--ink)}
 .sciezka .tor .kl{position:absolute; top:1px; width:14px; height:14px; margin-left:-7px; padding:0; border:0;
-  background:transparent; color:var(--ink); cursor:pointer; font-size:12px; line-height:14px}
-.sciezka .tor .glowica{position:absolute; top:0; bottom:-1px; width:1px; background:var(--magenta); pointer-events:none}
-.sciezka .usun{width:20px; flex:0 0 auto; padding:0; font-size:12px; margin-left:-8px}
+  background:transparent; color:var(--ink); font-size:12px; line-height:14px}
+.sciezka .tor .glowica{position:absolute; top:0; bottom:-1px; width:1px; background:var(--ink); pointer-events:none}
+.sciezka .usun{width:20px; flex:0 0 auto; padding:0; font-size:12px; margin-left:-8px; margin-bottom:0}
+.sciezka .usun::after{display:none}
 
-/* stos efektów: karty z nagłówkiem */
-.fx{border:1px solid var(--rule); margin-top:8px}
-.fx-glowa{display:flex; align-items:center; gap:2px; padding:4px 4px 4px 0; border-bottom:1px solid var(--rule)}
+/* stos efektów: karty jak okno dialogowe z Figmy — ramka 2 px i cień z kropek */
+.fx{position:relative; border:2px solid var(--ink); border-radius:6px; margin:10px 4px 12px 0; background:var(--paper)}
+.fx::before{content:""; position:absolute; left:4px; right:-5px; top:5px; bottom:-6px; z-index:-1; border-radius:7px;
+  background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px}
+.fx-glowa{display:flex; align-items:center; gap:2px; padding:4px 4px 4px 0; border-bottom:1px solid var(--ink)}
 .fx.zwiniety .fx-glowa{border-bottom:0}
 .fx.zwiniety .fx-cialo{display:none}
-.fx-cialo{padding:4px 10px 10px}
-.fx-nazwa{flex:1 1 auto; text-align:left; font:inherit; font-weight:500; color:var(--ink); background:none; border:0; padding:4px 10px; cursor:pointer}
+.fx-cialo{padding:2px 12px 12px}
+.fx-nazwa{flex:1 1 auto; text-align:left; font:inherit; font-weight:600; color:var(--ink); background:none; border:0; padding:5px 10px}
 .fx-nazwa::before{content:"▾ "; color:var(--soft)}
 .fx.zwiniety .fx-nazwa::before{content:"▸ "}
-.fx-b{width:26px; height:26px; padding:0; font:inherit; font-size:13px; color:var(--soft); background:none; border:0; cursor:pointer}
-.fx-b:hover{color:var(--ink)}
-.fx-b:disabled{opacity:.3; cursor:default}
-.fx-b:focus-visible,.fx-nazwa:focus-visible{outline:2px solid var(--magenta)}
+.fx-b{width:26px; height:26px; padding:0; font:inherit; font-size:13px; color:var(--soft); background:none; border:0; border-radius:4px}
+.fx-b:hover{color:var(--ink); background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px}
+.fx-b:disabled{color:var(--szary); background:none}
 .fx.ukryty .fx-cialo, .fx.ukryty .fx-nazwa{opacity:.45}
-.fx-menu{display:flex; flex-direction:column; gap:4px; margin-top:6px}
+.fx-menu{display:flex; flex-direction:column; gap:6px; margin-top:8px}
 .fx-menu .btn{text-align:left}
 /* zwijane grupy panelu */
-.panel .group > h2{cursor:pointer; user-select:none}
+.panel .group > h2{cursor:var(--kursor); user-select:none}
 .panel .group > h2::after{content:" ▾"; color:var(--soft); font-weight:400}
 .panel .group.zwinieta > h2{margin-bottom:0}
 .panel .group.zwinieta > h2::after{content:" ▸"}
 .panel .group.zwinieta > :not(h2){display:none !important}
-.panel .group > h2:focus-visible{outline:2px solid var(--magenta); outline-offset:2px}
-/* paski przewijania i kontrolki formularzy w kolorze motywu */
+/* paski przewijania jak w Figmie: ciemna pigułka */
 :root[data-theme="dark"]{color-scheme:dark}
 :root[data-theme="light"]{color-scheme:light}
+::-webkit-scrollbar{width:14px; height:14px}
+::-webkit-scrollbar-track{background:var(--paper)}
+::-webkit-scrollbar-thumb{background:var(--ink); border:4px solid var(--paper); border-radius:7px}
+::-webkit-scrollbar-corner{background:var(--paper)}
 
 /* warstwy kompozycji */
 .razy{align-self:center; color:var(--soft)}
-#g-warstwy input[type=number]{font:inherit; color:var(--ink); background:var(--field); border:1px solid var(--rule); padding:6px 8px; width:100%; min-width:0}
-.warstwy-lista{display:flex; flex-direction:column; gap:3px; margin-top:8px}
-.warstwy-lista .warstwa{display:flex; align-items:center; gap:2px; border:1px solid var(--rule)}
-.warstwy-lista .warstwa[aria-selected=true]{border-color:var(--ink)}
-.warstwy-lista .warstwa .nazwa{flex:1 1 auto; min-width:0; text-align:left; font:inherit; font-size:13px; color:var(--ink); background:none; border:0; padding:6px 8px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+#g-warstwy input[type=number]{font:inherit; color:var(--ink); background:var(--field); border:1px solid var(--rule); border-radius:6px; padding:7px 10px; width:100%; min-width:0}
+.warstwy-lista{display:flex; flex-direction:column; gap:4px; margin-top:8px}
+.warstwy-lista .warstwa{display:flex; align-items:center; gap:2px; border:1px solid var(--ink); border-radius:6px}
+.warstwy-lista .warstwa[aria-selected=true]{border-width:2px; background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px, var(--paper)}
+.warstwy-lista .warstwa .nazwa{flex:1 1 auto; min-width:0; text-align:left; font:inherit; font-size:13px; color:var(--ink); background:none; border:0; padding:6px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.warstwy-lista .warstwa[aria-selected=true] .nazwa{font-weight:600}
 .warstwy-lista .warstwa.ukryta .nazwa{opacity:.45}
 .warstwy-lista .fx-b{flex:0 0 auto}
 #out.przeciaganie{cursor:move}
 
 /* zapisane palety */
-.pal-zap-lista{display:flex; flex-direction:column; gap:3px; margin-top:8px}
-.pal-zap-lista .wiersz{display:flex; align-items:center; gap:4px; border:1px solid var(--rule)}
-.pal-zap-lista .uzyj{flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:8px; font:inherit; font-size:13px; color:var(--ink); background:none; border:0; padding:5px 8px; cursor:pointer; text-align:left}
+.pal-zap-lista{display:flex; flex-direction:column; gap:4px; margin-top:8px}
+.pal-zap-lista .wiersz{display:flex; align-items:center; gap:4px; border:1px solid var(--ink); border-radius:6px}
+.pal-zap-lista .uzyj{flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:8px; font:inherit; font-size:13px; color:var(--ink); background:none; border:0; padding:6px 10px; text-align:left}
+.pal-zap-lista .uzyj:hover{background:var(--kropka) 0 0/4px 4px, var(--kropka) 2px 2px/4px 4px}
 .pal-zap-lista .pasek{display:flex; flex:0 0 auto; height:14px; box-shadow:inset 0 0 0 1px var(--rule)}
 .pal-zap-lista .pasek i{display:block; width:7px; height:14px}
 .pal-zap-lista .uzyj span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -252,11 +326,11 @@ input[type=color]{width:34px; height:28px; padding:0; border:1px solid var(--rul
 /* risograf: zakładki farb */
 .riso-zakladki{margin-top:12px}
 .riso-zakladki button{display:flex; align-items:center; justify-content:center; gap:6px}
-.riso-zakladki button i{display:block; width:10px; height:10px; border-radius:50%; box-shadow:0 0 0 1px var(--rule)}
+.riso-zakladki button i{display:block; width:10px; height:10px; border-radius:50%; box-shadow:0 0 0 1px var(--paper), 0 0 0 2px var(--ink)}
 .riso-warstwa{margin-top:8px}
 
 /* usuwanie tła */
-.kolor-tla{display:block; width:28px; height:28px; flex:0 0 auto; box-shadow:inset 0 0 0 1px var(--rule)}
+.kolor-tla{display:block; width:30px; height:30px; flex:0 0 auto; border-radius:4px; box-shadow:inset 0 0 0 1px var(--rule)}
 #out.kroplomierz{cursor:crosshair}
 
 /* lista rozwijana: Chrome na Windowsie rysuje ją systemowo na białym tle,
@@ -276,17 +350,18 @@ select option, select optgroup{background:var(--paper); color:var(--ink)}
 .kadr i[data-r=se]{right:-7px; bottom:-7px; cursor:nwse-resize}
 
 /* zwijane sekcje grupy rastra */
-details.pod{border-top:1px solid var(--rule); margin-top:14px}
+details.pod{border-top:1px dashed var(--ink); margin-top:16px}
 h2 + details.pod{border-top:0; margin-top:0}
-details.pod > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:10px 0 2px; font-weight:700; font-size:13px}
+details.pod > summary{list-style:none; display:flex; align-items:center; gap:8px; padding:12px 0 2px; font-weight:600; font-size:13px}
 details.pod > summary::-webkit-details-marker{display:none}
-details.pod > summary::after{content:"▾"; margin-left:auto; color:var(--soft); transition:transform .15s}
+details.pod > summary::after{content:""; margin-left:auto; width:14px; height:14px; background:var(--ikona-chevron) center/14px 14px no-repeat; transition:transform .15s}
 details.pod:not([open]) > summary::after{transform:rotate(-90deg)}
-details.pod > summary:focus-visible{outline:2px solid var(--magenta); outline-offset:2px}
-details.pod .zmiana{display:none; width:7px; height:7px; border-radius:50%; background:var(--magenta)}
+details.pod .zmiana{display:none; width:7px; height:7px; border-radius:50%; background:var(--ink)}
 details.pod .zmiana.widac{display:inline-block}
-.pod-reset{display:block; width:auto; margin:12px 0 4px; padding:0; border:0; background:none; color:var(--soft); font-size:12px; text-decoration:underline; text-underline-offset:3px}
-.pod-reset:hover{color:var(--ink)}
+.pod-reset{display:block; width:auto; margin:12px 0 4px; padding:0; border:0; background:none; color:var(--soft);
+  font-size:12px; font-weight:400; letter-spacing:0; text-transform:none; text-decoration:underline; text-underline-offset:3px}
+.pod-reset::after{display:none}
+.pod-reset:hover{color:var(--ink); background:none}
 textarea{display:block; resize:vertical; min-height:60px; line-height:1.35}
-.znak-ton .litera{flex:0 0 28px; height:28px; display:grid; place-items:center; border:1px solid var(--rule); font-size:14px}
+.znak-ton .litera{flex:0 0 30px; height:30px; display:grid; place-items:center; border:1px solid var(--rule); border-radius:4px; font-size:14px}
 #napis-znaki .obr{flex:1 1 auto; max-width:none; justify-content:flex-start}
