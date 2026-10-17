@@ -10,6 +10,24 @@ Poprawki po pierwszych testach (punkt 31 niżej): odstępy w „Trybie”,
 rozwijane listy, mocniejsze cienie / światła, gęstość rastra od 2 px.
 Do obejrzenia — lista „Z 16.10”.
 
+### Na później (odłożone przez użytkowniczkę 16.10)
+
+Nic nie jest w toku. Zacząć od zapytania, co z tej listy bierzemy.
+- [ ] **Commit poprawek z 16.10** — zmiany były w poczekalni (`git add`),
+      bez commita. Sprawdzić `git status`; jeśli dalej są, podać:
+      `git commit -m "Odstępy w Trybie, listy jak w Figmie, mocniejsze cienie/światła, gęstość rastra od 2 px"`.
+- [ ] **Ocena użytkowniczki na jej zdjęciach** — listy „Z 14.10”, „Z 15.10”,
+      „Z 16.10” w „Do przetestowania na koniec” (stippling, wzory, CRT,
+      wygląd, tło podglądu w kropki, siła cieni / świateł, gęstość 2–3 px
+      z zapisem w skali, listy w Electronie). Poprawić według uwag.
+- [ ] **Decyzja: nowa krzywa cieni / świateł we wtyczkach VFX** (Shadow /
+      Highlight Detail; `podnies` / `opusc` z `image.js`). To osobny projekt
+      (`AE Plugin Land/raster-dither`) — tylko po jej „tak”.
+- [ ] **Starsze, bez pośpiechu:** reszta różnic z Dither Boyem i lista
+      z Halftone Makera (README, „Co dalej”) — wybór użytkowniczki; faktury
+      efektu, skala plam riso i siła poświaty na prawdziwych zdjęciach;
+      MP4 z dźwiękiem w Premiere / na Instagramie („Otwarte decyzje”).
+
 ## Wznowienie — 15 października 2026
 
 **Nowy wygląd interfejsu jak „dither ui” z Figmy** (punkt 30 niżej),
