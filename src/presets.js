@@ -23,6 +23,22 @@ export const PRESETS = {
     ["Smuga światła", {algo:"bayer8", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ffd2a0", con:30, glow:60, glowR:16, glowProg:60, glowRozciag:60}],
     ["CRT na jasne", {algo:"waveform", str:1, pix:2, pal:"bw", mapa:"jasnosc", ink:"#000000", paper:"#ff3df2", con:35, glow:60, glowR:14, glowProg:35, stylOdstep:6, stylWygiecie:60, ekspozycja:-0.6, swiatla:-40}]
   ],
+  /* tryb Glitch — presety wtyczki VFX Glitch (applyGlitchPreset w glitch.cpp);
+     rozszczepienie RGB jak tam: czerwony w jedną stronę, zielony z niebieskim w drugą */
+  glitch:[
+    ["Domyślny", {}],
+    ["Zepsuty JPEG", {glJakosc:25, glBajty:2, glBajtyOd:55, glBajtyDo:85, glBajtyZiarno:4}],
+    ["Kolory JPEG", {glJakosc:60, glQtcLos:9, glQtcMaks:65}],
+    ["Datamosh twarzy", {glJpeg:false, glMosh:true, glMoshX:-90, glMoshY:10, glMoshSkala:6, glMapa:true, glMapaX:40, glMapaNr:5}],
+    ["Topnienie", {glJpeg:false, glTop:true, glTopY:250, glTopNr:3, glCiecz:true, glCieczSila:40}],
+    ["Krople", {glJpeg:false, glKrople:true, glKropleIle:70, glKropleDl:500, glRgb:true, glRx:-4, glGx:4, glBx:4}],
+    ["Lustro RGB", {glJpeg:false, glLustro:true, glRgb:true, glRx:-14, glGx:14, glBx:14}],
+    ["Plastry", {glJpeg:false, glPaski:true, glPaskiX:90, glPaskiNr:2, glRgb:true, glRx:-6, glGx:6, glBx:6}],
+    ["Zerwane VHS", {glJakosc:40, glTv:true, glTvX:50, glTvNr:3, glPaski:true, glPaskiX:30, glPaskiNr:4, glRgb:true, glRx:-8, glGx:8, glBx:8}],
+    ["Psychodelia", {glJpeg:false, glCykl:true, glRgb:true, glRx:-10, glRy:-4, glGx:10, glGy:4, glBx:10, glBy:4}],
+    ["Ciecz", {glJpeg:false, glCiecz:true, glCieczSila:100, glCieczSkala:250, glCieczNr:2}],
+    ["Mapa glitchy", {glJakosc:35, glMapa:true, glMapaX:80, glMapaNr:7, glMosh:true, glMoshX:-60, glMoshY:0, glMoshSkala:12}]
+  ],
   ascii:[
     ["Terminal", {asciiZestaw:"standard", asciiRozmiar:10, asciiKolor:"jeden", ink:"#33ff66", paper:"#000000", con:20}],
     ["Kolorowe", {asciiZestaw:"pelny", asciiRozmiar:8, asciiKolor:"obraz", paper:"#000000", con:15, nasycenie:30}],

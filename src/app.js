@@ -287,6 +287,7 @@ function risoUI(){
   document.querySelector("#znaki-opcje").classList.toggle("hidden", !ksz.includes("tony"));
   document.querySelector("#ruch-puls-opcje").classList.toggle("hidden", !(S.ruchPuls > 0));
   stylUI();
+  glitchUI();
   tloUI();
   document.querySelector("#ruch-obrot-opcje").classList.toggle("hidden", !S.ruchObrot);
   document.querySelector("#ruch-animuj").classList.toggle("hidden", !!W.z || !S.img);
@@ -364,6 +365,28 @@ SUWAKI.push({id: "stylOdstep", key: "stylOdstep", opis: v => v + " px"}, {id: "s
   {id: "stylFalaDl", key: "stylFalaDl", opis: v => v + " px"}, {id: "stylSila", key: "stylSila", opis: v => v + "%"},
   {id: "stylPredkosc", key: "stylPredkosc", opis: v => v ? (v > 0 ? "+" : "") + (v/10).toFixed(1).replace(".", ",") + " linii/s" : "stoją"},
   {id: "stylSrodekX", key: "stylSrodekX", opis: v => v + "%"}, {id: "stylSrodekY", key: "stylSrodekY", opis: v => v + "%"});
+/* ---------- tryb Glitch ---------- */
+{
+  const px = v => (v < 0 ? "−" + -v : v) + " px", proc = v => v + "%", nr = v => String(v);
+  const setne = {opis: v => (v < 0 ? "−" : "") + Math.abs(v).toFixed(2).replace(".", ","), zS: v => v/100, naS: v => Math.round(v*100)};
+  const wpisy = [["glAnimCo", v => v + " kl."], ["glJakosc", nr], ["glBajty", v => v ? String(v) : "brak"], ["glBajtyOd", proc], ["glBajtyDo", proc], ["glBajtyZiarno", nr],
+    ["glMapaX", px], ["glMapaY", px], ["glMapaNr", nr], ["glMoshX", px], ["glMoshY", px], ["glMoshSkala", px],
+    ["glTopX", px], ["glTopY", px], ["glTopNr", nr], ["glPaskiX", px], ["glPaskiY", px], ["glPaskiNr", nr],
+    ["glTvX", px], ["glTvY", px], ["glTvNr", nr], ["glKafleX", px], ["glKafleY", px], ["glKafleNr", nr],
+    ["glKropleIle", proc], ["glKropleDl", px], ["glKropleNr", nr], ["glCieczSila", px], ["glCieczSkala", px], ["glCieczNr", nr],
+    ["glLustroX", proc], ["glLustroY", proc], ["glRx", px], ["glRy", px], ["glGx", px], ["glGy", px], ["glBx", px], ["glBy", px],
+    ["glPrzesIle", nr], ["glPrzesX", px], ["glPrzesY", px], ["glPrzesPx", proc], ["glPrzesPy", proc], ["glRozcPx", proc], ["glRozcPy", proc]];
+  for(const t of ["Qtc", "Qtl"]) wpisy.push(["gl" + t + "Los", v => v ? String(v) : "brak"], ["gl" + t + "Maks", nr], ["gl" + t + "Ziarno", nr], ["gl" + t + "Poz", nr], ["gl" + t + "Wart", nr]);
+  for(const [k, opis] of wpisy) SUWAKI.push({id: k, key: k, opis});
+  for(const k of ["glF1W", "glF2W", "glCyklR", "glCyklG", "glCyklB"]) SUWAKI.push({id: k, key: k, ...setne});
+  PTASZKI.push("glAnim", "glJpeg", "glQtc", "glQtl", "glIdct", "glYcc", "glDekw", "glF1", "glF2", "glMapa", "glMosh", "glTop", "glPaski", "glTv",
+    "glKafle", "glKrople", "glCiecz", "glLustro", "glRgb", "glR", "glG", "glB", "glPrzes", "glRozc", "glRozcOdwr", "glCykl");
+  LISTY.push("glLustroOs", "glLustroStrona", "glRozcOs");
+}
+/* suwaki filtra glitcha widoczne tylko przy włączonym filtrze */
+function glitchUI(){
+  for(const el of document.querySelectorAll("#g-glitch [data-wlacz]")) el.classList.toggle("hidden", !S[el.dataset.wlacz]);
+}
 /* widoczne tylko suwaki, z których korzysta wybrany styl (szachownica nie ma żadnego) */
 function stylUI(){
   let jakis = false;
@@ -859,7 +882,7 @@ $("#g-fx").addEventListener("click", e=>{
    określony: 1-bit, raster drukarski, ASCII. W ASCII tła po prostu nie
    rysujemy; w pozostałych zamieniamy piksele dokładnie w kolorze papieru —
    ziarno i efekty, które go zmieniły, zostają widoczne. */
-const mozePrzezroczyste = () => (S.mode !== "dither" || S.pal === "bw") && !(S.mode === "half" && tloGradientowe());
+const mozePrzezroczyste = () => S.mode !== "glitch" && (S.mode !== "dither" || S.pal === "bw") && !(S.mode === "half" && tloGradientowe());
 function papierPrzezroczysty(){
   const [r, g, b] = hex2rgb(S.paper), d = octx.getImageData(0, 0, out.width, out.height), p = d.data;
   for(let i=0; i<p.length; i+=4) if(p[i] === r && p[i+1] === g && p[i+2] === b) p[i+3] = 0;
@@ -872,6 +895,10 @@ function eksportUI(){
     txt = document.createElement("option"); txt.id = "fmt-txt"; txt.value = "txt"; txt.textContent = "TXT — sam tekst";
     $("#fmt").insertBefore(txt, $("#fmt").options[2] || null);
   } else if(S.mode !== "ascii" && txt){ txt.remove(); if(S.fmt === "txt") S.fmt = "png"; }
+  /* glitch to zdjęcie — bez SVG (opcja ukryta, nie usunięta: kod sięga po nią numerem) */
+  const svg = [...$("#fmt").options].find(o => o.value === "svg");
+  if(svg) svg.hidden = svg.disabled = S.mode === "glitch";
+  if(S.mode === "glitch" && S.fmt === "svg") S.fmt = "png";
   $("#fmt").value = S.fmt;
   $("#przezr-opcja").classList.toggle("hidden", !(S.fmt === "png" && mozePrzezroczyste()));
   $("#przezroczyste").checked = !!S.przezroczyste;
@@ -984,7 +1011,7 @@ function suwakiAnimowane(){
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
   }
 }
-for(const k of PTASZKI) $("#"+k).addEventListener("change", e=>{ S[k]=e.target.checked; schedule(); });
+for(const k of PTASZKI) $("#"+k).addEventListener("change", e=>{ S[k]=e.target.checked; if(k.startsWith("gl")) glitchUI(); schedule(); });
 for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   S[k]=e.target.value;
   if(k==="pal") wybranoPalete();
@@ -1017,8 +1044,11 @@ function setMode(m){
   $("#tab-dither").setAttribute("aria-selected", m==="dither");
   $("#tab-half").setAttribute("aria-selected", m==="half");
   $("#tab-ascii").setAttribute("aria-selected", m==="ascii");
+  $("#tab-glitch").setAttribute("aria-selected", m==="glitch");
   $("#g-ascii").classList.toggle("hidden", m!=="ascii");
   $("#g-dither").classList.toggle("hidden", m!=="dither");
+  $("#g-glitch").classList.toggle("hidden", m!=="glitch");
+  $("#g-pal").classList.toggle("hidden", !(m === "dither" || (m === "ascii" && S.asciiKolor === "paleta")));
   asciiUI();
   $("#g-half").classList.toggle("hidden", m!=="half");
   eksportUI();
@@ -1028,6 +1058,7 @@ function setMode(m){
 $("#tab-dither").addEventListener("click", ()=>setMode("dither"));
 $("#tab-half").addEventListener("click", ()=>setMode("half"));
 $("#tab-ascii").addEventListener("click", ()=>setMode("ascii"));
+$("#tab-glitch").addEventListener("click", ()=>setMode("glitch"));
 /* ---------- presety ---------- */
 function buildPresets(){
   const box=$("#presets"); box.innerHTML="";
@@ -1122,7 +1153,7 @@ function zastosujPreset(dane, skad){
      i normalizuje kolory. Porównanie przed i po wyłapuje te poprawki, bo
      inaczej plik z gęstością 9999 wczytywałby się bez słowa komentarza. */
   const chciane={}; for(const k of LOOK) chciane[k]=S[k];
-  if(dane.tryb==="dither" || dane.tryb==="half" || dane.tryb==="ascii") setMode(dane.tryb);
+  if(dane.tryb==="dither" || dane.tryb==="half" || dane.tryb==="ascii" || dane.tryb==="glitch") setMode(dane.tryb);
   syncUI();
   const poprawione = LOOK.filter(k => S[k]!==chciane[k]).length;
   if(W.z) zastosujAnimacje(S, czasOd(W.biezaca));

@@ -8,10 +8,11 @@ import { renderDither } from "./dither.js";
 import { renderHalftone } from "./halftone.js";
 import { renderAscii } from "./ascii.js";
 
-export const NAZWA_TRYBU = {dither: "dither", half: "raster", ascii: "ascii"};
+export const NAZWA_TRYBU = {dither: "dither", half: "raster", ascii: "ascii", glitch: "glitch"};
 
 export async function renderuj(skala, opcje){
-  if(S.mode === "dither") return renderDither(skala, opcje);
+  /* glitch liczy się tą samą drogą co dithering (worker, bufor po pikselizacji) */
+  if(S.mode === "dither" || S.mode === "glitch") return renderDither(skala, opcje);
   if(S.mode === "ascii"){ renderAscii(skala, opcje); return true; }
   renderHalftone(skala);
   return true;

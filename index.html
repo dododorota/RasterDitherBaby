@@ -231,6 +231,7 @@
         <button role="tab" id="tab-dither" aria-selected="true">Dithering</button>
         <button role="tab" id="tab-half" aria-selected="false" title="Raster drukarski">Raster</button>
         <button role="tab" id="tab-ascii" aria-selected="false">ASCII</button>
+        <button role="tab" id="tab-glitch" aria-selected="false" title="Efekty z wtyczki VFX Glitch">Glitch</button>
       </div>
       <div class="presets odstep-duzy" id="presets"></div>
       <div class="btns odstep-sredni">
@@ -469,6 +470,247 @@
       </details>
       <input type="file" id="pal-file" accept=".hex,.gpl,.pal,.ase,.txt,.png,.gif,.jpg,.jpeg,.webp" class="hidden">
       <p class="hint" id="pal-msg">Z pliku: .hex, .gpl, .pal, .ase, .txt, pasek próbek PNG (np. z lospec.com) albo dowolne zdjęcie — wtedy wyciągnie z niego tyle kolorów, ile wybrano obok.</p>
+    </div>
+
+    <!-- GLITCH (glitch.js — efekty z wtyczki VFX Glitch; kolejność liczenia: JPEG → filtry → Glitch Control) -->
+    <div class="group hidden" id="g-glitch">
+      <h2>Glitch</h2>
+      <details class="pod" data-pod="gl-jpeg" open>
+        <summary>JPEG Glitch<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <label class="check"><input type="checkbox" id="glJpeg" checked> Zapis do JPEG i psucie pliku</label>
+        <div data-wlacz="glJpeg">
+          <div class="row"><label for="glJakosc">Jakość JPEG</label><span class="val" id="glJakosc-v">30</span></div>
+          <input type="range" id="glJakosc" min="1" max="100" value="30">
+          <p class="gl-tytul">Uszkodzone bajty</p>
+          <div class="row"><label for="glBajty">Ile bajtów zepsuć</label><span class="val" id="glBajty-v">brak</span></div>
+          <input type="range" id="glBajty" min="0" max="300" value="0">
+          <div class="row"><label for="glBajtyOd">Od miejsca w pliku</label><span class="val" id="glBajtyOd-v">0%</span></div>
+          <input type="range" id="glBajtyOd" min="0" max="100" value="0">
+          <div class="row"><label for="glBajtyDo">Do miejsca w pliku</label><span class="val" id="glBajtyDo-v">100%</span></div>
+          <input type="range" id="glBajtyDo" min="0" max="100" value="100">
+          <div class="row"><label for="glBajtyZiarno">Wariant</label><span class="val" id="glBajtyZiarno-v">1</span></div>
+          <input type="range" id="glBajtyZiarno" min="0" max="200" value="1">
+          <p class="hint">Kilka bajtów wystarczy: od miejsca zepsucia do końca obrazu kolory się rozjeżdżają (zalania, pasy). Zakres — która część kadru (od góry).</p>
+          <p class="gl-tytul">Tablica kwantyzacji — kolor (Chroma)</p>
+          <div class="row"><label for="glQtcLos">Losowe pozycje</label><span class="val" id="glQtcLos-v">brak</span></div>
+          <input type="range" id="glQtcLos" min="0" max="64" value="0">
+          <div class="row"><label for="glQtcMaks">Najwyższa wartość</label><span class="val" id="glQtcMaks-v">0</span></div>
+          <input type="range" id="glQtcMaks" min="0" max="255" value="0">
+          <div class="row"><label for="glQtcZiarno">Wariant</label><span class="val" id="glQtcZiarno-v">1</span></div>
+          <input type="range" id="glQtcZiarno" min="0" max="200" value="1">
+          <label class="check"><input type="checkbox" id="glQtc"> Podmień jedną pozycję</label>
+          <div data-wlacz="glQtc">
+            <div class="row"><label for="glQtcPoz">Pozycja</label><span class="val" id="glQtcPoz-v">5</span></div>
+            <input type="range" id="glQtcPoz" min="0" max="63" value="5">
+            <div class="row"><label for="glQtcWart">Wartość</label><span class="val" id="glQtcWart-v">0</span></div>
+            <input type="range" id="glQtcWart" min="0" max="255" value="0">
+          </div>
+          <p class="gl-tytul">Tablica kwantyzacji — jasność (Luma)</p>
+          <div class="row"><label for="glQtlLos">Losowe pozycje</label><span class="val" id="glQtlLos-v">brak</span></div>
+          <input type="range" id="glQtlLos" min="0" max="64" value="0">
+          <div class="row"><label for="glQtlMaks">Najwyższa wartość</label><span class="val" id="glQtlMaks-v">0</span></div>
+          <input type="range" id="glQtlMaks" min="0" max="255" value="0">
+          <div class="row"><label for="glQtlZiarno">Wariant</label><span class="val" id="glQtlZiarno-v">1</span></div>
+          <input type="range" id="glQtlZiarno" min="0" max="200" value="1">
+          <label class="check"><input type="checkbox" id="glQtl"> Podmień jedną pozycję</label>
+          <div data-wlacz="glQtl">
+            <div class="row"><label for="glQtlPoz">Pozycja</label><span class="val" id="glQtlPoz-v">5</span></div>
+            <input type="range" id="glQtlPoz" min="0" max="63" value="5">
+            <div class="row"><label for="glQtlWart">Wartość</label><span class="val" id="glQtlWart-v">0</span></div>
+            <input type="range" id="glQtlWart" min="0" max="255" value="0">
+          </div>
+          <p class="gl-tytul">Odczyt pliku</p>
+          <label class="check"><input type="checkbox" id="glIdct" checked> Odwrotna DCT (bez niej — szara faktura bloków)</label>
+          <label class="check"><input type="checkbox" id="glYcc" checked> YCbCr → RGB (bez — jasność w czerwonym)</label>
+          <label class="check"><input type="checkbox" id="glDekw" checked> Dekwantyzacja</label>
+          <label class="check"><input type="checkbox" id="glF1"> Filtr 1 — średnia bloku</label>
+          <div data-wlacz="glF1">
+            <div class="row"><label for="glF1W">Mnożnik</label><span class="val" id="glF1W-v">1,00</span></div>
+            <input type="range" id="glF1W" min="-300" max="300" value="100">
+          </div>
+          <label class="check"><input type="checkbox" id="glF2"> Filtr 2 — szczegóły bloku</label>
+          <div data-wlacz="glF2">
+            <div class="row"><label for="glF2W">Mnożnik</label><span class="val" id="glF2W-v">−0,10</span></div>
+            <input type="range" id="glF2W" min="-300" max="300" value="-10">
+          </div>
+        </div>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="gl-filtry" open>
+        <summary>Filtry<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <label class="check gl-filtr"><input type="checkbox" id="glMapa"> Glitch Map — przesunięte pasy</label>
+        <div data-wlacz="glMapa">
+          <div class="row"><label for="glMapaX">Przesunięcie X</label><span class="val" id="glMapaX-v">60 px</span></div>
+          <input type="range" id="glMapaX" min="-300" max="300" value="60">
+          <div class="row"><label for="glMapaY">Przesunięcie Y</label><span class="val" id="glMapaY-v">0 px</span></div>
+          <input type="range" id="glMapaY" min="-300" max="300" value="0">
+          <div class="row"><label for="glMapaNr">Mapa</label><span class="val" id="glMapaNr-v">1</span></div>
+          <input type="range" id="glMapaNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glMosh"> Datamosh — ciemne przecieka</label>
+        <div data-wlacz="glMosh">
+          <div class="row"><label for="glMoshX">Przesunięcie X</label><span class="val" id="glMoshX-v">−70 px</span></div>
+          <input type="range" id="glMoshX" min="-300" max="300" value="-70">
+          <div class="row"><label for="glMoshY">Przesunięcie Y</label><span class="val" id="glMoshY-v">10 px</span></div>
+          <input type="range" id="glMoshY" min="-300" max="300" value="10">
+          <div class="row"><label for="glMoshSkala">Wielkość bloku</label><span class="val" id="glMoshSkala-v">10 px</span></div>
+          <input type="range" id="glMoshSkala" min="2" max="100" value="10">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glTop"> Melt — obraz spływa</label>
+        <div data-wlacz="glTop">
+          <div class="row"><label for="glTopX">Przesunięcie X</label><span class="val" id="glTopX-v">0 px</span></div>
+          <input type="range" id="glTopX" min="-500" max="500" value="0">
+          <div class="row"><label for="glTopY">Przesunięcie Y</label><span class="val" id="glTopY-v">200 px</span></div>
+          <input type="range" id="glTopY" min="-500" max="500" value="200">
+          <div class="row"><label for="glTopNr">Mapa</label><span class="val" id="glTopNr-v">1</span></div>
+          <input type="range" id="glTopNr" min="1" max="10" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glPaski"> Slices — paski</label>
+        <div data-wlacz="glPaski">
+          <div class="row"><label for="glPaskiX">Przesunięcie X</label><span class="val" id="glPaskiX-v">60 px</span></div>
+          <input type="range" id="glPaskiX" min="-300" max="300" value="60">
+          <div class="row"><label for="glPaskiY">Przesunięcie Y</label><span class="val" id="glPaskiY-v">0 px</span></div>
+          <input type="range" id="glPaskiY" min="-300" max="300" value="0">
+          <div class="row"><label for="glPaskiNr">Mapa</label><span class="val" id="glPaskiNr-v">1</span></div>
+          <input type="range" id="glPaskiNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glTv"> Bad TV — falujące wiersze</label>
+        <div data-wlacz="glTv">
+          <div class="row"><label for="glTvX">Przesunięcie X</label><span class="val" id="glTvX-v">80 px</span></div>
+          <input type="range" id="glTvX" min="-300" max="300" value="80">
+          <div class="row"><label for="glTvY">Przesunięcie Y</label><span class="val" id="glTvY-v">0 px</span></div>
+          <input type="range" id="glTvY" min="-300" max="300" value="0">
+          <div class="row"><label for="glTvNr">Mapa</label><span class="val" id="glTvNr-v">1</span></div>
+          <input type="range" id="glTvNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glKafle"> Tiles — przesunięte prostokąty</label>
+        <div data-wlacz="glKafle">
+          <div class="row"><label for="glKafleX">Przesunięcie X</label><span class="val" id="glKafleX-v">80 px</span></div>
+          <input type="range" id="glKafleX" min="-300" max="300" value="80">
+          <div class="row"><label for="glKafleY">Przesunięcie Y</label><span class="val" id="glKafleY-v">40 px</span></div>
+          <input type="range" id="glKafleY" min="-300" max="300" value="40">
+          <div class="row"><label for="glKafleNr">Mapa</label><span class="val" id="glKafleNr-v">1</span></div>
+          <input type="range" id="glKafleNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glKrople"> Drips — ociekające smugi</label>
+        <div data-wlacz="glKrople">
+          <div class="row"><label for="glKropleIle">Ile kolumn</label><span class="val" id="glKropleIle-v">60%</span></div>
+          <input type="range" id="glKropleIle" min="0" max="100" value="60">
+          <div class="row"><label for="glKropleDl">Długość (minus — w górę)</label><span class="val" id="glKropleDl-v">400 px</span></div>
+          <input type="range" id="glKropleDl" min="-1000" max="1000" value="400">
+          <div class="row"><label for="glKropleNr">Mapa</label><span class="val" id="glKropleNr-v">1</span></div>
+          <input type="range" id="glKropleNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glCiecz"> Liquid — płynne zniekształcenie</label>
+        <div data-wlacz="glCiecz">
+          <div class="row"><label for="glCieczSila">Siła</label><span class="val" id="glCieczSila-v">120 px</span></div>
+          <input type="range" id="glCieczSila" min="-300" max="300" value="120">
+          <div class="row"><label for="glCieczSkala">Wielkość fal</label><span class="val" id="glCieczSkala-v">300 px</span></div>
+          <input type="range" id="glCieczSkala" min="20" max="1000" value="300">
+          <div class="row"><label for="glCieczNr">Mapa</label><span class="val" id="glCieczNr-v">1</span></div>
+          <input type="range" id="glCieczNr" min="1" max="25" value="1">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glLustro"> Mirror — odbicie połowy</label>
+        <div data-wlacz="glLustro">
+          <div class="row"><label for="glLustroOs">Oś</label></div>
+          <select id="glLustroOs">
+            <option value="poziomo" selected>Lewa / prawa</option>
+            <option value="pionowo">Góra / dół</option>
+          </select>
+          <div class="row"><label for="glLustroStrona">Zostaje</label></div>
+          <select id="glLustroStrona">
+            <option value="pierwsza" selected>Lewa / górna połowa</option>
+            <option value="druga">Prawa / dolna połowa</option>
+          </select>
+          <div class="row"><label for="glLustroX">Oś odbicia — poziomo</label><span class="val" id="glLustroX-v">50%</span></div>
+          <input type="range" id="glLustroX" min="0" max="100" value="50">
+          <div class="row"><label for="glLustroY">Oś odbicia — pionowo</label><span class="val" id="glLustroY-v">50%</span></div>
+          <input type="range" id="glLustroY" min="0" max="100" value="50">
+        </div>
+        <p class="hint">Mapa to wariant układu — każdy numer daje inny charakter. Długości w pikselach obrazu (do 1400 px).</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="gl-control" open>
+        <summary>Glitch Control<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <label class="check gl-filtr"><input type="checkbox" id="glRgb"> RGB — rozsunięte kanały</label>
+        <div data-wlacz="glRgb">
+          <label class="check"><input type="checkbox" id="glR" checked> Czerwony</label>
+          <div data-wlacz="glR">
+            <div class="row"><label for="glRx">Czerwony — X</label><span class="val" id="glRx-v">0 px</span></div>
+            <input type="range" id="glRx" min="-60" max="60" value="0">
+            <div class="row"><label for="glRy">Czerwony — Y</label><span class="val" id="glRy-v">0 px</span></div>
+            <input type="range" id="glRy" min="-60" max="60" value="0">
+          </div>
+          <label class="check"><input type="checkbox" id="glG" checked> Zielony</label>
+          <div data-wlacz="glG">
+            <div class="row"><label for="glGx">Zielony — X</label><span class="val" id="glGx-v">0 px</span></div>
+            <input type="range" id="glGx" min="-60" max="60" value="0">
+            <div class="row"><label for="glGy">Zielony — Y</label><span class="val" id="glGy-v">0 px</span></div>
+            <input type="range" id="glGy" min="-60" max="60" value="0">
+          </div>
+          <label class="check"><input type="checkbox" id="glB" checked> Niebieski</label>
+          <div data-wlacz="glB">
+            <div class="row"><label for="glBx">Niebieski — X</label><span class="val" id="glBx-v">0 px</span></div>
+            <input type="range" id="glBx" min="-60" max="60" value="0">
+            <div class="row"><label for="glBy">Niebieski — Y</label><span class="val" id="glBy-v">0 px</span></div>
+            <input type="range" id="glBy" min="-60" max="60" value="0">
+          </div>
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glPrzes"> Displacement — schodkowa smuga</label>
+        <div data-wlacz="glPrzes">
+          <div class="row"><label for="glPrzesIle">Liczba kopii</label><span class="val" id="glPrzesIle-v">5</span></div>
+          <input type="range" id="glPrzesIle" min="1" max="50" value="5">
+          <div class="row"><label for="glPrzesX">Odstęp X</label><span class="val" id="glPrzesX-v">15 px</span></div>
+          <input type="range" id="glPrzesX" min="-100" max="100" value="15">
+          <div class="row"><label for="glPrzesY">Odstęp Y</label><span class="val" id="glPrzesY-v">15 px</span></div>
+          <input type="range" id="glPrzesY" min="-100" max="100" value="15">
+          <div class="row"><label for="glPrzesPx">Punkt — poziomo</label><span class="val" id="glPrzesPx-v">50%</span></div>
+          <input type="range" id="glPrzesPx" min="0" max="100" value="50">
+          <div class="row"><label for="glPrzesPy">Punkt — pionowo</label><span class="val" id="glPrzesPy-v">50%</span></div>
+          <input type="range" id="glPrzesPy" min="0" max="100" value="50">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glRozc"> Stretch — rozciągnięta linia</label>
+        <div data-wlacz="glRozc">
+          <div class="row"><label for="glRozcOs">Kierunek</label></div>
+          <select id="glRozcOs">
+            <option value="poziomo" selected>Poziomo — powtarzana kolumna</option>
+            <option value="pionowo">Pionowo — powtarzany wiersz</option>
+          </select>
+          <label class="check"><input type="checkbox" id="glRozcOdwr"> W drugą stronę</label>
+          <div class="row"><label for="glRozcPx">Linia — poziomo</label><span class="val" id="glRozcPx-v">50%</span></div>
+          <input type="range" id="glRozcPx" min="0" max="100" value="50">
+          <div class="row"><label for="glRozcPy">Linia — pionowo</label><span class="val" id="glRozcPy-v">50%</span></div>
+          <input type="range" id="glRozcPy" min="0" max="100" value="50">
+        </div>
+        <label class="check gl-filtr"><input type="checkbox" id="glCykl"> Color Cycle — przekręcone kolory</label>
+        <div data-wlacz="glCykl">
+          <div class="row"><label for="glCyklR">Czerwony</label><span class="val" id="glCyklR-v">1,00</span></div>
+          <input type="range" id="glCyklR" min="-300" max="300" value="100">
+          <div class="row"><label for="glCyklG">Zielony</label><span class="val" id="glCyklG-v">1,00</span></div>
+          <input type="range" id="glCyklG" min="-300" max="300" value="100">
+          <div class="row"><label for="glCyklB">Niebieski</label><span class="val" id="glCyklB-v">1,00</span></div>
+          <input type="range" id="glCyklB" min="-300" max="300" value="100">
+        </div>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
+      <details class="pod" data-pod="gl-anim">
+        <summary>Animacja<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
+        <div class="pod-cialo">
+        <label class="check"><input type="checkbox" id="glAnim"> Nowy glitch co kilka klatek</label>
+        <div data-wlacz="glAnim">
+          <div class="row"><label for="glAnimCo">Zmiana co</label><span class="val" id="glAnimCo-v">2 kl.</span></div>
+          <input type="range" id="glAnimCo" min="1" max="25" value="2">
+        </div>
+        <p class="hint">W filmie i po „Animuj obraz” — uszkodzone bajty, tablice i mapy losują się od nowa.</p>
+        <button class="btn pod-reset" type="button">Przywróć domyślne w tej sekcji</button>
+        </div>
+      </details>
     </div>
 
     <!-- HALFTONE -->

@@ -43,7 +43,26 @@ export const DEFAULTS = {
   punktSzer:100, punktWys:100, punktLosSzer:0, punktLosWys:0,
   fakturaSkala:100, fakturaCzas:false, ekspozycja:0, czern:0, biel:255,
   stylOdstep:8, stylKat:0, stylWygiecie:50, stylFala:0, stylFalaDl:24, stylSila:60, stylPredkosc:0, stylSrodekX:0, stylSrodekY:0,
-  crtLinie:0, crtOdstep:2, crtMaska:0, glowRozciag:0, glowKatSmugi:0
+  crtLinie:0, crtOdstep:2, crtMaska:0, glowRozciag:0, glowKatSmugi:0,
+  /* tryb Glitch (glitch.js, wartości jak w glitch.h wtyczki VFX Glitch; pozycje w % kadru) */
+  glAnim:false, glAnimCo:2,
+  glJpeg:true, glJakosc:30, glBajty:0, glBajtyOd:0, glBajtyDo:100, glBajtyZiarno:1,
+  glQtc:false, glQtcPoz:5, glQtcWart:0, glQtcLos:0, glQtcMaks:0, glQtcZiarno:1,
+  glQtl:false, glQtlPoz:5, glQtlWart:0, glQtlLos:0, glQtlMaks:0, glQtlZiarno:1,
+  glIdct:true, glYcc:true, glDekw:true, glF1:false, glF1W:1, glF2:false, glF2W:-0.1,
+  glMapa:false, glMapaX:60, glMapaY:0, glMapaNr:1,
+  glMosh:false, glMoshX:-70, glMoshY:10, glMoshSkala:10,
+  glTop:false, glTopX:0, glTopY:200, glTopNr:1,
+  glPaski:false, glPaskiX:60, glPaskiY:0, glPaskiNr:1,
+  glTv:false, glTvX:80, glTvY:0, glTvNr:1,
+  glKafle:false, glKafleX:80, glKafleY:40, glKafleNr:1,
+  glKrople:false, glKropleIle:60, glKropleDl:400, glKropleNr:1,
+  glCiecz:false, glCieczSila:120, glCieczSkala:300, glCieczNr:1,
+  glLustro:false, glLustroOs:"poziomo", glLustroStrona:"pierwsza", glLustroX:50, glLustroY:50,
+  glRgb:false, glR:true, glG:true, glB:true, glRx:0, glRy:0, glGx:0, glGy:0, glBx:0, glBy:0,
+  glPrzes:false, glPrzesIle:5, glPrzesX:15, glPrzesY:15, glPrzesPx:50, glPrzesPy:50,
+  glRozc:false, glRozcOs:"poziomo", glRozcOdwr:false, glRozcPx:50, glRozcPy:50,
+  glCykl:false, glCyklR:1, glCyklG:1, glCyklB:1
 };
 /* Znaki według tonu: kształt i kolor każdego z 16 poziomów (od cieni do
    świateł) — część wyglądu, więc w presecie. Obrazki poziomów to materiał

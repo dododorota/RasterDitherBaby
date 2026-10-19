@@ -4,6 +4,7 @@ import { K, BAYER2, BAYER4, BAYER8, BAYER16, CLUSTER, WZORY, niebieskiSzum, wagi
 import { adjustPixels, korektaPrzestrzenna } from "./image.js";
 import { efektyPo, uruchomNaBuforze, zmiennoscCzynna } from "./stos.js";
 import { zmiennoscPrzed, cyklMacierzy, skrot } from "./fx.js";
+import { glitchPixels } from "./glitch.js";
 
 /* Samo liczenie ditheringu: korekta tonalna i algorytm, w miejscu na buforze
    RGBA. Ani jednego odwołania do DOM-u, bo ten moduł biega też w workerze
@@ -372,7 +373,14 @@ function dyfuzjaStylu(p, w, h, krok){
    1/pix. {wektor:true} zostawia tylko efekty, które SVG potrafi oddać
    prostokątami — z poświaty czy JPEG-a wyszłyby setki tysięcy kolorów. */
 export function ditherIEfekty(p, w, h, opcje){
-  ditherPixels(p, w, h, opcje);
+  /* tryb Glitch idzie tą samą drogą (bufor po pikselizacji, worker, zapis),
+     tylko zamiast ditheringu — glitch.js; długości w pikselach obrazu */
+  if(S.mode === "glitch"){
+    adjustPixels(p);
+    korektaPrzestrzenna(p, w, h, 1/S.pix);
+    if(zmiennoscCzynna()) zmiennoscPrzed(p, w, h, 1/S.pix);
+    glitchPixels(p, w, h, S, S.klatkaNr, 1/S.pix);
+  } else ditherPixels(p, w, h, opcje);
   if(efektyPo()) uruchomNaBuforze(p, w, h, 1/S.pix, opcje);
 }
 

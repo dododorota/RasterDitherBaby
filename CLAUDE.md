@@ -652,6 +652,30 @@ Wzór: Figma „dither ui (Community)”, plik `zaZ1q7i4lCsgls4fLpoCE4`, plansza
   Archivo na płótnie bez czekania na krój, więc coś w dokumencie musi go
   używać, żeby był wczytany.
 
+## Tryb Glitch (od 19.10)
+
+Port wtyczki VFX Glitch (`AE Plugin Land/VfxGlitch`, `core/jpeg.cpp`,
+`core/glitch.cpp`) — plan i wynik w `PLAN-GLITCH.md`.
+- `S.mode === "glitch"` idzie drogą ditheringu: `ditherIEfekty()` w
+  dither-core.js robi korektę i `glitchPixels()` zamiast `ditherPixels()`;
+  `renderuj()` woła `renderDither()`. Worker, zapis, folder, film — bez
+  osobnego kodu. SVG ukryte (opcja w `#fmt` ma `hidden`, nie jest usuwana —
+  kod sięga po opcje numerem).
+- **Co do bajtu z wtyczką.** Obraz jak w jej CLI: Float32 RGBA premultiplied
+  (`doFloat` / `doBajtow` — te same przeliczenia), każde działanie na float
+  przez `Math.fround`, hasze uint32 przez `Math.imul` / `>>> 0`. Bez fround
+  w DCT pojedynczy współczynnik wychodzi inaczej, strumień bitów się
+  przesuwa i po uszkodzeniu bajtów obraz nie ma nic wspólnego z wtyczką.
+  Kolejność dwóch losowań w jednym wyrażeniu C++ jest nieokreślona — MSVC
+  liczył najpierw prawe (Tiles); przy porcie każdą taką linię sprawdzić
+  porównaniem z `vfx.exe`. Odciski w `testy/glitch.mjs` pilnują zgodności.
+- Ustawienia `gl*` w `DEFAULTS` (state.js) → parametry rdzenia przez
+  `zUstawien()`; pozycje (lustro, displacement, stretch) w % kadru;
+  długości w pikselach obrazu × `1/S.pix` (skala w buforze); JPEG zawsze
+  w rozmiarze bufora (bez „Half” z wtyczki).
+- Panel: `[data-wlacz="klucz"]` chowa suwaki wyłączonego filtra (`glitchUI()`).
+- Istniejący efekt „JPEG glitch” w stosie (fx.js) to co innego — zostaje.
+
 ## Czego nie ruszać bez powodu
 
 - Macierze w `kernels.js` — to kanoniczne wagi z literatury, dzielniki muszą się

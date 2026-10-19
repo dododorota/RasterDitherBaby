@@ -360,9 +360,13 @@ try{
       {pal: "bw", mapa: "jasnosc", algo: "promienie", pix: 2, stylSrodekX: 30, stylWygiecie: 80},
       {pal: "pico8", mapa: "kolor", algo: "szachownica2"},
       {pal: "g-termo", mapa: "jasnosc", algo: "kwadraty", stylKat: 30, stylOdstep: 12},
-      {pal: "m-zielony", mapa: "jasnosc", algo: "atkinson", crtLinie: 60, crtMaska: 30, glow: 80, glowRozciag: 50, glowKatSmugi: 30}
+      {pal: "m-zielony", mapa: "jasnosc", algo: "atkinson", crtLinie: 60, crtMaska: 30, glow: 80, glowRozciag: 50, glowKatSmugi: 30},
+      /* tryb Glitch: ta sama droga (worker), JPEG z uszkodzeniem, filtry, pikselizacja */
+      {mode: "glitch", glBajty: 5, glMapa: true, glRgb: true, glRx: -6, glGx: 6, glBx: 6},
+      {mode: "glitch", glJpeg: false, glCiecz: true, glKrople: true, glTop: true, pix: 2, glow: 60}
     ]){
       for(const k of LOOK) S[k] = DEFAULTS[k];
+      S.mode = "dither";
       Object.assign(S, ust);
       const r = await ditherData({keep: true});
       /* to samo na głównym wątku, z tych samych pikseli źródła */
@@ -373,9 +377,10 @@ try{
       const d = x.getImageData(0, 0, w, h);
       ditherIEfekty(d.data, w, h);
       let rozne = 0; for(let i=0; i<d.data.length; i++) if(d.data[i] !== r.d.data[i]) rozne++;
-      wyn.push([ust.pal + "/" + ust.mapa + "/" + ust.algo + (ust.glow ? " + poświata" : ""), r.w === w && r.h === h ? rozne : "inny rozmiar"]);
+      wyn.push([(ust.mode || ust.pal + "/" + ust.mapa + "/" + ust.algo) + (ust.glow ? " + poświata" : ""), r.w === w && r.h === h ? rozne : "inny rozmiar"]);
     }
     for(const k of LOOK) S[k] = DEFAULTS[k];
+    S.mode = "dither";
     return wyn;
   });
   sprawdz(zgodnosc.every(([, r]) => r === 0), "co do bajtu: " + zgodnosc.map(([n, r]) => n + " → " + r).join("; "));
@@ -968,6 +973,43 @@ try{
           `Ctrl+Z: 40 → ${hist.cofnij1[0]} (całe przeciągnięcie jednym krokiem) → ${hist.cofnij2}; Ctrl+Shift+Z → ${hist.ponow[0]}; suwak za stanem`);
   sprawdz(hist.przycisk === hist.cofnij2, "przycisk ↶ cofa jak Ctrl+Z");
   sprawdz(hist.niezapisana === 0 && hist.ponowNiezap === 33, "zmiana sprzed chwili (niezapisana) też się cofa i ponawia");
+
+  console.log("--- tryb Glitch: panel ---");
+  const gl = await wykonaj(async () => {
+    const { S } = await import("/src/state.js");
+    const { renderuj } = await import("/src/render.js");
+    const $ = s => document.querySelector(s);
+    const widac = s => !$(s).closest(".hidden");
+    const obraz = () => $("#out").getContext("2d").getImageData(0, 0, $("#out").width, $("#out").height).data;
+    const wyn = {};
+    $("#tab-glitch").click();
+    await new Promise(r => setTimeout(r, 300));
+    wyn.grupy = [S.mode, widac("#g-glitch"), widac("#g-dither"), widac("#g-pal"), widac("#g-half")];
+    wyn.svg = [...$("#fmt").options].find(o => o.value === "svg").hidden;
+    wyn.presety = [...document.querySelectorAll("#presets .btn")].length;
+    /* filtr wyłączony — jego suwaki schowane; włączony — widać */
+    wyn.zaMapa = [widac("#glMapaX")];
+    $("#glMapa").click();
+    wyn.zaMapa.push(widac("#glMapaX"), S.glMapa);
+    $("#glMapa").click();
+    await renderuj(1, {keep: true});
+    const a = obraz();
+    [...document.querySelectorAll("#presets .btn")].find(b => b.textContent.trim() === "Zepsuty JPEG").click();
+    wyn.preset = [S.glBajty, S.glJakosc, S.glBajtyOd, S.glBajtyDo];
+    await renderuj(1, {keep: true});
+    const b = obraz();
+    let rozne = 0; for(let i=0; i<Math.min(a.length, b.length); i+=4) if(a[i] !== b[i] || a[i+1] !== b[i+1] || a[i+2] !== b[i+2]) rozne++;
+    wyn.zmiana = rozne/(a.length/4);
+    $("#tab-dither").click();
+    await new Promise(r => setTimeout(r, 300));
+    wyn.powrot = [S.mode, [...$("#fmt").options].find(o => o.value === "svg").hidden];
+    return wyn;
+  });
+  sprawdz(gl.grupy.join() === "glitch,true,false,false,false", "zakładka Glitch: własna grupa, bez algorytmu, palety i rastra: " + gl.grupy.join());
+  sprawdz(gl.svg === true && gl.presety === 12, `bez SVG, 12 presetów (${gl.presety})`);
+  sprawdz(gl.zaMapa.join() === "false,true,true", "suwaki filtra widać dopiero po włączeniu: " + gl.zaMapa.join());
+  sprawdz(gl.preset.join() === "2,25,55,85" && gl.zmiana > 0.05, `preset „Zepsuty JPEG” ustawia bajty i zmienia podgląd (${(gl.zmiana*100).toFixed(1)}% pikseli)`);
+  sprawdz(gl.powrot.join() === "dither,false", "powrót do ditheringu: SVG znowu dostępne");
 
   console.log("--- presety: podświetlenie, szybkość „Skan” ---");
   const pres = await wykonaj(async () => {

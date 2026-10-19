@@ -66,6 +66,13 @@ wagami, Riemersma po krzywej Hilberta, dot diffusion Knutha), osiem uporządkowa
 2/4/8/16, siatka punktowa, niebieski szum, szum gradientowy IGN, szum losowy)
 i pięć wzorów (linie poziome, pionowe, ukośne, krzyżyki, kropki 8×8).
 
+**Tryb Glitch** — efekty z wtyczki VFX Glitch (te same wyniki co do piksela):
+zdjęcie zapisane jako prawdziwy JPEG i zepsute (uszkodzone bajty, tablice
+kwantyzacji, odczyt bez odwrotnej DCT / bez konwersji kolorów), filtry
+Glitch Map, Datamosh, Melt, Slices, Bad TV, Tiles, Drips, Liquid, Mirror
+i Glitch Control: RGB, Displacement, Stretch, Color Cycle. 12 presetów,
+„nowy glitch co kilka klatek” w filmie i animacji. Zapis PNG / GIF / MP4.
+
 **Tryb ASCII** — obraz ze znaków: siedem zestawów od „ .:-=+*#%@" po pełny
 ASCII, bloki i 0/1, własne znaki albo powtarzany tekst; kolory z obrazu,
 z palety albo jeden. Zapis do PNG, SVG (znaki jako tekst) i TXT.
@@ -118,6 +125,8 @@ src/palette-files.js czytanie plików palet (.hex, .gpl, .pal, .ase, .txt)
 src/kernels.js    macierze dyfuzji błędu i mapy Bayera
 src/image.js      jasność/kontrast/gamma/negatyw (LUT) + skalowanie
 src/dither-core.js   ditherPixels() — korekta i dithering, bez DOM-u
+src/glitch.js        tryb Glitch: filtry, presety, przebieg (port wtyczki VFX Glitch)
+src/jpeg-glitch.js   koder / dekoder JPEG z miejscami do psucia (jak libjpeg przy błędach)
 src/worker.js        wątek, w którym liczy się dyfuzja błędu
 src/worker-client.js kolejka zadań workera, wypieranie nieaktualnych
 src/dither.js     ditherData() ogarnia canvas i worker, renderDither() rysuje

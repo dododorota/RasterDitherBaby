@@ -4,6 +4,15 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — 19 października 2026
+
+**Zakładka „Glitch” z efektami wtyczki VFX Glitch — zrobiona** (punkt 32
+niżej, checklista `PLAN-GLITCH.md`). Czeka na commit i ocenę użytkowniczki
+(lista „Z 19.10”). Lista „Na później” niżej dalej aktualna. Przy kolejnych
+zmianach we wtyczce: porównać `core/glitch.cpp` / `core/jpeg.cpp`
+(AE Plugin Land/VfxGlitch) z `src/glitch.js` / `src/jpeg-glitch.js`
+i przeliczyć odciski w `testy/glitch.mjs`.
+
 ## Wznowienie — 16 października 2026
 
 Poprawki po pierwszych testach (punkt 31 niżej): odstępy w „Trybie”,
@@ -364,6 +373,19 @@ to przegląd bez zmian w kodzie.
       animacje w starych plikach.
     - Błąd z 14.10: stippling przy bardzo małych kropkach brał układ
       z pamięci podręcznej dla innej wielkości (klucz bez promienia kropki).
+32. **Tryb Glitch** (19.10) — czwarta zakładka, efekty wtyczki VFX Glitch
+    1.3 przeniesione do JS: `src/jpeg-glitch.js` (własny koder / dekoder
+    JPEG jak libjpeg przy błędach), `src/glitch.js` (psucie pliku, Glitch
+    Map, Datamosh, Melt, Slices, Bad TV, Tiles, Drips, Liquid, Mirror, RGB,
+    Displacement, Stretch, Color Cycle, animacja, 12 presetów). Ta sama droga
+    co dithering: korekta → glitch → efekty po rastrze, w workerze; PNG / GIF
+    / MP4 / folder, bez SVG. Panel: grupa „Glitch” z sekcjami (JPEG, Filtry,
+    Glitch Control, Animacja), suwaki filtra widać po jego włączeniu;
+    pozycje z AE jako suwaki w % kadru. Sprawdzone: 36 ustawień i 12
+    presetów co do bajtu jak CLI wtyczki (arytmetyka float przez
+    `Math.fround`), odciski w `testy/glitch.mjs`, worker = główny wątek
+    (`przegladarka.mjs`), dawny dithering bez zmian (306 wyników), zrzuty
+    presetów na portrecie. Liquid wolny (~0,85 s na 933×1400).
 
 ## Do przetestowania na koniec
 
@@ -404,6 +426,10 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
 - **Z 16.10:** nowe cienie / światła na kilku zdjęciach (czy +100 nie jest
   za mocne); gęstość 2–3 px z zapisem w skali ×2–×4 na zdjęciu ze stocku;
   rozwijane listy w Electronie (inny Chromium niż Chrome).
+- **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
+  MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
+  sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)
+  wystarczą; czy Liquid (~1 s) nie jest za wolny przy przeciąganiu suwaka.
 
 ## Co nie wyszło (żeby nie próbować drugi raz)
 
