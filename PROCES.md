@@ -4,11 +4,33 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Handover — 20 października 2026
+
+Ta sekcja jest na początek następnej sesji.
+
+**Stan:** nic nie jest w toku. Repo czyste, wszystko zacommitowane
+i wypchnięte — ostatni commit `552bc8c` (tryb Glitch, 19.10). Wszystkie
+plany (`PLAN-GLITCH.md`, `PLAN-UI.md`, `PLAN-WTYCZKI.md`) odhaczone.
+Testy w Node (18 plików z `testy/`, bez `przegladarka` i `wydajnosc-siatki`)
+puszczone 20.10 — 0 błędów.
+
+**Co zostało (do wyboru przez użytkowniczkę, zacząć od zapytania):**
+- [ ] **Ocena na jej zdjęciach** — listy „Z 14.10” … „Z 19.10” w „Do
+      przetestowania na koniec”. Najświeższe: tryb Glitch (presety, film
+      w trybie Glitch z „Nowy glitch co kilka klatek” — niesprawdzony,
+      zakresy suwaków, szybkość Liquid ~1 s). Poprawić według uwag.
+- [ ] **Instalator jest stary** — `dist/` (`Raster Setup 0.1.0.exe`,
+      `Raster-0.1.0-przenosny.exe`) z 3.10, bez wszystkiego od wtyczek
+      (14.10) po Glitch. Przebudować `npm run paczka` (najlepiej po ocenie
+      i poprawkach; ewentualnie podbić `version` w `package.json`).
+- [ ] Reszta listy „Na później” niżej (krzywa cieni / świateł we wtyczkach
+      VFX, starsze pomysły).
+
 ## Wznowienie — 19 października 2026
 
 **Zakładka „Glitch” z efektami wtyczki VFX Glitch — zrobiona** (punkt 32
-niżej, checklista `PLAN-GLITCH.md`). Czeka na commit i ocenę użytkowniczki
-(lista „Z 19.10”). Lista „Na później” niżej dalej aktualna. Przy kolejnych
+niżej, checklista `PLAN-GLITCH.md`). Zacommitowane 19.10 (`552bc8c`);
+czeka na ocenę użytkowniczki (lista „Z 19.10”). Lista „Na później” niżej dalej aktualna. Przy kolejnych
 zmianach we wtyczce: porównać `core/glitch.cpp` / `core/jpeg.cpp`
 (AE Plugin Land/VfxGlitch) z `src/glitch.js` / `src/jpeg-glitch.js`
 i przeliczyć odciski w `testy/glitch.mjs`.
@@ -21,10 +43,9 @@ Do obejrzenia — lista „Z 16.10”.
 
 ### Na później (odłożone przez użytkowniczkę 16.10)
 
-Nic nie jest w toku. Zacząć od zapytania, co z tej listy bierzemy.
-- [ ] **Commit poprawek z 16.10** — zmiany były w poczekalni (`git add`),
-      bez commita. Sprawdzić `git status`; jeśli dalej są, podać:
-      `git commit -m "Odstępy w Trybie, listy jak w Figmie, mocniejsze cienie/światła, gęstość rastra od 2 px"`.
+Nic nie jest w toku. Zacząć od zapytania, co z tej listy bierzemy
+(aktualny skrót — „Handover — 20 października” na górze).
+- [x] **Commit poprawek z 16.10** — zrobiony (`5738b21`, 16.10).
 - [ ] **Ocena użytkowniczki na jej zdjęciach** — listy „Z 14.10”, „Z 15.10”,
       „Z 16.10” w „Do przetestowania na koniec” (stippling, wzory, CRT,
       wygląd, tło podglądu w kropki, siła cieni / świateł, gęstość 2–3 px
