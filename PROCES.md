@@ -4,20 +4,52 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
-## Wznowienie — 25 października 2026
-
-Zgłoszenie: apka tnie się przy zdjęciu 2000×1333. Plan z pomiarami
-w **`PLAN-WYDAJNOSC.md`** — etap 1 (faktura farby z pamięcią pól szumu,
-kropki bez save/restore) i etap 2 (raster w workerze: `raster-rysuj.js`,
-`worker-raster.js`, `plotno.js`) zrobione, obraz co do bajtu jak przed
-zmianą; niezacommitowane, czeka na jej ocenę.
-Potem nowe funkcje z Dither Boya — decyzje 25.10 i checklista
-w **`PLAN-PASMA-I-EFEKTY.md`** (rozbudowa „Znaków według tonu”, wszystkie
-efekty).
-
-## Handover — 20 października 2026
+## Handover — 25 października 2026
 
 Ta sekcja jest na początek następnej sesji.
+
+**Stan:** nic nie jest w toku. Repo czyste, wszystko zacommitowane
+i wypchnięte — ostatnie commity `269cbe6` (etap 1 wydajności, plany)
+i `6782c63` (raster w workerze), oba 25.10.
+
+**Zrobione 25.10** (punkt 33 niżej, szczegóły i pomiary
+w `PLAN-WYDAJNOSC.md`, zasady w `CLAUDE.md` → „Wydajność”):
+- Zgłoszenie: zdjęcie 2000×1333 „koszmarnie się tnie”, suwaki stoją —
+  u niej „klasyczny raster bez presetów” i mocno „Skan”. Przyczyna: raster
+  liczył się na głównym wątku (do 1,2 s blokady na ruch suwaka).
+- Raster w workerze (`raster-rysuj.js`, `worker-raster.js`, `plotno.js`):
+  blokada suwaków 0 ms wszędzie. Faktura farby szybsza ×2–2,7 (pamięć pól
+  szumu). Obraz co do bajtu jak przed zmianą (podgląd, zapis ×2, obrazki
+  tonów); wszystkie testy 0 błędów.
+
+**Następne kroki, po kolei:**
+1. [ ] **Zapytać o ocenę wydajności** — klasyczny raster i Skan na jej
+       zdjęciu pod `http://localhost:8000` (`python serwer.py`). U mnie
+       domyślny raster był płynny już przed zmianą (22 ms), więc jeśli
+       u niej dalej się tnie, szukać gdzie indziej: czy nie używa starego
+       .exe z 3.10, skalowanie Windowsa, rysowanie panelu. Skrypty
+       pomiarowe były tymczasowe (katalog sesji) — w razie potrzeby
+       odtworzyć wg opisu w `PLAN-WYDAJNOSC.md` i przenieść do `testy/`.
+2. [ ] **Nowe funkcje z Dither Boya** — `PLAN-PASMA-I-EFEKTY.md`, decyzje
+       z 25.10 już tam są: rozbudowa „Znaków według tonu” (pasma o nierównej
+       szerokości z przeciąganymi granicami, wielkość na pasmo, wtapianie,
+       biblioteka ~150 kształtów, zestawy) i **wszystkie** efekty (Stress
+       Relief, Orbs, Neo Glow, Lick, Lens Curve, Epsilon Glow). Zacząć od
+       etapu 1 (pasma). Zrzuty wzoru są tylko w rozmowie z 25.10 — opis
+       w planie; kart Lick, Lens Curve, Epsilon Glow jeszcze nie ma
+       (użytkowniczka szuka) — przed nimi poprosić o zrzuty.
+       Nowy materiał do rysowania (np. kształty-bitmapy) musi trafić też
+       do workera rastra — patrz CLAUDE.md.
+3. [ ] Dalej otwarte z handoveru 20.10 (niżej): ocena Glitcha i list
+       „Z 14.10” … „Z 19.10”, **stary instalator** (`npm run paczka` —
+       teraz tym bardziej, bo .exe nie ma poprawek wydajności).
+
+Etap 3 wydajności (poświata rastra na mniejszym obrazie, Glitch Ciecz /
+Topnienie ~0,4 s) — tylko jeśli będzie potrzeba, opis w planie.
+
+## Handover — 20 października 2026 (poprzedni)
+
+Poprzedni handover — punkty, których nie odhaczono, dalej aktualne.
 
 **Stan:** nic nie jest w toku. Repo czyste, wszystko zacommitowane
 i wypchnięte — ostatni commit `552bc8c` (tryb Glitch, 19.10). Wszystkie
@@ -418,6 +450,18 @@ to przegląd bez zmian w kodzie.
     `Math.fround`), odciski w `testy/glitch.mjs`, worker = główny wątek
     (`przegladarka.mjs`), dawny dithering bez zmian (306 wyników), zrzuty
     presetów na portrecie. Liquid wolny (~0,85 s na 933×1400).
+33. **Wydajność rastra** (25.10) — plan w `PLAN-WYDAJNOSC.md`. Pomiar na
+    zdjęciu 2000×1333 we wszystkich trybach i presetach: dithering, Glitch,
+    ASCII w workerze (suwak chodzi), raster na głównym wątku blokował apkę
+    100–1200 ms na ruch (gęste oczko, stippling, faktura farby, poświata,
+    kształty ścieżką). Etap 1: pola szumu faktury farby w pamięci, rozmycie
+    krycia na jednej płaszczyźnie, kropki bez save/restore (Riso duo
+    626 → 316 ms, Skan 542 → 370). Etap 2: raster w workerze na
+    OffscreenCanvas — na stronie tylko `sampler()` i wklejenie bitmapy;
+    krój Archivo i obrazki tonów dosyłane do workera. Blokada 0 ms.
+    Sprawdzone co do bajtu ze starą wersją (git archive na porcie 8001):
+    16 ustawień podglądu, zapis PNG ×2, obrazki tonów; `przegladarka.mjs`
+    i 18 testów w Node — 0 błędów; Electron startuje bez błędów.
 
 ## Do przetestowania na koniec
 
@@ -458,6 +502,11 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
 - **Z 16.10:** nowe cienie / światła na kilku zdjęciach (czy +100 nie jest
   za mocne); gęstość 2–3 px z zapisem w skali ×2–×4 na zdjęciu ze stocku;
   rozwijane listy w Electronie (inny Chromium niż Chrome).
+- **Z 25.10:** raster na dużym zdjęciu — czy suwaki chodzą płynnie
+  (klasyczny raster, Skan, stippling, riso z fakturą); zapis PNG w skali
+  i film w trybie rastra; kształt „znak” i znaki tonu z obrazkami (rysują
+  się teraz w workerze); raster w aplikacji na pulpit (`npm start`) —
+  w Electronie nie klikany.
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)
