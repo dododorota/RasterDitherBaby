@@ -792,9 +792,7 @@
           <option value="wlasny">Własny kształt z pliku SVG</option>
           <option value="tony">Znaki według tonu — kształty, obrazki</option>
           <option value="pasy">Linie — raster liniowy</option>
-        </select>
-        <button class="btn" type="button" id="ksztalt-biblioteka" style="margin-top:8px">Biblioteka kształtów…</button>
-        <div id="wielokat-opcje" class="hidden">
+        </select>        <div id="wielokat-opcje" class="hidden">
           <div class="row" style="margin-top:10px"><label for="boki">Boki</label><span class="val" id="boki-v">5</span></div>
           <input type="range" id="boki" min="3" max="12" value="5">
           <div class="row"><label for="wciecie">Wcięcie (gwiazda)</label><span class="val" id="wciecie-v">brak</span></div>
@@ -851,6 +849,7 @@
             <button class="btn" type="button" id="pasma-usun" title="Usuń wybrane pasmo — sąsiednie je przejmie">Usuń</button>
           </div>
           <div class="znaki-lista" id="znaki-lista"></div>
+          <label class="check" style="margin-top:12px"><input type="checkbox" id="znakiStala"> Jedna wielkość w paśmie — jak Dither Boy</label>
           <div class="row" style="margin-top:12px"><label for="znakiWtapianie">Wtapianie pasm</label><span class="val" id="znakiWtapianie-v">brak</span></div>
           <input type="range" id="znakiWtapianie" min="0" max="100" value="0">
           <div id="znaki-wtap-opcje" class="hidden">

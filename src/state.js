@@ -36,7 +36,7 @@ export const DEFAULTS = {
   postJas:0, postKon:0, postNas:0, winieta:0, postZiarno:0,
   czasSzum:0, czasDrganie:0, czasCykl:false, stabil:0,
   asciiZestaw:"standard", asciiWlasne:"", asciiTryb:"jasnosc", asciiRozmiar:12, asciiKolor:"obraz", asciiDither:false,
-  znakiIle:6, znakiGranice:"", znakiWtapianie:0, znakiWtapWzor:"uporzadkowane", znakiBarwa:"farba", znakiMiesz:"source-over", znakiPodmiana:0, znakiZasieg:1, znakiUklad:1, znakiCzas:0,
+  znakiIle:6, znakiGranice:"", znakiWtapianie:0, znakiWtapWzor:"uporzadkowane", znakiStala:false, znakiBarwa:"farba", znakiMiesz:"source-over", znakiPodmiana:0, znakiZasieg:1, znakiUklad:1, znakiCzas:0,
   ruchPuls:0, ruchKrzywa:"gladko", ruchCykl:20, ruchFala:0, ruchFalaKat:45, ruchOdbicie:true,
   ruchKat:0, ruchObrot:0, ruchSkok:0, ruchPostoj:4, ruchDrzenie:0,
   papierTlo:"kolor", papierKat:90, papierGrad:"",

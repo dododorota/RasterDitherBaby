@@ -12,7 +12,11 @@ zrobione** (granice pasm z paskiem i uchwytami, Podziel / Rozłóż / Odwróć /
 Usuń, pasmo „Puste”, wielkość na pasmo, wtapianie pasm, biblioteka 106
 kształtów z okienkiem kafelków). Etapy 1–3 zacommitowała; etap 4
 niezacommitowany. Wszystko czeka na jej ocenę (lista „Z 25.10”).
-Następny: etap 5 — zestawy kształtów (i „Twoje kształty”).
+Potem (25.10, późno): wybór kształtu obrazkiem zamiast nazwy, poprawka
+wyścigu przy zmianie trybu (podejrzenie zgłoszonego „ASCII nie działa”).
+Potem 4b: biblioteka przepisana według jej zbliżeń kafelków Dither Boya
+(173 kształty; poprzednie 106 w `99c8e07`), pasek pasm z miniaturami, szerokość pasma, „jedna wielkość
+w paśmie”. Niezacommitowane. Następny: etap 5 — zestawy kształtów.
 
 ## Handover — 25 października 2026
 
@@ -524,7 +528,9 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   Biblioteka kształtów: czy rysunki się podobają (własne, w duchu Dither
   Boya — łatwo poprawić pojedyncze), czy kształty bez wyrównanego pola
   (np. kwadrat ciemniejszy od koła) nie przeszkadzają w tonie; okienko
-  na jej ekranie (położenie obok panelu).
+  na jej ekranie (położenie obok panelu). Wybór kształtu przyciskiem
+  z miniaturą (raster, riso, tony). ASCII — co dokładnie nie działało
+  i czy po poprawce wyścigu działa.
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)

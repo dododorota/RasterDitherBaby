@@ -56,6 +56,7 @@ export function ustawieniaFarby(ink){
   u.granice = u.tony ? granicePasm(u.tony) : null;
   u.wtap = u.tony ? Math.max(0, Math.min(100, +S.znakiWtapianie || 0))/100 : 0;
   u.wtapRozproszone = S.znakiWtapWzor === "rozproszone";
+  u.tonyStale = !!u.tony && S.znakiStala === true;
   return u;
 }
 
@@ -364,6 +365,8 @@ function kropki(smp, W, H, ink, u){
     let r = maxR*Math.sqrt(Math.min(1.35, k))*(s === undefined ? 1 : s);
     /* najmniejszy punkt: rozmiar zaczyna się od części największego */
     if(u.minPunkt) r = u.minPunkt*maxR*(s === undefined ? 1 : s) + (1 - u.minPunkt)*r;
+    /* znaki według tonu jak w Dither Boyu: w paśmie jedna wielkość, ton daje tylko wybór pasma */
+    if(u.tonyStale) r = maxR*(s === undefined ? 1 : s);
     /* farba „kolorowa" (kolory z obrazu, mapa gradientu): kolor punktu
        z próbki w jego miejscu, szóstym elementem (piąty — numer punktu) */
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
@@ -741,11 +744,17 @@ function cyfra(id, r){
                f: p(-w/2, -h/2, t, h/2 + t/2), b: p(w/2 - t, -h/2, t, h/2 + t/2), e: p(-w/2, -t/2, t, h/2 + t/2), c: p(w/2 - t, -t/2, t, h/2 + t/2)};
   return [...SEGMENTY[n]].map(s => seg[s]);
 }
-/* kontury z biblioteki z poprawionymi obiegami (otwory) — raz na kształt */
+/* kontury z biblioteki z poprawionymi obiegami — raz na kształt. Domyślnie
+   każdy kontur dodatnio (części się sumują), z {otwory} — rozpoznanie otworów */
 const pamiecBiblioteki = new Map();
+const polePodwojne = c => { let s = 0; for(let i=0; i<c.length; i++){ const [a, b] = c[i], [x, y] = c[(i + 1) % c.length]; s += a*y - b*x; } return s; };
 function konturyBiblioteki(k){
   let c = pamiecBiblioteki.get(k);
-  if(!c) pamiecBiblioteki.set(k, c = orientuj(KONTURY_BIBLIOTEKI.get(k)));
+  if(!c){
+    const w = KONTURY_BIBLIOTEKI.get(k);
+    c = w.otwory ? orientuj(w.kontury) : w.kontury.map(x => polePodwojne(x) < 0 ? [...x].reverse() : x);
+    pamiecBiblioteki.set(k, c);
+  }
   return c;
 }
 export function kontury(nazwa, x, y, r, kat, komorka, id){

@@ -111,6 +111,36 @@ Orbs, Neo Glow.
        co do bajtu, wszystkie testy 0 błędów.
        „Twoje kształty” — dziś obrazek na ton (↥); do biblioteki trafią
        w etapie 5 razem z zestawami.
+4a. [x] Uwagi użytkowniczki po etapie 4 (25.10): wybór kształtu obrazkiem,
+       nie nazwą — `wyborWizualny()` w app.js: przycisk z miniaturą i nazwą
+       w miejscu listy (kształt rastra, farby riso, 16 tonów), lista ukryta
+       trzyma wartość; odświeżanie z `risoUI()` / `pasmaUI()` (presety,
+       cofanie). Okienko pokazuje też tryby (tony, linie, znak, własny).
+       ASCII „nie działa” — nie odtworzone (wszystkie kontrolki i presety
+       działają w Chrome); naprawiony jedyny znaleziony wyścig: spóźniony
+       wynik workera rastra / ditheringu po zmianie trybu nadpisywał
+       podgląd (`renderHalftone`, `renderDither` sprawdzają tryb po await).
+       Do potwierdzenia u niej, co dokładnie nie działało.
+4b. [x] **Kształty jak w Dither Boyu** (25.10, ze zbliżeń kafelków od
+       użytkowniczki): po zbliżeniach okazało się, że to ostre kształty, nie
+       bitmapy — biblioteka przepisana wektorowo, 173 kształty w kolejności
+       ich kafelków (Basic 78 z wirami, stożkami kropek, księżycami,
+       płatkami, siatkami kropek; Triangles 22; Symbols 29; Lines 22;
+       Spooky 5; Pixel 19). Kafelek [−1, 1] = komórka. Domyślnie kontury się
+       sumują (każdy dodatni obieg), {otwory: true} tylko pierścień, ramka,
+       romb w kwadracie, oko, czaszka. Arkusze porównane ze zrzutami
+       (w katalogu sesji); poprawione po porównaniu: trójkąt wklęsły,
+       gwiazda trójramienna, cienka gwiazdka, zaokrąglony trójkąt, romb
+       w kwadracie, rogi. Poprzednie 106 kształtów („w duchu”) zastąpione —
+       są w commicie `99c8e07` (`git show 99c8e07:src/biblioteka-ksztaltow.js`),
+       gdyby któregoś brakowało; ich id, których nie ma w nowej wersji,
+       w zapisanym presecie wracają do domyślnego kształtu.
+       Pasek pasm jak w Dither Boyu: miniatury kształtów pasm (w ich
+       wielkości) nad wąskim paskiem jasności, wybrane podkreślone; suwak
+       „Szerokość pasma” (Band Width) pod wybranym pasmem; przełącznik
+       „Jedna wielkość w paśmie — jak Dither Boy” (`znakiStala`, domyślnie
+       wyłączony — dawny wygląd co do bitu). Testy: siatki.mjs, podgląd
+       starych ustawień co do bajtu (21), przegladarka.mjs, panel w Chrome.
 5. [ ] Zestawy kształtów: wbudowane + własne (localStorage, try/catch),
        import / eksport w formacie presetu.
 6. [ ] Siatka: Rotation Jitter, Crisp Edges, Tone Scaling — sprawdzić,

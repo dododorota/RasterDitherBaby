@@ -57,6 +57,9 @@ export async function renderHalftone(scale, opcje){
     try{
       const bm = await liczRaster(smp, W, H, z, !(opcje && opcje.keep));
       if(!bm) return null;
+      /* w trakcie liczenia przełączono tryb (np. na ASCII, które rysuje od
+         razu) — spóźniony raster nie może nadpisać podglądu */
+      if(S.mode !== "half"){ bm.close(); return null; }
       out.width = bm.width; out.height = bm.height;
       out.classList.remove("pixelated");
       octx.drawImage(bm, 0, 0);

@@ -480,6 +480,11 @@ console.log("--- znaki według tonu ---");
   sprawdz(wk3.length === wk.length && wk.every((p, i) => Math.abs(p[2]*3 - wk3[i][2]) < 1e-9), "wielkość pasma: z=3 dokładnie ×3");
   ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiR2: "abc", znakiR3: NaN});
   sprawdz(wielkosciPasm(6) === null, "wielkość pasma nie-liczba (zepsuty preset) — jak 100%");
+  /* jedna wielkość w paśmie (jak Dither Boy): wszystkie punkty pasma tej samej wielkości, × wielkość pasma */
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiStala: true, znakiR3: 50});
+  const st = geometria(gradient, W, H, inkP, 1).kropki, rr = 0.564*8;
+  sprawdz(st.length === baz.length && st.every((p, i) => p[0] === baz[i][0] && Math.abs(p[2] - rr*(p[6] === 2 ? 0.5 : 1)) < 1e-9),
+          "jedna wielkość w paśmie: promień stały (komórka · 0,564), pasmo 3 na 50% — połowa, położenia bez zmian");
   /* biblioteka kształtów: każdy kształt ma kontury w kafelku × r, obroty
      działają, otwory mają odwrotny obieg, kształt w paśmie tonu idzie ścieżką */
   {
@@ -491,8 +496,8 @@ console.log("--- znaki według tonu ---");
     const otwory = id => { const k = kontury(id, 0, 0, 1, 0); return k.filter(c => Math.sign(pole(c)) !== Math.sign(pole(k[0]))).length; };
     sprawdz(ids.length >= 100 && zle.length === 0 && GRUPY_KSZTALTOW.every(g => g.ksztalty.every(k => czyBiblioteczny(k.id))),
             `biblioteka: ${ids.length} kształtów w ${GRUPY_KSZTALTOW.length} grupach, kontury × r z obrotem${zle.length ? " — ŹLE: " + zle.join(", ") : ""}`);
-    sprawdz(otwory("b-pierscien") === 1 && otwory("b-ramka") === 1 && otwory("b-czaszka") === 6 && otwory("b-oko") === 1 && otwory("b-kot") === 3 && otwory("b-kolo") === 0 && otwory("b-trefl") === 0,
-            "biblioteka: otwory z odwrotnym obiegiem (pierścień 1, czaszka 6, oko 1, kot 3), nachodzące części bez otworów (trefl, kot — uszy)");
+    sprawdz(otwory("b-pierscien") === 1 && otwory("b-ramka") === 1 && otwory("b-czaszka") === 6 && otwory("b-oko") === 1 && otwory("b-kolo") === 0 && otwory("b-koniczyna") === 0 && otwory("b-wir-2") === 0,
+            "biblioteka: otwory z odwrotnym obiegiem (pierścień 1, czaszka 6, oko 1), nachodzące części bez otworów (koniczyna, wir)");
     ustaw({cell: 8, shape: "b-czaszka"});
     const gb = geometria(gradient, W, H, inkP, 1), gb3 = geometria(gradient, W, H, inkP, 3);
     sprawdz(sciezkowy("b-czaszka", gb) && gb.kropki.length === gb3.kropki.length && gb.kropki.every((p, i) => Math.abs(p[2]*3 - gb3.kropki[i][2]) < 1e-9),

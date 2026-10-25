@@ -41,8 +41,11 @@ export async function ditherData(opts){
   return {c, w, h, d};
 }
 export async function renderDither(scale, opts){
+  const tryb = S.mode;
   const r = await ditherData(opts);
   if(!r) return null;
+  /* tryb zmieniony w trakcie liczenia — spóźniony wynik nie nadpisuje podglądu */
+  if(S.mode !== tryb) return null;
   const {c,w,h} = r;
   const S2 = Math.max(1, Math.round(S.pix*scale));
   out.width = w*S2; out.height = h*S2;
