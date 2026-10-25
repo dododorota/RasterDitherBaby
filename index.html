@@ -813,6 +813,23 @@
           <p class="hint">Kilka znaków — idą po kolei, punkt po punkcie. Emoji działają, ale mają własne kolory.</p>
         </div>
         <div id="znaki-opcje" class="hidden">
+          <div class="row" style="margin-top:10px"><label for="zestaw">Zestaw kształtów</label></div>
+          <div class="pal-wybor">
+            <button class="btn" id="zestaw-prev" aria-label="Poprzedni zestaw" title="Poprzedni zestaw">◀</button>
+            <select id="zestaw" aria-label="Zestaw kształtów"></select>
+            <button class="btn" id="zestaw-next" aria-label="Następny zestaw" title="Następny zestaw">▶</button>
+          </div>
+          <div class="btns" style="margin-top:8px">
+            <button class="btn" type="button" id="zestaw-wczytaj" title="Wczytaj zestaw z pliku JSON">Wczytaj</button>
+            <button class="btn" type="button" id="zestaw-eksport" title="Zapisz bieżące pasma do pliku JSON">Zapisz plik</button>
+            <button class="btn hidden" type="button" id="zestaw-usun" title="Usuń wybrany własny zestaw">Usuń</button>
+          </div>
+          <div class="btns" style="margin-top:8px">
+            <input type="text" id="zestaw-nazwa" maxlength="40" placeholder="Nazwa własnego zestawu" aria-label="Nazwa własnego zestawu">
+            <button class="btn" type="button" id="zestaw-zapamietaj" title="Zapamiętaj bieżące pasma w tej przeglądarce">Zapamiętaj</button>
+          </div>
+          <input type="file" id="zestaw-plik" accept=".json,application/json" class="hidden">
+          <p class="hint" id="zestaw-msg" aria-live="polite"></p>
           <div class="row" style="margin-top:10px"><label for="znakiIle">Liczba tonów</label><span class="val" id="znakiIle-v">6</span></div>
           <input type="range" id="znakiIle" min="2" max="16" value="6">
           <div class="row"><label for="znakiBarwa">Kolor znaków</label></div>
