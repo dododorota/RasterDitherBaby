@@ -518,13 +518,14 @@ zaokrąglone i przesunęłyby pojedyncze punkty w starych presetach). Kształt
 tonu `pusty` (tylko w listach tonów) pomija `znakiWGrupach()`. Operacje
 panelu (`przestawTony()` w app.js) przestawiają kształty, kolory i ZNAKI
 razem z granicami (i wielkości `znakiR`). **Biblioteka kształtów**
-(`biblioteka-ksztaltow.js`, od 25.10): kontury w kafelku [−1, 1], id „b-…”
+(`biblioteka-ksztaltow.js`, od 25.10, odwzorowanie biblioteki Dither Boya
+ze zbliżeń kafelków): kontury w kafelku [−1, 1] = komórka, id „b-…”
 w S i presetach — raz nadanego nie zmieniać. Nowy kształt: wpis w grupie
-i tyle (kontury(), lista, okienko i miniatury biorą go same). Kontury
-nachodzące na siebie (części jednej sylwetki) zaczynaj od punktu poza
-sąsiednim konturem, a otwory — od punktu leżącego w dokładnie jednym:
-`orientuj()` rozpoznaje otwór po pierwszym punkcie (test w siatki.mjs
-liczy otwory kilku kształtów). Opcje biblioteki dokłada app.js do `#shape`
+i tyle (kontury(), lista, okienko i miniatury biorą go same). Domyślnie
+kontury się sumują (siatki.js daje każdemu dodatni obieg); kształt
+z otworami dostaje `{otwory: true}` i wtedy działa `orientuj()` —
+otwór zaczynaj od punktu leżącego w dokładnie jednym innym konturze
+(test w siatki.mjs liczy otwory czaszki, oka, pierścienia). Opcje biblioteki dokłada app.js do `#shape`
 przed `panelRiso()`/`panelZnakow()`, bo te kopiują listę. Wielkość pasma mnoży r w
 `geometria()` PO podmianie tonów; wtapianie (`poziomPunktu()`) zmienia
 poziom przy granicy — próg z położenia w pikselach podglądu, Bayer po
