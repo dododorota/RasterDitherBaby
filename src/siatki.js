@@ -40,7 +40,7 @@ export function probkaRGB(smp, px, py){
 
 /* ustawienia farby: własne (risograf) albo wspólne z panelu */
 export function ustawieniaFarby(ink){
-  return {
+  const u = {
     cell: ink.cell || S.cell, dot: ink.dot || S.dot, ksztalt: ink.ksztalt || S.shape,
     siatka: ink.siatka || S.siatka || "kwadrat", obrot: ink.obrot || 0,
     fala: (S.fala || 0)/100, sx: (S.srodekX || 0)/100, sy: (S.srodekY || 0)/100,
@@ -52,6 +52,8 @@ export function ustawieniaFarby(ink){
     tony: (ink.ksztalt || S.shape) === "tony" ? Math.max(2, Math.min(ZNAKI_MAKS, S.znakiIle | 0 || 6)) : 0,
     ziarno: ziarnoFarby(ink)
   };
+  u.granice = u.tony ? granicePasm(u.tony) : null;
+  return u;
 }
 
 /* ---------- znaki według tonu ----------
@@ -61,7 +63,26 @@ export function ustawieniaFarby(ink){
    pokrycie), N−1 — światła. Punkt niesie poziom siódmym elementem:
    [x, y, r, kąt, numer|−1, kolor|null, poziom]. */
 export const ZNAKI_MAKS = 16;
-const poziomTonu = (k, n) => Math.min(n - 1, Math.max(0, Math.floor((1 - Math.min(1, k))*n)));
+/* Pasma o nierównej szerokości (jak „Bands" w Dither Boyu): S.znakiGranice
+   to tekst „43,85,…" — N−1 rosnących liczb 1–255 na skali jasności tonu
+   v = (1 − pokrycie)·255; poziom = ile granic ≤ v. Czytany nieufnie: zła
+   albo nie do tej liczby tonów — null, czyli równe pasma dawnym wzorem
+   (stare presety co do bitu). */
+export function granicePasm(n, tekst = S.znakiGranice){
+  if(!tekst || typeof tekst !== "string") return null;
+  const g = tekst.split(",").map(Number);
+  if(g.length !== n - 1 || g.some((v, i) => !Number.isInteger(v) || v < 1 || v > 255 || (i > 0 && v <= g[i - 1]))) return null;
+  return g;
+}
+/* granice równych pasm na tej samej skali — do panelu i do pierwszej
+   zmiany (przejście z równych na własne) */
+export const graniceRowne = n => Array.from({length: n - 1}, (_, i) => Math.ceil(255*(i + 1)/n));
+const poziomTonu = (k, n, g) => {
+  if(!g) return Math.min(n - 1, Math.max(0, Math.floor((1 - Math.min(1, k))*n)));
+  const v = (1 - Math.min(1, k))*255;
+  let p = 0; while(p < g.length && v >= g[p]) p++;
+  return p;
+};
 /* ---------- ruch punktów ----------
    Jak „pixel animation" w Ditherfy: punkty pulsują między (1 − puls)
    a pełną wielkością, z falą biegnącą pod kątem przez siatkę, i obracają
@@ -280,7 +301,7 @@ function kropki(smp, W, H, ink, u){
     let r = rStaly;
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
     /* znaki według tonu: w stipplingu ton jest w gęstości, ale znak bierze się z pokrycia w miejscu punktu */
-    const poz = u.tony ? poziomTonu(pokrycie(smp, ink.cov, px, py), u.tony) : -1;
+    const poz = u.tony ? poziomTonu(pokrycie(smp, ink.cov, px, py), u.tony, u.granice) : -1;
     if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return; }
     const id = out.length, z0 = u.ziarno*3;
     if(u.nr) r *= Math.max(0.15, 1 + u.nr*(0.9*(skrot(id, 1, z0) - 0.5) + (skrot(id, 2, z0) > 0.975 ? 0.7 : 0)));
@@ -299,7 +320,7 @@ function kropki(smp, W, H, ink, u){
     /* farba „kolorowa" (kolory z obrazu, mapa gradientu): kolor punktu
        z próbki w jego miejscu, szóstym elementem (piąty — numer punktu) */
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
-    const poz = u.tony ? poziomTonu(k, u.tony) : -1;
+    const poz = u.tony ? poziomTonu(k, u.tony, u.granice) : -1;
     if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return out.length - 1; }
     /* numer punktu: kolejność liczenia nie zależy od z, więc zapis w skali
        dostaje te same wielkości, drgania i brzegi */
@@ -1158,7 +1179,7 @@ function siatkaQR(smp, W, H, ink, u, out){
     if(k <= 0.004) continue;
     let r = rMaks*Math.sqrt(Math.min(1.35, k));
     if(wKodzie) r = Math.min(r, c3*0.5);                               /* nie wchodzi na środek modułu */
-    out.push(punkt(px, py, r, 0, -1, ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null, u.tony ? poziomTonu(k, u.tony) : -1));
+    out.push(punkt(px, py, r, 0, -1, ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null, u.tony ? poziomTonu(k, u.tony, u.granice) : -1));
   }
   return dodatki;
 }
