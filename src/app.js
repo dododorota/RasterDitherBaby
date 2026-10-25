@@ -14,7 +14,7 @@ import { tekstAscii, ZESTAWY } from "./ascii.js";
 import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, przelacz as przelaczEfekt, przesun as przesunEfekt,
          baza as bazaEfektu, kopie as kopieEfektow, ustawParametrKopii, czyMoznaDodac } from "./stos.js";
 import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
-import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS } from "./siatki.js";
+import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS, granicePasm, graniceRowne } from "./siatki.js";
 import { stopnieTla, tloGradientowe, MAKS_STOPNI } from "./papier.js";
 import { ZNAKI, wczytajZnak, usunZnak, saObrazki, konturySVG, liczbaPoziomow, wczytajObrazek } from "./znaki-tonu.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
@@ -322,19 +322,29 @@ function risoUI(){
 let tonObrazka = 0;                    /* ton, dla którego otwarto wybór pliku */
 (function panelZnakow(){
   const lista = document.querySelector("#znaki-lista");
-  const opcje = [...document.querySelector("#shape").options].filter(o => o.value !== "tony" && o.value !== "pasy")
+  /* „Puste" tylko w tonach — pasmo bez punktów (jak „Empty" w Dither Boyu) */
+  const opcje = `<option value="pusty">Puste — bez punktów</option>` + [...document.querySelector("#shape").options].filter(o => o.value !== "tony" && o.value !== "pasy")
     .map(o => `<option value="${o.value}">${o.textContent}</option>`).join("");
   for(let i=1; i<=ZNAKI_MAKS; i++){
     const w = document.createElement("div"); w.className = "znak-ton"; w.id = "znak-ton" + i;
-    w.innerHTML = `<span class="nr">${i}</span><select id="znakiS${i}" aria-label="Kształt tonu ${i}">${opcje}</select>
+    w.innerHTML = `<span class="nr">${i}<small class="zakres"></small></span><select id="znakiS${i}" aria-label="Kształt tonu ${i}">${opcje}</select>
       <input type="color" id="znakiK${i}" value="${DEFAULTS["znakiK" + i]}" aria-label="Kolor tonu ${i}">
       <button class="btn obr" type="button" aria-label="Obrazek dla tonu ${i}" title="Obrazek dla tonu ${i} (albo przeciągnij plik na wiersz)">↥</button>
       <button class="btn usun hidden" type="button" aria-label="Usuń obrazek tonu ${i}" title="Usuń obrazek">×</button>`;
     lista.appendChild(w);
+    /* wielkość kształtu w paśmie — widać tylko przy wybranym paśmie (pasmaUI) */
+    const wl = document.createElement("div"); wl.className = "znak-ton-wiel hidden"; wl.id = "znak-ton-wiel" + i;
+    wl.innerHTML = `<div class="row"><label for="znakiR${i}">Wielkość w paśmie ${i}</label><span class="val" id="znakiR${i}-v">100%</span></div>
+      <input type="range" id="znakiR${i}" min="0" max="200" value="100">`;
+    lista.appendChild(wl);
+    SUWAKI.push({id: "znakiR" + i, key: "znakiR" + i, opis: v => v + "%"});
     LISTY.push("znakiS" + i);
     KOLORY.push({id: "znakiK" + i, key: "znakiK" + i});
     w.querySelector(".obr").addEventListener("click", () => { tonObrazka = i - 1; document.querySelector("#znak-plik").click(); });
     w.querySelector(".usun").addEventListener("click", () => { usunZnak(i - 1); komunikatZnakow(""); znakiUI(); schedule(); });
+    /* wiersz wybiera pasmo — na nim działają Podziel / Usuń */
+    w.addEventListener("focusin", () => wybierzPasmo(i - 1));
+    w.querySelector(".nr").addEventListener("click", () => wybierzPasmo(i - 1));
     w.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); w.classList.add("over"); });
     w.addEventListener("dragleave", () => w.classList.remove("over"));
     w.addEventListener("drop", e => {
@@ -343,11 +353,12 @@ let tonObrazka = 0;                    /* ton, dla którego otwarto wybór pliku
     });
   }
   SUWAKI.push({id: "znakiIle", key: "znakiIle", opis: v => String(v)},
+    {id: "znakiWtapianie", key: "znakiWtapianie", opis: v => v ? v + "%" : "brak"},
     {id: "znakiPodmiana", key: "znakiPodmiana", opis: v => v ? v + "%" : "brak"},
     {id: "znakiZasieg", key: "znakiZasieg", opis: v => v === 1 ? "o 1 ton" : "do " + v + " tonów"},
     {id: "znakiUklad", key: "znakiUklad", opis: v => String(v)},
     {id: "znakiCzas", key: "znakiCzas", opis: v => !v ? "stały" : v === 1 ? "każdą klatkę" : v + (v < 5 ? " klatki" : " klatek")});
-  LISTY.push("znakiBarwa", "znakiMiesz");
+  LISTY.push("znakiBarwa", "znakiMiesz", "znakiWtapWzor");
 })();
 /* ruch punktów (sekcja rastra) — zwykłe suwaki wyglądu, więc też animowalne */
 const sek = v => (v/10).toFixed(1).replace(".", ",") + " s";
@@ -473,10 +484,132 @@ function znakiUI(){
     } else { obr.textContent = "↥"; obr.title = "Obrazek dla tonu " + i + " (albo przeciągnij plik na wiersz)"; }
   }
   document.querySelector("#znaki-podmiana-opcje").classList.toggle("hidden", !(S.znakiPodmiana > 0));
+  document.querySelector("#znaki-wtap-opcje").classList.toggle("hidden", !(S.znakiWtapianie > 0));
   document.querySelector("#znaki-czas-opcje").classList.toggle("hidden", !W.z);
   const sa = saObrazki();
   document.querySelector("#znakiMiesz-opcje").classList.toggle("hidden", !sa || S.znakiBarwa === "oryginal");
   document.querySelector("#znaki-usun").classList.toggle("hidden", !sa);
+  pasmaUI();
+}
+
+/* ---------- pasma tonów (jak „Bands" w Dither Boyu) ----------
+   Granice w S.znakiGranice (tekst, siatki.js czyta go nieufnie); pusty —
+   równe pasma dawnym wzorem. Podziel / Usuń / Odwróć przestawiają razem
+   z granicami kształty, kolory i obrazki tonów, więc pasmo zabiera swój
+   wygląd ze sobą. Pierwsza zmiana z równych zamienia je na własne granice. */
+let pasmoWybrane = 0;
+const graniceTeraz = n => granicePasm(n) || graniceRowne(n);
+const zapiszGranice = g => { S.znakiGranice = g ? g.join(",") : ""; };
+/* zakres pasma i na skali 0–255: [od, do] */
+function zakresPasma(i, n, g){ return [i === 0 ? 0 : g[i - 1], i === n - 1 ? 255 : g[i] - 1]; }
+function wybierzPasmo(i){ if(pasmoWybrane !== i){ pasmoWybrane = i; pasmaUI(); } }
+/* ton j dostaje wygląd i obrazek tonu skad[j] (wszystkie 16, także ukryte) */
+function przestawTony(skad){
+  const wez = p => skad.map(i => i < ZNAKI_MAKS ? S[p + (i + 1)] : DEFAULTS[p + ZNAKI_MAKS]);
+  const ks = wez("znakiS"), ko = wez("znakiK"), kr = wez("znakiR");
+  const zn = skad.map(i => i < ZNAKI_MAKS ? ZNAKI[i] : null);
+  for(let j=0; j<ZNAKI_MAKS; j++){ S["znakiS" + (j + 1)] = ks[j]; S["znakiK" + (j + 1)] = ko[j]; S["znakiR" + (j + 1)] = kr[j]; ZNAKI[j] = zn[j]; }
+}
+const kolejne = f => Array.from({length: ZNAKI_MAKS}, (_, j) => f(j));
+/* każda operacja na pasmach to osobny krok historii (jak preset) — inaczej
+   dwa szybkie kliknięcia zlewały się w jeden. Obrazki tonów to materiał,
+   poza historią: cofnięcie przestawia kształty i granice, obrazków nie. */
+function poZmianiePasm(){ syncUI(); eksportUI(); schedule(); utrwalStan(); }
+document.querySelector("#pasma-podziel").addEventListener("click", () => {
+  const n = liczbaPoziomow(), i = Math.min(pasmoWybrane, n - 1), g = graniceTeraz(n), [a, b] = zakresPasma(i, n, g);
+  if(n >= ZNAKI_MAKS || b - a < 1) return;
+  utrwalStan();
+  const m = Math.floor((a + b + 1)/2);
+  przestawTony(kolejne(j => j <= i ? j : j - 1));
+  S.znakiIle = n + 1;
+  zapiszGranice([...g.slice(0, i), m, ...g.slice(i)]);
+  poZmianiePasm();
+});
+document.querySelector("#pasma-rozloz").addEventListener("click", () => { utrwalStan(); zapiszGranice(null); poZmianiePasm(); });
+document.querySelector("#pasma-odwroc").addEventListener("click", () => {
+  const n = liczbaPoziomow(), g = granicePasm(n);
+  utrwalStan();
+  przestawTony(kolejne(j => j < n ? n - 1 - j : j));
+  if(g) zapiszGranice(g.map(v => 256 - v).reverse());
+  pasmoWybrane = n - 1 - Math.min(pasmoWybrane, n - 1);
+  poZmianiePasm();
+});
+document.querySelector("#pasma-usun").addEventListener("click", () => {
+  const n = liczbaPoziomow(), i = Math.min(pasmoWybrane, n - 1), g = graniceTeraz(n);
+  if(n <= 2) return;
+  utrwalStan();
+  /* pierwsze pasmo przejmuje następne, każde inne — poprzednie */
+  const ng = i === 0 ? g.slice(1) : [...g.slice(0, i - 1), ...g.slice(i)];
+  przestawTony(kolejne(j => j < i ? j : j + 1));
+  S.znakiIle = n - 1;
+  zapiszGranice(ng);
+  pasmoWybrane = Math.max(0, Math.min(i, n - 2));
+  poZmianiePasm();
+});
+/* ręczna zmiana liczby tonów — granice nie pasują, wracają równe */
+document.querySelector("#znakiIle").addEventListener("input", () => { if(S.znakiGranice){ zapiszGranice(null); pasmaUI(); } });
+
+/* pasek: pasma jako przyciski (wybór), granice jako uchwyty (przeciąganie,
+   strzałki ±1, z Shiftem ±10). Przy przeciąganiu tylko przestawiamy
+   położenia — przebudowa zgubiłaby uchwyt spod kursora. */
+function pasmaUI(){
+  const n = liczbaPoziomow(), wlasne = granicePasm(n), g = wlasne || graniceRowne(n), pasek = document.querySelector("#pasma-pasek");
+  pasmoWybrane = Math.min(pasmoWybrane, n - 1);
+  if(pasek.querySelectorAll(".pasmo").length !== n){
+    pasek.innerHTML = "";
+    for(let i=0; i<n; i++){
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "pasmo"; b.innerHTML = `<span>${i + 1}</span>`;
+      b.addEventListener("click", () => wybierzPasmo(i));
+      pasek.appendChild(b);
+    }
+    for(let j=0; j<n - 1; j++){
+      const h = document.createElement("div");
+      h.className = "uchwyt"; h.tabIndex = 0; h.setAttribute("role", "slider");
+      h.setAttribute("aria-label", "Granica pasm " + (j + 1) + " i " + (j + 2));
+      h.setAttribute("aria-valuemin", "1"); h.setAttribute("aria-valuemax", "255");
+      podepnijUchwyt(h, j);
+      pasek.appendChild(h);
+    }
+  }
+  const pasma = pasek.querySelectorAll(".pasmo"), uchwyty = pasek.querySelectorAll(".uchwyt");
+  for(let i=0; i<n; i++){
+    const [a, b] = zakresPasma(i, n, g), el = pasma[i];
+    el.style.left = (a/256*100) + "%"; el.style.width = ((b + 1 - a)/256*100) + "%";
+    el.setAttribute("aria-pressed", i === pasmoWybrane);
+    el.setAttribute("aria-label", "Pasmo " + (i + 1) + ": " + a + "–" + b);
+    const w = document.querySelector("#znak-ton" + (i + 1));
+    w.querySelector(".zakres").textContent = a + "–" + b;
+    w.classList.toggle("wybrany", i === pasmoWybrane);
+  }
+  for(let i=n; i<ZNAKI_MAKS; i++) document.querySelector("#znak-ton" + (i + 1)).classList.remove("wybrany");
+  for(let i=0; i<ZNAKI_MAKS; i++) document.querySelector("#znak-ton-wiel" + (i + 1)).classList.toggle("hidden", i !== pasmoWybrane || i >= n);
+  uchwyty.forEach((h, j) => { h.style.left = (g[j]/256*100) + "%"; h.setAttribute("aria-valuenow", g[j]); });
+  document.querySelector("#pasma-v").textContent = wlasne ? "własne" : "równe";
+  const [a, b] = zakresPasma(pasmoWybrane, n, g);
+  document.querySelector("#pasma-podziel").disabled = n >= ZNAKI_MAKS || b - a < 1;
+  document.querySelector("#pasma-usun").disabled = n <= 2;
+  document.querySelector("#pasma-rozloz").disabled = !wlasne;
+}
+function przesunGranice(j, v){
+  const n = liczbaPoziomow(), g = graniceTeraz(n).slice();
+  const lo = j === 0 ? 1 : g[j - 1] + 1, hi = j === n - 2 ? 255 : g[j + 1] - 1;
+  v = Math.max(lo, Math.min(hi, Math.round(v)));
+  if(v === g[j] && granicePasm(n)) return;
+  g[j] = v;
+  zapiszGranice(g);
+  pasmaUI(); schedule();
+}
+function podepnijUchwyt(h, j){
+  const naV = e => { const r = h.parentElement.getBoundingClientRect(); return (e.clientX - r.left)/r.width*256; };
+  h.addEventListener("pointerdown", e => { e.preventDefault(); h.setPointerCapture(e.pointerId); h.focus(); });
+  h.addEventListener("pointermove", e => { if(h.hasPointerCapture(e.pointerId)) przesunGranice(j, naV(e)); });
+  h.addEventListener("keydown", e => {
+    const d = e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : 0;
+    if(!d) return;
+    e.preventDefault();
+    przesunGranice(j, graniceTeraz(liczbaPoziomow())[j] + d*(e.shiftKey ? 10 : 1));
+  });
 }
 
 /* Własny kształt: plik SVG wstawiony na chwilę do strony (niewidoczny), żeby
@@ -972,7 +1105,7 @@ for(const c of SUWAKI){
     S[c.key] = c.zS ? c.zS(+el.value) : +el.value;
     $("#"+c.id+"-v").textContent = c.opis(S[c.key]);
     if(c.key==="glebia") probkiUI();
-    if(c.key==="risoIle" || c.key==="risoLos" || c.key==="znakiIle" || c.key==="znakiPodmiana" || c.key==="ruchPuls" || c.key==="ruchObrot" || c.key==="tonPowt" || c.key==="tonPrzes" || c.key==="odksztalcenie" || c.key==="scalanie" || c.key==="rozciag" || c.key==="pochyl" || c.key==="qrWersja") risoUI();
+    if(c.key==="risoIle" || c.key==="risoLos" || c.key==="znakiIle" || c.key==="znakiPodmiana" || c.key==="znakiWtapianie" || c.key==="ruchPuls" || c.key==="ruchObrot" || c.key==="tonPowt" || c.key==="tonPrzes" || c.key==="odksztalcenie" || c.key==="scalanie" || c.key==="rozciag" || c.key==="pochyl" || c.key==="qrWersja") risoUI();
     /* parametr już animowany: ruszenie suwaka ustawia klatkę w bieżącym miejscu osi */
     if(W.z && czyAnimowany(c.key)){ ustawKlucz(c.key, czasOd(W.biezaca), +el.value); kluczeUI(); }
     schedule();

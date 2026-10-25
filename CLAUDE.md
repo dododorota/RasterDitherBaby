@@ -510,6 +510,18 @@ dla płótna i SVG. Obrazek: przycięty do krycia, wpisany w kwadrat 2r,
 wersje przebarwione w rozmiarach potęg dwójki z pamięcią — bez niej
 skalowanie 512 px do kilku pikseli przy każdym punkcie było wolne.
 Zlewanie znaków nie łączy (zostają punkty), scalanie zachowuje poziom.
+**Pasma** (od 25.10, jak „Bands” Dither Boya): `S.znakiGranice` — tekst
+granic na skali v = (1 − pokrycie)·255, `granicePasm()` czyta nieufnie
+i musi pasować do liczby tonów, inaczej null = równe pasma dawnym wzorem
+`floor((1 − k)·N)` (nie zastępuj go granicami z `graniceRowne()` — te są
+zaokrąglone i przesunęłyby pojedyncze punkty w starych presetach). Kształt
+tonu `pusty` (tylko w listach tonów) pomija `znakiWGrupach()`. Operacje
+panelu (`przestawTony()` w app.js) przestawiają kształty, kolory i ZNAKI
+razem z granicami (i wielkości `znakiR`). Wielkość pasma mnoży r w
+`geometria()` PO podmianie tonów; wtapianie (`poziomPunktu()`) zmienia
+poziom przy granicy — próg z położenia w pikselach podglądu, Bayer po
+węzłach w układzie siatki (`u.uklad`). Oba przy wartościach neutralnych
+omijane w całości.
 SVG: `S.svgObrazki` (ustawienie zapisu, nie wygląd) — „osadz" (PNG
 w `<symbol>` + `<use>`, wygląda jak podgląd) albo „wektor" (sylwetka z SVG,
 bitmapy pominięte i zgłoszone w komunikacie). SVG ze znaku czyszczony

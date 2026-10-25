@@ -1,7 +1,8 @@
 /* Geometria rastra (siatki.js) i faktura farby (faktura-farby.js).
    Uruchom z katalogu projektu: node testy/siatki.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY, odcinkiBarwne, przesuniecie, ustawieniaFarby, normalizujKsztalt, ksztaltWlasny, zaokraglij } from "../src/siatki.js";
+import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY, odcinkiBarwne, przesuniecie, ustawieniaFarby, normalizujKsztalt, ksztaltWlasny, zaokraglij, granicePasm, graniceRowne, wielkosciPasm } from "../src/siatki.js";
+import { znakiWGrupach } from "../src/znaki-tonu.js";
 import { gradientLUT } from "../src/palettes.js";
 import { krycie, ziarnoFaktury } from "../src/faktura-farby.js";
 
@@ -439,6 +440,70 @@ console.log("--- znaki według tonu ---");
   ustaw({cell: 8, shape: "tony", zlewanie: 80});
   const zl = geometria(gradient, W, H, {ang: 0, cov, off: [0, 0]}, 1);
   sprawdz(!!zl.kropki && !zl.plamy, "zlewanie pomija znaki według tonu (zostają punkty)");
+
+  /* pasma o nierównej szerokości (S.znakiGranice) */
+  sprawdz(JSON.stringify(graniceRowne(6)) === "[43,85,128,170,213]", "równe granice 6 pasm: 43, 85, 128, 170, 213 (jak Dither Boy)");
+  const zle = ["", "1,2", "43,85,128,170", "43,85,128,170,213,240", "85,43,128,170,213", "43,43,128,170,213", "0,85,128,170,213", "43,85,128,170,256",
+               "43,85.5,128,170,213", "a,b,c,d,e", "43,,128,170,213", " 43,85,128,170,213x", null, 5];
+  sprawdz(zle.every(t => granicePasm(6, t) === null) && JSON.stringify(granicePasm(6, "1,2,3,254,255")) === "[1,2,3,254,255]",
+          `odczyt granic nieufny: ${zle.length} złych tekstów → równe pasma, poprawne skrajne przechodzą`);
+  const inkP = {ang: 30, cov, off: [0, 0]};
+  ustaw({cell: 8, shape: "tony", znakiIle: 6});
+  const rowne = geometria(gradient, W, H, inkP, 1).kropki.map(p => p[6]);
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiGranice: "43,85,128"});
+  sprawdz(geometria(gradient, W, H, inkP, 1).kropki.every((p, i) => p[6] === rowne[i]), "granice nie do tej liczby tonów — dawne równe pasma co do bitu");
+  const g = [20, 60, 61, 200, 230];
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiGranice: g.join(",")});
+  const kp = geometria(gradient, W, H, inkP, 1).kropki;
+  const zgodneP = kp.every(p => { const v = (1 - Math.min(1, cov(...Array(3).fill(lumP(gradient, p[0], p[1])))))*255; return p[6] === g.filter(x => v >= x).length; });
+  const uzyteP = new Set(kp.map(p => p[6]));
+  sprawdz(kp.length > 0 && zgodneP && uzyteP.size >= 5 && kp.some((p, i) => p[6] !== rowne[i]),
+          `własne granice ${g.join(",")}: poziom = liczba granic ≤ jasność tonu, ${uzyteP.size} pasm w użyciu`);
+  const kp3 = geometria(gradient, W, H, inkP, 3).kropki;
+  sprawdz(kp.length === kp3.length && kp.every((p, i) => p[6] === kp3[i][6] && Math.abs(p[0]*3 - kp3[i][0]) < 1e-9), "własne granice: z=3 dokładnie ×3, te same pasma");
+  /* pasmo „Puste": znakiWGrupach go pomija (płótno i SVG), reszta bez zmian */
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiS2: "pusty", znakiS5: "pusty"});
+  const kq = geometria(gradient, W, H, inkP, 1).kropki, gr = znakiWGrupach(kq, {color: "#000"});
+  const wGrupach = gr.reduce((s, x) => s + x.kropki.length, 0), pustych = kq.filter(p => p[6] === 1 || p[6] === 4).length;
+  sprawdz(pustych > 0 && wGrupach === kq.length - pustych && gr.every(x => x.poz !== 1 && x.poz !== 4), `pasmo „Puste”: ${pustych} punktów pominiętych, ${wGrupach} narysowanych`);
+  /* wielkość kształtu na pasmo (znakiR): 100% wszędzie — punkty co do bitu; 50% — połowa promienia; 0% — brak punktów */
+  ustaw({cell: 8, shape: "tony", znakiIle: 6});
+  const baz = geometria(gradient, W, H, inkP, 1).kropki;
+  sprawdz(wielkosciPasm(6) === null, "wszystkie pasma 100% — mnożników brak (kod pominięty)");
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiR2: 50, znakiR4: 0, znakiR6: 170});
+  const wk = geometria(gradient, W, H, inkP, 1).kropki, bezZer = baz.filter(p => p[6] !== 3);
+  const mn = {1: 0.5, 5: 1.7};
+  sprawdz(baz.some(p => p[6] === 3) && wk.length === bezZer.length && wk.every((p, i) => p[0] === bezZer[i][0] && p[6] === bezZer[i][6] && p[2] === bezZer[i][2]*(mn[p[6]] ?? 1)),
+          `wielkość pasma 50% / 0% / 170%: promienie pomnożone, pasmo 0% bez punktów (${baz.length} → ${wk.length})`);
+  const wk3 = geometria(gradient, W, H, inkP, 3).kropki;
+  sprawdz(wk3.length === wk.length && wk.every((p, i) => Math.abs(p[2]*3 - wk3[i][2]) < 1e-9), "wielkość pasma: z=3 dokładnie ×3");
+  ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiR2: "abc", znakiR3: NaN});
+  sprawdz(wielkosciPasm(6) === null, "wielkość pasma nie-liczba (zepsuty preset) — jak 100%");
+  /* wtapianie pasm: tylko o jedno pasmo, tylko w strefie przy granicy, z=3 te same, wzory różne */
+  for(const [gr2, opis] of [["", "równe"], ["30,70,120,180,230", "własne"]]){
+    ustaw({cell: 6, shape: "tony", znakiIle: 6, znakiGranice: gr2});
+    const A = geometria(gradient, W, H, inkP, 1).kropki;
+    const G = gr2 ? gr2.split(",").map(Number) : [1, 2, 3, 4, 5].map(i => 255*i/6);
+    const szer = [G[0], ...G.slice(1).map((g, i) => g - G[i]), 255 - G[4]];
+    for(const wzor of ["uporzadkowane", "rozproszone"]){
+      ustaw({cell: 6, shape: "tony", znakiIle: 6, znakiGranice: gr2, znakiWtapianie: 60, znakiWtapWzor: wzor});
+      const B = geometria(gradient, W, H, inkP, 1).kropki, B3 = geometria(gradient, W, H, inkP, 3).kropki;
+      let zm = 0, pozaStrefa = 0;
+      A.forEach((p, i) => {
+        const d = B[i][6] - p[6];
+        if(d){ zm++;
+          const v = (1 - Math.min(1, cov(...Array(3).fill(lumP(gradient, p[0], p[1])))))*255, g = d > 0 ? G[p[6]] : G[p[6] - 1];
+          const w = 0.6*Math.min(szer[p[6]], szer[p[6] + d])/2;
+          if(Math.abs(d) > 1 || Math.abs(v - g) > w + 1e-9) pozaStrefa++; }
+      });
+      sprawdz(A.length === B.length && zm > A.length*0.03 && pozaStrefa === 0 && B.every((p, i) => p[6] === B3[i][6] && p[2] === A[i][2]),
+              `wtapianie 60% (${opis}, ${wzor}): ${zm} z ${A.length} punktów w sąsiednim paśmie, wszystkie w strefie granicy, z=3 te same`);
+    }
+    ustaw({cell: 6, shape: "tony", znakiIle: 6, znakiGranice: gr2, znakiWtapianie: 60, znakiWtapWzor: "uporzadkowane"});
+    const U = geometria(gradient, W, H, inkP, 1).kropki.map(p => p[6]);
+    ustaw({cell: 6, shape: "tony", znakiIle: 6, znakiGranice: gr2, znakiWtapianie: 60, znakiWtapWzor: "rozproszone"});
+    sprawdz(geometria(gradient, W, H, inkP, 1).kropki.some((p, i) => p[6] !== U[i]), `wtapianie (${opis}): wzór uporządkowany i rozproszony dają inny układ`);
+  }
 
   /* podmiana tonów */
   const ink = {ang: 25, cov, off: [0, 0]};

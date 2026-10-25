@@ -16,7 +16,7 @@
 import { S } from "./state.js";
 import { skrot } from "./fx.js";
 import { kodQR } from "./qr.js";
-import { niebieskiSzum } from "./kernels.js";
+import { niebieskiSzum, BAYER8 } from "./kernels.js";
 
 /* pokrycie farby w punkcie podglądu — najbliższa próbka, jak w collectScreen().
    Przezroczysty piksel (PNG z alfą, kompozycja z przezroczystym tłem) to
@@ -53,6 +53,8 @@ export function ustawieniaFarby(ink){
     ziarno: ziarnoFarby(ink)
   };
   u.granice = u.tony ? granicePasm(u.tony) : null;
+  u.wtap = u.tony ? Math.max(0, Math.min(100, +S.znakiWtapianie || 0))/100 : 0;
+  u.wtapRozproszone = S.znakiWtapWzor === "rozproszone";
   return u;
 }
 
@@ -74,6 +76,12 @@ export function granicePasm(n, tekst = S.znakiGranice){
   if(g.length !== n - 1 || g.some((v, i) => !Number.isInteger(v) || v < 1 || v > 255 || (i > 0 && v <= g[i - 1]))) return null;
   return g;
 }
+/* mnożniki wielkości pasm (S.znakiR1…N, procenty 0–200) albo null, gdy
+   wszystkie 100% albo wartość nie jest liczbą (preset z pliku) */
+export function wielkosciPasm(n){
+  const m = Array.from({length: n}, (_, i) => { const v = S["znakiR" + (i + 1)]; return Number.isFinite(v) ? Math.max(0, Math.min(200, v))/100 : 1; });
+  return m.every(v => v === 1) ? null : m;
+}
 /* granice równych pasm na tej samej skali — do panelu i do pierwszej
    zmiany (przejście z równych na własne) */
 export const graniceRowne = n => Array.from({length: n - 1}, (_, i) => Math.ceil(255*(i + 1)/n));
@@ -83,6 +91,38 @@ const poziomTonu = (k, n, g) => {
   let p = 0; while(p < g.length && v >= g[p]) p++;
   return p;
 };
+/* Wtapianie pasm (Feather): przy każdej granicy strefa przejścia szerokości
+   wtapianie · ½ węższego z dwóch pasm — punkt w strefie bierze sąsiednie
+   pasmo z prawdopodobieństwem rosnącym do ½ przy samej granicy, więc kształty
+   przechodzą w siebie zamiast stykać się ostrą linią. Próg z położenia
+   w pikselach podglądu (zapis w skali — ten sam układ): Bayer 8×8 po
+   komórkach siatki albo skrót położenia. Przy 0 — dawny poziom co do bitu. */
+function poziomPunktu(k, u, px, py){
+  const p = poziomTonu(k, u.tony, u.granice);
+  if(!u.wtap) return p;
+  const n = u.tony, G = u.granice || Array.from({length: n - 1}, (_, i) => 255*(i + 1)/n);
+  const lo = i => i === 0 ? 0 : G[i - 1], hi = i => i === n - 1 ? 255 : G[i], szer = i => hi(i) - lo(i);
+  const v = (1 - Math.min(1, k))*255;
+  /* Bayer po węzłach siatki, w jej obróconym układzie (u.uklad z geometria()) —
+     w osiach ekranu kilka punktów siatki pod 45° wpadało w jedną komórkę
+     macierzy i przejście robiło się grudami */
+  let prog;
+  if(u.wtapRozproszone) prog = skrot(Math.round(px*4), Math.round(py*4), 7331 + u.ziarno);
+  else {
+    const [cx, cy, ca, sa] = u.uklad || [0, 0, 1, 0], dx = px - cx, dy = py - cy;
+    const i = Math.round((dx*ca + dy*sa)/u.cell), j = Math.round((dy*ca - dx*sa)/u.cell);
+    prog = (BAYER8[j & 7][i & 7] + 0.5)/64;
+  }
+  if(p < n - 1){
+    const w = u.wtap*Math.min(szer(p), szer(p + 1))/2;
+    if(w > 0 && v > hi(p) - w && prog < (v - (hi(p) - w))/(2*w)) return p + 1;
+  }
+  if(p > 0){
+    const w = u.wtap*Math.min(szer(p), szer(p - 1))/2;
+    if(w > 0 && v < lo(p) + w && prog < (lo(p) + w - v)/(2*w)) return p - 1;
+  }
+  return p;
+}
 /* ---------- ruch punktów ----------
    Jak „pixel animation" w Ditherfy: punkty pulsują między (1 − puls)
    a pełną wielkością, z falą biegnącą pod kątem przez siatkę, i obracają
@@ -259,6 +299,8 @@ export function geometria(smp, W, H, ink, z){
   z = z || 1;
   ink = przemianaTonu(ink);
   const u = ustawieniaFarby(ink);
+  /* środek i kąt siatki — wzór wtapiania pasm liczy się w jej układzie */
+  if(u.wtap){ const a = (ink.ang || 0)*Math.PI/180, off = ink.off || [0, 0]; u.uklad = [W/2 + off[0], H/2 + off[1], Math.cos(a), Math.sin(a)]; }
   let wyn = u.ksztalt === "pasy" ? linie(smp, W, H, ink, u) : kropki(smp, W, H, ink, u);
   /* ruch punktów: pulsowanie przed zlewaniem (plamy pulsują razem z punktami), obrót niżej */
   const ruch = wyn.kropki ? ruchPunktow(u) : null;
@@ -266,6 +308,10 @@ export function geometria(smp, W, H, ink, z){
   /* zlewanie (metaballe): punkty → płynne plamy; kolorowe punkty zostają punktami */
   if(u.zlew && wyn.kropki && !ink.barwa && !u.tony) wyn = {plamy: metaballe(wyn.kropki, W, H, u)};
   if(u.tony && wyn.kropki && S.znakiPodmiana > 0) podmienTony(wyn.kropki, u);
+  /* wielkość kształtu na pasmo (Band Size) — po podmianie, więc punkt bierze
+     wielkość swojego ostatecznego pasma; wszystkie 100% → kod pominięty */
+  const wiel = u.tony && wyn.kropki ? wielkosciPasm(u.tony) : null;
+  if(wiel) wyn.kropki = wyn.kropki.filter(kr => wiel[kr[6]] > 0).map(kr => wiel[kr[6]] === 1 ? kr : [kr[0], kr[1], kr[2]*wiel[kr[6]], ...kr.slice(3)]);
   /* pasowanie: obrót całej płyty wokół środka kadru (obraz na płycie obraca
      się razem z rastrem — pokrycie liczone przed obrotem), potem skala z */
   const ob = u.obrot*Math.PI/180, co = Math.cos(ob), so = Math.sin(ob), cx = W/2, cy = H/2;
@@ -301,7 +347,7 @@ function kropki(smp, W, H, ink, u){
     let r = rStaly;
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
     /* znaki według tonu: w stipplingu ton jest w gęstości, ale znak bierze się z pokrycia w miejscu punktu */
-    const poz = u.tony ? poziomTonu(pokrycie(smp, ink.cov, px, py), u.tony, u.granice) : -1;
+    const poz = u.tony ? poziomPunktu(pokrycie(smp, ink.cov, px, py), u, px, py) : -1;
     if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return; }
     const id = out.length, z0 = u.ziarno*3;
     if(u.nr) r *= Math.max(0.15, 1 + u.nr*(0.9*(skrot(id, 1, z0) - 0.5) + (skrot(id, 2, z0) > 0.975 ? 0.7 : 0)));
@@ -320,7 +366,7 @@ function kropki(smp, W, H, ink, u){
     /* farba „kolorowa" (kolory z obrazu, mapa gradientu): kolor punktu
        z próbki w jego miejscu, szóstym elementem (piąty — numer punktu) */
     const barwa = ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null;
-    const poz = u.tony ? poziomTonu(k, u.tony, u.granice) : -1;
+    const poz = u.tony ? poziomPunktu(k, u, px, py) : -1;
     if(!(u.nr || u.dr || u.post)){ out.push(punkt(px, py, r, kat, -1, barwa, poz)); return out.length - 1; }
     /* numer punktu: kolejność liczenia nie zależy od z, więc zapis w skali
        dostaje te same wielkości, drgania i brzegi */
@@ -1179,7 +1225,7 @@ function siatkaQR(smp, W, H, ink, u, out){
     if(k <= 0.004) continue;
     let r = rMaks*Math.sqrt(Math.min(1.35, k));
     if(wKodzie) r = Math.min(r, c3*0.5);                               /* nie wchodzi na środek modułu */
-    out.push(punkt(px, py, r, 0, -1, ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null, u.tony ? poziomTonu(k, u.tony, u.granice) : -1));
+    out.push(punkt(px, py, r, 0, -1, ink.barwa ? ink.barwa(...probkaRGB(smp, px, py)) : null, u.tony ? poziomPunktu(k, u, px, py) : -1));
   }
   return dodatki;
 }

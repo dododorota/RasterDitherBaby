@@ -766,7 +766,7 @@
       <input type="range" id="ang" min="0" max="90" value="45">
       <div class="row"><label for="dot">Wielkość punktu</label><span class="val" id="dot-v">1.00</span></div>
       <input type="range" id="dot" min="40" max="180" value="100">
-      <details class="pod" data-pod="ksztalt" open>
+      <details class="pod" data-klucze="znakiGranice" data-pod="ksztalt" open>
         <summary>Kształt punktu<i class="zmiana" title="Coś tu różni się od ustawień domyślnych"></i></summary>
         <div class="pod-cialo">
         <div class="row"><label for="shape">Kształt</label></div>
@@ -838,7 +838,27 @@
               <option value="luminosity">Jasność</option>
             </select>
           </div>
+          <div class="row" style="margin-top:12px"><label id="pasma-l">Pasma tonów</label><span class="val" id="pasma-v">równe</span></div>
+          <div class="pasma" id="pasma" role="group" aria-labelledby="pasma-l">
+            <div class="pasma-pasek" id="pasma-pasek"></div>
+            <div class="pasma-skala" aria-hidden="true"><span>0</span><span>64</span><span>128</span><span>192</span><span>255</span></div>
+          </div>
+          <div class="pasma-przyciski">
+            <button class="btn" type="button" id="pasma-podziel" title="Podziel wybrane pasmo na dwa">Podziel</button>
+            <button class="btn" type="button" id="pasma-rozloz" title="Wszystkie pasma tej samej szerokości">Rozłóż</button>
+            <button class="btn" type="button" id="pasma-odwroc" title="Odwróć kolejność kształtów i szerokości pasm">Odwróć</button>
+            <button class="btn" type="button" id="pasma-usun" title="Usuń wybrane pasmo — sąsiednie je przejmie">Usuń</button>
+          </div>
           <div class="znaki-lista" id="znaki-lista"></div>
+          <div class="row" style="margin-top:12px"><label for="znakiWtapianie">Wtapianie pasm</label><span class="val" id="znakiWtapianie-v">brak</span></div>
+          <input type="range" id="znakiWtapianie" min="0" max="100" value="0">
+          <div id="znaki-wtap-opcje" class="hidden">
+            <div class="row"><label for="znakiWtapWzor">Wzór wtapiania</label></div>
+            <select id="znakiWtapWzor">
+              <option value="uporzadkowane" selected>Uporządkowany — siatka Bayera</option>
+              <option value="rozproszone">Rozproszony — losowo</option>
+            </select>
+          </div>
           <input type="file" id="znak-plik" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" class="hidden">
           <p class="hint" id="znaki-msg" aria-live="polite"></p>
           <button class="btn" id="znaki-usun" style="margin-top:8px">Usuń wszystkie obrazki</button>
@@ -855,7 +875,7 @@
             </div>
             <p class="hint">Część znaków dostaje znak sąsiedniego tonu. Klawisz Q — następny układ. W filmie układ może zmieniać się co kilka klatek i między zmianami stoi w miejscu.</p>
           </div>
-          <p class="hint" id="znaki-info">Ton 1 to cienie, ostatni — światła. Każdy ton rysuje się swoim kształtem albo obrazkiem (PNG, JPEG, WebP, SVG) — kliknij ↥ albo przeciągnij plik na wiersz. Obrazki nie trafiają do presetu, preset pamięta kształty i kolory. Znaki jednej wielkości: „Najmniejszy punkt” na 100%.</p>
+          <p class="hint" id="znaki-info">Ton 1 to cienie, ostatni — światła. Przeciągnij granice na pasku, żeby pasma miały różną szerokość; kliknij pasmo albo jego numer, żeby je podzielić lub usunąć. „Puste” — pasmo bez punktów. Każdy ton rysuje się swoim kształtem albo obrazkiem (PNG, JPEG, WebP, SVG) — kliknij ↥ albo przeciągnij plik na wiersz. Obrazki nie trafiają do presetu, preset pamięta kształty i kolory. Znaki jednej wielkości: „Najmniejszy punkt” na 100%.</p>
         </div>
         <div class="row" style="margin-top:10px"><label for="punktSzer">Szerokość punktu</label><span class="val" id="punktSzer-v">100%</span></div>
         <input type="range" id="punktSzer" min="25" max="300" value="100">

@@ -210,6 +210,8 @@ export function znakiWGrupach(kropki, ink){
   kropki.forEach((kr, i) => {
     numery.set(kr, i);
     const poz = Math.max(0, Math.min(n - 1, kr[6] | 0)), z = ZNAKI[poz];
+    /* pasmo „Puste" (bez obrazka) — punktów nie rysujemy, na płótnie i w SVG */
+    if(!z && S["znakiS" + (poz + 1)] === "pusty") return;
     let kolor;
     if(barwa === "poziom") kolor = S["znakiK" + (poz + 1)];
     else if(kr[5]) kolor = kolorCSS(z ? kr[5].map(v => Math.min(255, Math.round(v/16)*16)) : kr[5]);

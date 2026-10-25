@@ -36,7 +36,7 @@ export const DEFAULTS = {
   postJas:0, postKon:0, postNas:0, winieta:0, postZiarno:0,
   czasSzum:0, czasDrganie:0, czasCykl:false, stabil:0,
   asciiZestaw:"standard", asciiWlasne:"", asciiTryb:"jasnosc", asciiRozmiar:12, asciiKolor:"obraz", asciiDither:false,
-  znakiIle:6, znakiBarwa:"farba", znakiMiesz:"source-over", znakiPodmiana:0, znakiZasieg:1, znakiUklad:1, znakiCzas:0,
+  znakiIle:6, znakiGranice:"", znakiWtapianie:0, znakiWtapWzor:"uporzadkowane", znakiBarwa:"farba", znakiMiesz:"source-over", znakiPodmiana:0, znakiZasieg:1, znakiUklad:1, znakiCzas:0,
   ruchPuls:0, ruchKrzywa:"gladko", ruchCykl:20, ruchFala:0, ruchFalaKat:45, ruchOdbicie:true,
   ruchKat:0, ruchObrot:0, ruchSkok:0, ruchPostoj:4, ruchDrzenie:0,
   papierTlo:"kolor", papierKat:90, papierGrad:"",
@@ -72,7 +72,8 @@ const ZNAKI_KSZTALTY = ["square", "szesciokat", "circle", "gwiazda", "diamond", 
 /* pierwsze sześć (domyślna liczba tonów) od ciemnego do jasnego, dalsze — do wyboru */
 const ZNAKI_KOLORY = ["#1b1b3a", "#3b5bdb", "#ae3ec9", "#f03e3e", "#fab005", "#ffe8cc", "#12b886", "#15aabf",
                       "#74c0fc", "#d6336c", "#f76707", "#94d82d", "#7048e8", "#2d3a8c", "#40c057", "#d0ebff"];
-ZNAKI_KSZTALTY.forEach((k, i) => { DEFAULTS["znakiS" + (i + 1)] = k; DEFAULTS["znakiK" + (i + 1)] = ZNAKI_KOLORY[i]; });
+/* znakiR — wielkość kształtu w paśmie, % (Band Size Dither Boya) */
+ZNAKI_KSZTALTY.forEach((k, i) => { DEFAULTS["znakiS" + (i + 1)] = k; DEFAULTS["znakiK" + (i + 1)] = ZNAKI_KOLORY[i]; DEFAULTS["znakiR" + (i + 1)] = 100; });
 export const LOOK = Object.keys(DEFAULTS);
 
 /* klatkaNr: numer bieżącej klatki osi czasu (0 bez filmu) — od niego zależą

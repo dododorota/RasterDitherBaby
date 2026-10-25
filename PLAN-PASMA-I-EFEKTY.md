@@ -68,14 +68,34 @@ Orbs, Neo Glow.
 
 ## Etapy (szkic checklisty — doprecyzować przed każdym)
 
-1. [ ] Pasma o nierównej szerokości: granice w S (tekst, jak `papierGrad`,
-       czytany nieufnie), pasek gradientu z uchwytami, Podziel / Rozłóż /
-       Odwróć / usuń, pasmo „Puste”. Puste granice = równe pasma (dawny
-       wynik co do bitu — test w siatki.mjs).
-2. [ ] Wielkość kształtu na pasmo (Band Size) w geometrii (`podmienTony` /
-       poziom → mnożnik r), SVG z tej samej geometrii.
-3. [ ] Wtapianie między pasmami (uporządkowane z macierzy Bayera /
-       rozproszone ze skrótu położenia — bez Math.random).
+1. [x] Pasma o nierównej szerokości (25.10): `S.znakiGranice` — tekst
+       „43,85,…” (N−1 rosnących liczb 1–255 na skali v = (1 − pokrycie)·255),
+       czytany nieufnie przez `granicePasm()` w siatki.js; zły albo pusty →
+       równe pasma dawnym wzorem. Pasek z gradientem tonu, uchwyty
+       (mysz, strzałki ±1 / Shift ±10), pasma klikalne; Podziel / Rozłóż /
+       Odwróć / Usuń przestawiają razem kształty, kolory i obrazki tonów;
+       każda operacja osobnym krokiem historii; ręczna zmiana „Liczby tonów”
+       wraca do równych. Pasmo „Puste” (kształt `pusty`) pomijane
+       w `znakiWGrupach()` — płótno i SVG. Zakres pasma w wierszu tonu.
+       Sprawdzone: 6 nowych testów w siatki.mjs (odczyt 14 złych tekstów,
+       poziom z granic, z=3, Puste); podgląd co do bajtu jak przed zmianą
+       (21 ustawień, w tym 6 z tonami); panel w Chrome (przeciąganie,
+       przyciski, cofanie), SVG z pustymi pasmami; wszystkie testy 0 błędów.
+       Znane: cofnięcie nie przestawia obrazków tonów (materiał poza
+       historią, jak wszędzie).
+2. [x] Wielkość kształtu na pasmo (25.10): `znakiR1…16` (0–200%, w DEFAULTS,
+       animowalne jak każdy suwak), mnożnik r w `geometria()` po podmianie
+       tonów (`wielkosciPasm()`; wszystkie 100% → pominięte), 0% = brak
+       punktów. Suwak pod wybranym pasmem; Podziel / Odwróć / Usuń
+       przenoszą wielkość. Testy w siatki.mjs (×, 0%, z=3, zepsuty preset).
+3. [x] Wtapianie między pasmami (25.10): `znakiWtapianie` 0–100,
+       `znakiWtapWzor` uporządkowany (Bayer 8×8 po węzłach siatki w jej
+       obróconym układzie — w osiach ekranu wychodziły grudy) / rozproszony
+       (skrót położenia). `poziomPunktu()` w siatki.js; 0 → dawny poziom.
+       Testy: tylko ±1 pasmo, tylko w strefie granicy, z=3, wzory różne.
+       Obejrzane na pasku gradientu (zrzut w katalogu sesji).
+       Po etapach 1–3: podgląd co do bajtu jak przed zmianą (21 ustawień),
+       wszystkie testy 0 błędów.
 4. [ ] Biblioteka kształtów w kafelkach z grupami; nowe kształty jako
        kontury (`kontury()` w siatki.js) albo małe bitmapy piksel-art
        (materiał → worker rastra, jak obrazki tonów).

@@ -4,6 +4,15 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
+## Wznowienie — 25 października 2026 (wieczór)
+
+Wydajność oceniona przez użytkowniczkę: „już jest lepiej” — punkt 1
+handoveru niżej zamknięty. **Pasma — etapy 1–3 z `PLAN-PASMA-I-EFEKTY.md`
+zrobione** (granice pasm z paskiem i uchwytami, Podziel / Rozłóż / Odwróć /
+Usuń, pasmo „Puste”, wielkość na pasmo, wtapianie pasm),
+niezacommitowane, czekają na jej ocenę (lista „Z 25.10”). Następny:
+etap 4 — biblioteka kształtów.
+
 ## Handover — 25 października 2026
 
 Ta sekcja jest na początek następnej sesji.
@@ -506,7 +515,11 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   (klasyczny raster, Skan, stippling, riso z fakturą); zapis PNG w skali
   i film w trybie rastra; kształt „znak” i znaki tonu z obrazkami (rysują
   się teraz w workerze); raster w aplikacji na pulpit (`npm start`) —
-  w Electronie nie klikany.
+  w Electronie nie klikany. Pasma tonów: przeciąganie granic na pasku
+  (czy uchwyty łatwo złapać), Podziel / Rozłóż / Odwróć / Usuń, pasmo
+  „Puste”, zakresy w wierszach; czy działa tak, jak w Dither Boyu się
+  przyzwyczaiła. Wielkość w paśmie (suwak pod wybranym pasmem) i wtapianie
+  pasm — uporządkowane / rozproszone, czy siła 0–100 ma dobry zakres.
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)
