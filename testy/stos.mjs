@@ -161,6 +161,54 @@ for(const [nazwa, ust] of [["faktura", {efekty: "faktura", faktura: "maskaRGB", 
   }
 }
 
+console.log("--- efekty z Dither Boya: neo, kule, zużycie ---");
+{
+  const NOWE = [["neo", {efekty: "neo", neoSila: 90, neoDlugosc: 6, neoMrok: 30, neoProg: 20}],
+                ["neo poziomo z lustrem i kolorem", {efekty: "neo", neoSila: 70, neoOs: "poziomo", neoLustro: true, neoZrodlo: "kolor", neoPrzes: 3}],
+                ["kule", {efekty: "orby", orbyIle: 20, orbySila: 80, orbyWielk: 30, orbyLos: 50}],
+                ["kule ekran z obrazu", {efekty: "orby", orbyIle: 20, orbySila: 60, orbyTryb: "ekran", orbyZrodlo: "obraz", orbyPrzes: 40}],
+                ["zużycie", {efekty: "zuzycie", zuzBrzeg: 4, zuzPlamki: 60, zuzZiarno: 5}],
+                ["soczewka beczka", {efekty: "soczewka", soczKrzyw: 60}],
+                ["soczewka poduszka z czernią", {efekty: "soczewka", soczKrzyw: -60, soczBrzeg: "czarny"}]];
+  for(const [nazwa, ust] of NOWE){
+    ustaw(ust);
+    const w = 64, h = 48, a = gradient(w, h), b = gradient(w, h), zr = gradient(w, h);
+    uruchomNaBuforze(a, w, h, 1); uruchomNaBuforze(b, w, h, 1);
+    let rozne = 0; for(let i=0;i<a.length;i++) if(a[i] !== zr[i]) rozne++;
+    sprawdz(rozne > 0 && rowne(a, b), `${nazwa}: zmienia ${rozne} bajtów, powtarzalnie`);
+  }
+  /* soczewka: tylko przestawia piksele — żadnych nowych kolorów (1-bit zostaje 1-bit) */
+  {
+    ustaw({efekty: "soczewka", soczKrzyw: 70, soczSkala: 120});
+    const w = 50, h = 40, p = obraz(w, h, (x, y) => (x + y) % 3 ? [255, 255, 255] : [0, 0, 0]);
+    uruchomNaBuforze(p, w, h, 1);
+    let inne = 0; for(let i=0; i<p.length; i+=4) if(!((p[i] === 0 || p[i] === 255) && p[i] === p[i+1] && p[i] === p[i+2])) inne++;
+    sprawdz(inne === 0, "soczewka: same piksele z obrazu, bez nowych odcieni");
+  }
+  for(const [nazwa, ust] of [["neo", {efekty: "neo"}], ["kule", {efekty: "orby", orbyIle: 30}], ["zużycie (mieszanie 0)", {efekty: "zuzycie", zuzBrzeg: 5, zuzMix: 0}], ["soczewka", {efekty: "soczewka"}]]){
+    ustaw(ust);
+    const p = gradient(40, 30), q = new Uint8ClampedArray(p); uruchomNaBuforze(q, 40, 30, 1);
+    sprawdz(rowne(p, q), `${nazwa} przy zerowej sile: obraz bez zmian`);
+  }
+  /* ziarno i plamki zużycia w siatce z×z — dokładne powiększenie */
+  for(const z of [2, 3]){
+    ustaw({efekty: "zuzycie", zuzPlamki: 70, zuzZiarno: 6, zuzPlamkiWielk: 2});
+    const W = 40, H = 24, maly = gradient(W, H), podglad = new Uint8ClampedArray(maly); uruchomWSkali(podglad, podglad, W, H, 1);
+    const duzy = powieksz(maly, W, H, z), m = new Uint8ClampedArray(maly); uruchomWSkali(duzy, m, W, H, z);
+    sprawdz(rowne(duzy, powieksz(podglad, W, H, z)), `zużycie (ziarno, plamki), z=${z}: dokładnie powiększony podgląd`);
+  }
+  /* smugi, kule, wytarte brzegi — powiększane płynnie: średnio blisko powiększonego podglądu */
+  for(const [nazwa, ust] of [["neo", {efekty: "neo", neoSila: 90, neoDlugosc: 4}], ["kule", {efekty: "orby", orbyIle: 15, orbySila: 80, orbyWielk: 40}],
+                             ["wytarte brzegi", {efekty: "zuzycie", zuzBrzeg: 3}]]){
+    ustaw(ust);
+    const W = 48, H = 32, z = 3, maly = gradient(W, H), podglad = new Uint8ClampedArray(maly); uruchomWSkali(podglad, podglad, W, H, 1);
+    const duzy = powieksz(maly, W, H, z), m = new Uint8ClampedArray(maly); uruchomWSkali(duzy, m, W, H, z);
+    const wz = powieksz(podglad, W, H, z); let s = 0; for(let i=0; i<wz.length; i+=4) s += Math.abs(wz[i] - duzy[i]);
+    const sr = s/(wz.length/4);
+    sprawdz(sr < 8, `${nazwa}, z=3: średnio ${sr.toFixed(2)}/255 od powiększonego podglądu`);
+  }
+}
+
 console.log("--- dithering: SVG bez efektów tworzących kolory ---");
 {
   ustaw({efekty: "sort,tint,glow", sort: "poziomo", tint: 60, glow: 80});

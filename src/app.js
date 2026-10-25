@@ -178,13 +178,37 @@ const SUWAKI = [
   {id:"czasSzum",   key:"czasSzum",   opis:v=>v?v+"%":"brak"},
   {id:"czasDrganie",key:"czasDrganie",opis:v=>v?v+" px":"brak"},
   {id:"asciiRozmiar",key:"asciiRozmiar",opis:v=>v+" px"},
-  {id:"stabil",     key:"stabil",     opis:v=>v?v+"%":"brak"}
+  {id:"stabil",     key:"stabil",     opis:v=>v?v+"%":"brak"},
+  /* efekty z Dither Boya: Neo Glow, Orbs, Stress Relief */
+  {id:"neoSila",    key:"neoSila",    opis:v=>v?v+"%":"brak"},
+  {id:"neoProg",    key:"neoProg",    opis:v=>v+"%"},
+  {id:"neoDlugosc", key:"neoDlugosc", opis:v=>String(v)},
+  {id:"neoPrzes",   key:"neoPrzes",   opis:v=>String(v)},
+  {id:"neoRozrzut", key:"neoRozrzut", opis:v=>v+"%"},
+  {id:"neoZanik",   key:"neoZanik",   opis:v=>v+"%"},
+  {id:"neoMrok",    key:"neoMrok",    opis:v=>v?v+"%":"brak"},
+  {id:"orbyIle",    key:"orbyIle",    opis:v=>String(Math.round(v*3))},
+  {id:"orbyWielk",  key:"orbyWielk",  opis:v=>String(v)},
+  {id:"orbySila",   key:"orbySila",   opis:v=>v?v+"%":"brak"},
+  {id:"orbyLos",    key:"orbyLos",    opis:v=>v?v+"%":"brak"},
+  {id:"orbyPrzes",  key:"orbyPrzes",  opis:v=>(v>0?"+":"")+v+"%"},
+  {id:"orbyZiarno", key:"orbyZiarno", opis:v=>String(v)},
+  {id:"zuzBrzeg",   key:"zuzBrzeg",   opis:v=>v?String(v):"brak"},
+  {id:"zuzSzorstkosc", key:"zuzSzorstkosc", opis:v=>v+"%"},
+  {id:"zuzZiarno",  key:"zuzZiarno",  opis:v=>v?String(v):"brak"},
+  {id:"zuzPlamki",  key:"zuzPlamki",  opis:v=>v?v+"%":"brak"},
+  {id:"zuzPlamkiWielk", key:"zuzPlamkiWielk", opis:v=>String(v)},
+  {id:"zuzLos",     key:"zuzLos",     opis:v=>String(v)},
+  {id:"zuzMix",     key:"zuzMix",     opis:v=>v+"%"},
+  {id:"soczKrzyw",  key:"soczKrzyw",  opis:v=>!v?"brak":(v>0?"beczka +"+v:"poduszka "+v)},
+  {id:"soczSkala",  key:"soczSkala",  opis:v=>v+"%"}
 ];
-const PTASZKI = ["inv","serp","percept","czasCykl","asciiDither"];
-const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor","glowZrodlo"];
+const PTASZKI = ["inv","serp","percept","czasCykl","asciiDither","neoLustro"];
+const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor","glowZrodlo","neoOs","neoZrodlo","orbyTryb","orbyZrodlo","soczBrzeg"];
 /* jeden klucz może mieć kilka pól: farba i papier są i w palecie ditheringu,
    i w siatce rastra */
-const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key:"ink"}, {id:"paper-r",key:"paper"}, {id:"tintKolor",key:"tintKolor"}, {id:"ink-a",key:"ink"}, {id:"paper-a",key:"paper"}, {id:"glowKolor",key:"glowKolor"}];
+const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key:"ink"}, {id:"paper-r",key:"paper"}, {id:"tintKolor",key:"tintKolor"}, {id:"ink-a",key:"ink"}, {id:"paper-a",key:"paper"}, {id:"glowKolor",key:"glowKolor"},
+                 {id:"neoKolor",key:"neoKolor"}, {id:"orbyKolor",key:"orbyKolor"}];
 
 /* ---------- risograf: panel czterech farb ----------
    Markup farb powstaje tu z DEFAULTS (cztery razy to samo różniłoby się

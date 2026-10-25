@@ -472,3 +472,146 @@ export function cyklMacierzy(){
   const t = S.klatkaNr | 0;
   return [t*3, t*5];
 }
+
+/* ---------- efekty z Dither Boya (25.10): Neo Glow, Orbs, Stress Relief ----------
+   Jednostki jak w poświacie: `jednostka` = piksele bufora na piksel podglądu
+   (dithering: 1/pix, raster na małym obrazie: 1). W rastrze w skali warstwy
+   neo i kul liczone są na małym obrazie i powiększane płynnie (stos.js),
+   zużycie — wprost na dużym z siatką z×z. */
+const jas01 = (p, o) => (p[o]*0.299 + p[o+1]*0.587 + p[o+2]*0.114)/255;
+
+/* Neo Glow — smugi jak w „deszczu Matrixa": każdy piksel ciągnie za sobą
+   smugę swojego koloru wzdłuż osi (w dół albo w prawo, z lustrem w obie
+   strony); jaśniejszy wygrywa z gasnącą smugą. Długość różna w każdej
+   kolumnie (rozrzut, ze skrótu numeru kolumny), zanik — jak szybko smuga
+   ciemnieje, przesunięcie — odstęp smugi od źródła, mrok — przyciemnienie
+   obrazu pod smugami. Zwraca warstwę do nalozPoswiate(). */
+export function warstwaNeo(p, w, h, jednostka){
+  const sila = S.neoSila/100;
+  if(!(sila > 0)) return null;
+  const poz = S.neoOs === "poziomo", L = new Float32Array(w*h*4);
+  const dl = Math.max(1, S.neoDlugosc*6*jednostka), przes = Math.round(S.neoPrzes*2*jednostka), rozrzut = S.neoRozrzut/100;
+  const wyk = 1 + S.neoZanik/100*3, wlasny = S.neoZrodlo === "kolor", kol = hex2rgb(S.neoKolor), prog = Math.min(0.95, (S.neoProg ?? 40)/100);
+  const n = poz ? h : w, m = poz ? w : h;              /* n linii, m pikseli w linii */
+  const idx = (a, b) => ((poz ? a*w + b : b*w + a))*4;   /* linia a, pozycja b */
+  for(const kier of S.neoLustro ? [1, -1] : [1]){
+    for(let a=0; a<n; a++){
+      const dlA = Math.max(1, dl*(1 - rozrzut*skrot(Math.floor(a/Math.max(1, jednostka)), 31, 7177))), spadek = 1/dlA;
+      let T = 0, r = 0, g = 0, b = 0;
+      for(let k=0; k<m; k++){
+        const bb = kier > 0 ? k : m - 1 - k, zr = bb - kier*przes;
+        if(zr >= 0 && zr < m){
+          const o = idx(a, zr), s = Math.max(0, (jas01(p, o) - prog)/(1 - prog));
+          if(s >= T){ T = s; if(wlasny){ r = kol[0]; g = kol[1]; b = kol[2]; } else { r = p[o]; g = p[o+1]; b = p[o+2]; } }
+          else T = Math.max(0, T - spadek);
+        } else T = Math.max(0, T - spadek);
+        if(T <= 0) continue;
+        const f = Math.pow(T, wyk)*sila, o = idx(a, bb);
+        L[o] = Math.max(L[o], r*f); L[o+1] = Math.max(L[o+1], g*f); L[o+2] = Math.max(L[o+2], b*f);
+      }
+    }
+  }
+  return L;
+}
+/* mrok pod smugami (Gloom) — punktowo, ten sam w każdej skali */
+export function mrokNeo(p){
+  const m = 1 - S.neoMrok/100*0.85;
+  if(m >= 1) return;
+  for(let o=0; o<p.length; o+=4){ p[o] *= m; p[o+1] *= m; p[o+2] *= m; }
+}
+
+/* Orbs — rozsiane miękkie kule światła: miejsca i wielkości ze skrótu numeru
+   kuli i ziarna, w kadrze względnym (ta sama kompozycja w każdej skali),
+   kolor własny albo z obrazu pod kulą; przesunięcie przesuwa całe pole
+   w pionie z zawinięciem (klatkami kluczowymi — kule płyną). Zwraca
+   warstwę RGBA (kolor × krycie, krycie) do nalozOrby(). */
+export function warstwaOrbow(p, w, h, jednostka){
+  const ile = Math.round(S.orbyIle*3), sila = S.orbySila/100;
+  if(!ile || !(sila > 0)) return null;
+  const L = new Float32Array(w*h*4), R0 = Math.max(0.5, S.orbyWielk*0.25*jednostka), los = S.orbyLos/100;
+  const wlasny = S.orbyZrodlo === "kolor", kol = hex2rgb(S.orbyKolor), przes = (S.orbyPrzes || 0)/100, ziarno = 9001 + (S.orbyZiarno | 0)*13;
+  for(let i=0; i<ile; i++){
+    const cx = skrot(i, 1, ziarno)*w, cy = ((skrot(i, 2, ziarno) + przes) % 1 + 1) % 1*h;
+    const R = R0*Math.max(0.15, 1 + los*(skrot(i, 3, ziarno)*2 - 1)*0.85), a0 = sila*(0.55 + 0.45*skrot(i, 4, ziarno));
+    let c = kol;
+    if(!wlasny){ const o = (Math.min(h - 1, Math.floor(cy))*w + Math.min(w - 1, Math.floor(cx)))*4; c = [p[o], p[o+1], p[o+2]]; }
+    const x0 = Math.max(0, Math.floor(cx - R)), x1 = Math.min(w - 1, Math.ceil(cx + R)), y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(h - 1, Math.ceil(cy + R));
+    for(let y=y0; y<=y1; y++) for(let x=x0; x<=x1; x++){
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy)/R;
+      if(d >= 1) continue;
+      const t = Math.min(1, (1 - d)/0.45), a = a0*t*t*(3 - 2*t), o = (y*w + x)*4;
+      /* kule się nakładają: „ekran" na kryciu, kolor ważony */
+      const na = L[o+3] + a*(1 - L[o+3]);
+      for(let k=0; k<3; k++) L[o+k] = L[o+k] + c[k]*a*(1 - L[o+3]);
+      L[o+3] = na;
+    }
+  }
+  return L;
+}
+/* nałożenie warstwy kul trybem: zwykły, ekran, dodawanie, nakładka */
+export function nalozOrby(P, L){
+  const tryb = S.orbyTryb;
+  for(let o=0; o<P.length; o+=4){
+    const a = L[o+3];
+    if(a <= 0) continue;
+    for(let k=0; k<3; k++){
+      const v = P[o+k], c = L[o+k]/a;
+      let n;
+      if(tryb === "ekran") n = 255 - (255 - v)*(255 - c)/255;
+      else if(tryb === "dodaj") n = v + c;
+      else if(tryb === "nakladka") n = v < 128 ? 2*v*c/255 : 255 - 2*(255 - v)*(255 - c)/255;
+      else n = c;
+      P[o+k] = v + (n - v)*a;
+    }
+  }
+}
+
+/* Stress Relief — zużycie druku: brzegi przesunięte szumem (wytarcie —
+   jak daleko, szorstkość — jak drobno postrzępione; płaskie miejsca się
+   nie zmieniają, bo przesunięcie widać tylko na krawędziach), ziarno,
+   plamki (w jasnym — ciemne, w ciemnym — jasne, jak dziury w farbie
+   i paprochy), ziarno losowania i mieszanie z oryginałem. Siatka efektu:
+   `z` pikseli bufora na komórkę (zapis w skali — te same miejsca). */
+export function zuzycie(p, w, h, z){
+  const wyt = S.zuzBrzeg*0.9, zi = S.zuzZiarno*9, pl = S.zuzPlamki/100, mix = S.zuzMix/100;
+  if(!(mix > 0) || !(wyt || zi || pl)) return;
+  const zr = p.slice(), ziarno = 4001 + (S.zuzLos | 0)*17, czest = 0.04 + S.zuzSzorstkosc/100*0.5, kom = Math.max(2, S.zuzPlamkiWielk*3);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const u = (x + 0.5)/z, v = (y + 0.5)/z, o = (y*w + x)*4;
+    let q = o;
+    if(wyt){
+      const dx = (fbm(u*czest, v*czest, ziarno, 3) - 0.5)*2*wyt, dy = (fbm(u*czest, v*czest, ziarno + 50, 3) - 0.5)*2*wyt;
+      const sx = Math.min(w - 1, Math.max(0, Math.round(x + dx*z))), sy = Math.min(h - 1, Math.max(0, Math.round(y + dy*z)));
+      q = (sy*w + sx)*4;
+    }
+    let r = zr[q], g = zr[q+1], b = zr[q+2];
+    if(zi){ const n = (skrot(Math.floor(u), Math.floor(v), ziarno + 7) - 0.5)*zi; r += n; g += n; b += n; }
+    if(pl){
+      const s = plamka(Math.floor(u), Math.floor(v), kom, pl*0.6, kom*0.12, kom*0.32, ziarno + 11);
+      if(s){ const cel = jas01(zr, q) > 0.5 ? 0 : 255, t = s.d < 0.7 ? 1 : (1 - s.d)/0.3; r += (cel - r)*t; g += (cel - g)*t; b += (cel - b)*t; }
+    }
+    p[o] = zr[o] + (r - zr[o])*mix; p[o+1] = zr[o+1] + (g - zr[o+1])*mix; p[o+2] = zr[o+2] + (b - zr[o+2])*mix;
+  }
+}
+
+/* Lens Curve — krzywizna soczewki: + beczka (środek wypukły), − poduszka.
+   Próbkowanie najbliższym pikselem (1-bit zostaje 1-bit), we współrzędnych
+   względnych kadru (promień 1 w rogu) — przy zapisie w skali to samo
+   zniekształcenie, liczone wprost na dużym obrazie, jak aberracja. Brzeg:
+   rozciągnięty skrajny piksel albo czerń poza obrazem. */
+export function soczewka(p, w, h){
+  const k = S.soczKrzyw/100*0.6, sk = (S.soczSkala || 100)/100;
+  if(!k && sk === 1) return;
+  const zr = p.slice(), cx = w/2, cy = h/2, R = Math.hypot(cx, cy) || 1, czarny = S.soczBrzeg === "czarny";
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const nx = (x + 0.5 - cx)/R, ny = (y + 0.5 - cy)/R, f = (1 + k*(nx*nx + ny*ny))/sk;
+    let sx = Math.floor(cx + nx*f*R), sy = Math.floor(cy + ny*f*R);
+    const o = (y*w + x)*4;
+    if(sx < 0 || sy < 0 || sx >= w || sy >= h){
+      if(czarny){ p[o] = p[o+1] = p[o+2] = 0; continue; }
+      sx = Math.min(w - 1, Math.max(0, sx)); sy = Math.min(h - 1, Math.max(0, sy));
+    }
+    const q = (sy*w + sx)*4;
+    p[o] = zr[q]; p[o+1] = zr[q+1]; p[o+2] = zr[q+2];
+  }
+}

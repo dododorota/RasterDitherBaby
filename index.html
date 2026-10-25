@@ -1267,6 +1267,98 @@
         <input type="range" id="gwKat" min="0" max="180" value="0">
       </div></div>
 
+      <div class="fx hidden" data-fx="neo"><div class="fx-cialo">
+        <div class="row"><label for="neoSila">Intensywność</label><span class="val" id="neoSila-v">brak</span></div>
+        <input type="range" id="neoSila" min="0" max="100" value="0">
+        <div class="row"><label for="neoProg">Świeci od jasności</label><span class="val" id="neoProg-v">40%</span></div>
+        <input type="range" id="neoProg" min="0" max="95" value="40">
+        <div class="row"><label for="neoOs">Kierunek smug</label></div>
+        <select id="neoOs">
+          <option value="pion" selected>Pionowo — w dół</option>
+          <option value="poziomo">Poziomo — w prawo</option>
+        </select>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="neoLustro"> Lustro — w obie strony</label>
+        <div class="row"><label for="neoDlugosc">Maks. długość</label><span class="val" id="neoDlugosc-v">12</span></div>
+        <input type="range" id="neoDlugosc" min="1" max="60" value="12">
+        <div class="row"><label for="neoPrzes">Przesunięcie</label><span class="val" id="neoPrzes-v">0</span></div>
+        <input type="range" id="neoPrzes" min="0" max="60" value="0">
+        <div class="row"><label for="neoRozrzut">Rozrzut długości</label><span class="val" id="neoRozrzut-v">100%</span></div>
+        <input type="range" id="neoRozrzut" min="0" max="100" value="100">
+        <div class="row"><label for="neoZanik">Zanik</label><span class="val" id="neoZanik-v">0%</span></div>
+        <input type="range" id="neoZanik" min="0" max="100" value="0">
+        <div class="row"><label for="neoMrok">Mrok pod smugami</label><span class="val" id="neoMrok-v">brak</span></div>
+        <input type="range" id="neoMrok" min="0" max="100" value="0">
+        <div class="swatches" style="margin-top:10px">
+          <select id="neoZrodlo" aria-label="Kolor smug">
+            <option value="obraz" selected>Kolor z obrazu</option>
+            <option value="kolor">Własny kolor →</option>
+          </select>
+          <input type="color" id="neoKolor" value="#39ff6a" aria-label="Własny kolor smug">
+        </div>
+        <p class="hint">Jasne miejsca ciągną za sobą smugi jak w „deszczu Matrixa”. Najlepiej na ciemnym tle — w ASCII, ditheringu albo rastrze.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="orby"><div class="fx-cialo">
+        <div class="row"><label for="orbyIle">Liczba kul</label><span class="val" id="orbyIle-v">0</span></div>
+        <input type="range" id="orbyIle" min="0" max="100" value="0">
+        <div class="row"><label for="orbyWielk">Wielkość</label><span class="val" id="orbyWielk-v">30</span></div>
+        <input type="range" id="orbyWielk" min="1" max="100" value="30">
+        <div class="row"><label for="orbySila">Intensywność</label><span class="val" id="orbySila-v">brak</span></div>
+        <input type="range" id="orbySila" min="0" max="100" value="0">
+        <div class="row"><label for="orbyLos">Losowa wielkość</label><span class="val" id="orbyLos-v">brak</span></div>
+        <input type="range" id="orbyLos" min="0" max="100" value="0">
+        <div class="row"><label for="orbyPrzes">Przesunięcie w pionie</label><span class="val" id="orbyPrzes-v">0%</span></div>
+        <input type="range" id="orbyPrzes" min="-100" max="100" value="0">
+        <div class="row"><label for="orbyZiarno">Układ</label><span class="val" id="orbyZiarno-v">1</span></div>
+        <input type="range" id="orbyZiarno" min="1" max="99" value="1">
+        <div class="row"><label for="orbyTryb">Mieszanie</label></div>
+        <select id="orbyTryb">
+          <option value="zwykly" selected>Zwykłe</option>
+          <option value="ekran">Ekran — rozjaśnia</option>
+          <option value="dodaj">Dodawanie — świeci</option>
+          <option value="nakladka">Nakładka</option>
+        </select>
+        <div class="swatches" style="margin-top:10px">
+          <select id="orbyZrodlo" aria-label="Kolor kul">
+            <option value="kolor" selected>Własny kolor →</option>
+            <option value="obraz">Kolor z obrazu</option>
+          </select>
+          <input type="color" id="orbyKolor" value="#ffffff" aria-label="Własny kolor kul">
+        </div>
+        <p class="hint">Rozsiane miękkie kule światła. „Przesunięcie” z klatkami kluczowymi — kule płyną w filmie.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="soczewka"><div class="fx-cialo">
+        <div class="row"><label for="soczKrzyw">Krzywizna</label><span class="val" id="soczKrzyw-v">brak</span></div>
+        <input type="range" id="soczKrzyw" min="-100" max="100" value="0">
+        <div class="row"><label for="soczSkala">Skala</label><span class="val" id="soczSkala-v">100%</span></div>
+        <input type="range" id="soczSkala" min="50" max="200" value="100">
+        <div class="row"><label for="soczBrzeg">Poza obrazem</label></div>
+        <select id="soczBrzeg">
+          <option value="rozciagnij" selected>Rozciągnięty brzeg</option>
+          <option value="czarny">Czerń</option>
+        </select>
+        <p class="hint">W prawo — beczka (środek wypukły, jak przez szkło kineskopu), w lewo — poduszka. Skala powyżej 100% chowa brzegi.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="zuzycie"><div class="fx-cialo">
+        <div class="row"><label for="zuzBrzeg">Wytarte brzegi</label><span class="val" id="zuzBrzeg-v">brak</span></div>
+        <input type="range" id="zuzBrzeg" min="0" max="10" value="0">
+        <div class="row"><label for="zuzSzorstkosc">Szorstkość</label><span class="val" id="zuzSzorstkosc-v">50%</span></div>
+        <input type="range" id="zuzSzorstkosc" min="0" max="100" value="50">
+        <div class="row"><label for="zuzZiarno">Ziarno</label><span class="val" id="zuzZiarno-v">brak</span></div>
+        <input type="range" id="zuzZiarno" min="0" max="10" value="0">
+        <div class="row"><label for="zuzPlamki">Plamki</label><span class="val" id="zuzPlamki-v">brak</span></div>
+        <input type="range" id="zuzPlamki" min="0" max="100" value="0">
+        <div class="row"><label for="zuzPlamkiWielk">Wielkość plamek</label><span class="val" id="zuzPlamkiWielk-v">3</span></div>
+        <input type="range" id="zuzPlamkiWielk" min="1" max="10" value="3">
+        <div class="row"><label for="zuzLos">Układ</label><span class="val" id="zuzLos-v">1</span></div>
+        <input type="range" id="zuzLos" min="1" max="99" value="1">
+        <div class="row"><label for="zuzMix">Mieszanie z oryginałem</label><span class="val" id="zuzMix-v">100%</span></div>
+        <input type="range" id="zuzMix" min="0" max="100" value="100">
+        <p class="hint">Postrzępione, wytarte brzegi kształtów, ziarno i plamki — jak zużyty druk. Płaskie miejsca zostają nietknięte.</p>
+      </div></div>
+
       <div class="fx hidden" data-fx="faktura"><div class="fx-cialo">
         <div class="row"><label for="faktura">Wzór</label></div>
         <select id="faktura">

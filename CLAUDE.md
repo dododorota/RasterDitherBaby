@@ -228,6 +228,11 @@ mały i duży bufor idą razem, każdy efekt po swojemu, test w `testy/stos.mjs`
 sprawdza dokładne powiększenie), karta w markupie, klucze w `DEFAULTS`
 i `SUWAKI`. Zmienność w czasie działa PRZED ditheringiem i czyta
 `S.klatkaNr` — ustawia go podgląd filmu (`przyKlatce`) i zapis (video.js).
+Efekty z Dither Boya (25.10): neo (smugi) i kule liczą warstwę na małym
+obrazie i powiększają ją płynnie (`powiekszGladko`, kule z kryciem — 4
+kanały), zużycie liczy się wprost na dużym w siatce z×z (ziarno, plamki —
+dokładne powiększenie), soczewka — wprost na dużym w kadrze względnym, jak
+aberracja.
 
 **Korekta** (image.js): krzywa (LUT) → barwa (macierz) → przestrzenna
 (odszumianie, rozmycie, wyostrzanie, `korektaPrzestrzenna`). Każdy krok przy

@@ -172,6 +172,37 @@ Orbs, Neo Glow.
        Layout Square/Offset = siatka kwadratowa / heks, Rotation = kąt —
        bez nowych kontrolek. Przy wartościach domyślnych co do bajtu jak
        przed zmianą (21 ustawień); wszystkie testy 0 błędów.
-7. [ ] Efekty w stosie (`stos.js`/`fx.js`, czyste i deterministyczne):
-       Stress Relief, Orbs, Neo Glow; potem Lick, Lens Curve, Epsilon
-       Glow po zrzutach.
+7. [x] Efekty w stosie (25.10, `fx.js` + `stos.js`, czyste, deterministyczne):
+       - „Neo glow — smugi” (`neo*`): każdy piksel jaśniejszy od progu ciągnie
+         smugę swojego koloru (albo własnego) w dół / w prawo, z lustrem;
+         jaśniejszy wygrywa z gasnącą smugą; długość, rozrzut długości
+         między kolumnami (stagger), zanik, przesunięcie, mrok pod smugami.
+         Próg „Świeci od jasności” (nie ma go w Dither Boyu) — bez niego na
+         jasnym tle smugi ciągnął papier i zalewały obraz.
+       - „Kule światła (Orbs)” (`orby*`): miękkie kule w kadrze względnym
+         ze skrótu numeru kuli; liczba, wielkość, losowa wielkość,
+         intensywność, przesunięcie w pionie z zawinięciem (klatkami — kule
+         płyną), układ, kolor własny / z obrazu, mieszanie zwykłe / ekran /
+         dodawanie / nakładka.
+       - „Zużycie druku (Stress Relief)” (`zuz*`): wytarte brzegi =
+         przesunięcie szumem (fbm) — zmienia tylko krawędzie; szorstkość =
+         częstotliwość szumu; ziarno; plamki (w jasnym ciemne, w ciemnym
+         jasne); układ; mieszanie z oryginałem.
+       Zapis w skali: neo i kule liczone na małym obrazie i powiększane
+       płynnie (`powiekszGladko(…, 4)` dla kul z kryciem), zużycie wprost
+       w siatce z×z (ziarno i plamki — dokładne powiększenie; brzegi —
+       średnio 1,5/255). Testy w stos.mjs (13 nowych). W panelu przez
+       „+ Dodaj efekt”, z kopiami. Podgląd starych ustawień co do bajtu.
+7b. [x] Lens Curve (25.10, bez zrzutu karty — standardowa krzywizna
+       soczewki): „Krzywizna soczewki” (`socz*`): + beczka, − poduszka,
+       skala, brzeg rozciągnięty / czerń; najbliższy piksel (bez nowych
+       odcieni — test), kadr względny, w skali liczona na dużym jak
+       aberracja. Obejrzane na siatce linii.
+    [x] Epsilon Glow — jedyna poświata na ich liście → to nasza „Poświata”,
+       bez nowego efektu (potwierdzić z użytkowniczką, gdyby to było co innego).
+    [ ] Lick — **czeka na zrzut karty** (nie wiadomo, co robi).
+8. [x] Instalator 0.2.0 (25.10): wersja w package.json 0.1.0 → 0.2.0,
+       `npm run paczka` → `dist/Raster Setup 0.2.0.exe` i
+       `dist/Raster-0.2.0-przenosny.exe` (niepodpisane, jak wcześniej);
+       test `RASTER_ZRZUT` na `dist/win-unpacked/Raster.exe` bez błędów.
+       Stare 0.1.0 zostały w `dist/` — do usunięcia przez użytkowniczkę.

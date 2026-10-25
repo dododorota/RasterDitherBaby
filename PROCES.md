@@ -4,66 +4,65 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
-## Wznowienie — 25 października 2026 (wieczór)
-
-Wydajność oceniona przez użytkowniczkę: „już jest lepiej” — punkt 1
-handoveru niżej zamknięty. **Etapy 1–4 z `PLAN-PASMA-I-EFEKTY.md`
-zrobione** (granice pasm z paskiem i uchwytami, Podziel / Rozłóż / Odwróć /
-Usuń, pasmo „Puste”, wielkość na pasmo, wtapianie pasm, biblioteka 106
-kształtów z okienkiem kafelków). Etapy 1–3 zacommitowała; etap 4
-niezacommitowany. Wszystko czeka na jej ocenę (lista „Z 25.10”).
-Potem (25.10, późno): wybór kształtu obrazkiem zamiast nazwy, poprawka
-wyścigu przy zmianie trybu (podejrzenie zgłoszonego „ASCII nie działa”).
-Potem 4b: biblioteka przepisana według jej zbliżeń kafelków Dither Boya
-(173 kształty; poprzednie 106 w `99c8e07`), pasek pasm z miniaturami, szerokość pasma, „jedna wielkość
-w paśmie” (zacommitowane, `a3bfaf0`). Potem etap 5 — zestawy kształtów
-(10 wbudowanych, własne, plik; zacommitowane, `797070c`). Potem „Twoje
-kształty” w bibliotece i etap 6 — losowy obrót kształtów, ostre krawędzie
-(niezacommitowane). Następny: **etap 7 — efekty** (Neo Glow, Orbs, Stress
-Relief; Lick, Lens Curve, Epsilon Glow — poprosić o zrzuty kart).
-
-## Handover — 25 października 2026
+## Handover — 25 października 2026 (wieczór)
 
 Ta sekcja jest na początek następnej sesji.
 
-**Stan:** nic nie jest w toku. Repo czyste, wszystko zacommitowane
-i wypchnięte — ostatnie commity `269cbe6` (etap 1 wydajności, plany)
-i `6782c63` (raster w workerze), oba 25.10.
+**Stan:** nic nie jest w toku, nic nie jest w połowie. Ostatni commit
+`796851a` (Twoje kształty, losowy obrót, ostre krawędzie). **Niezacommitowane:**
+efekty z Dither Boya (Neo glow, Kule światła, Zużycie druku, Krzywizna
+soczewki), wersja 0.2.0 w package.json, ten handover. Jeśli `git status`
+dalej je pokazuje, użytkowniczka commituje:
+`git add -A && git commit -m "Efekty z Dither Boya (Neo glow, Kule światła, Zużycie druku, Krzywizna soczewki), wersja 0.2.0, handover"`.
+Testy na koniec: 18 w Node i `przegladarka.mjs` — 0 błędów
+(`przegladarka.mjs` raz na kilka uruchomień zgłasza znany błąd dekodowania
+dźwięku — „Niestabilny test” niżej; powtórka czysta). Serwer:
+`python serwer.py` → `http://localhost:8000`.
 
-**Zrobione 25.10** (punkt 33 niżej, szczegóły i pomiary
-w `PLAN-WYDAJNOSC.md`, zasady w `CLAUDE.md` → „Wydajność”):
-- Zgłoszenie: zdjęcie 2000×1333 „koszmarnie się tnie”, suwaki stoją —
-  u niej „klasyczny raster bez presetów” i mocno „Skan”. Przyczyna: raster
-  liczył się na głównym wątku (do 1,2 s blokady na ruch suwaka).
-- Raster w workerze (`raster-rysuj.js`, `worker-raster.js`, `plotno.js`):
-  blokada suwaków 0 ms wszędzie. Faktura farby szybsza ×2–2,7 (pamięć pól
-  szumu). Obraz co do bajtu jak przed zmianą (podgląd, zapis ×2, obrazki
-  tonów); wszystkie testy 0 błędów.
+**Zrobione 25.10** (punkty 33–34 niżej; szczegóły w `PLAN-WYDAJNOSC.md`
+i `PLAN-PASMA-I-EFEKTY.md`, zasady w `CLAUDE.md`):
+- **Wydajność**: raster w workerze, faktura farby szybsza — blokada suwaków
+  0 ms (było do 1,2 s). Oceniła: „już jest lepiej”.
+- **Pasma tonów jak Dither Boy** (rozbudowa „Znaków według tonu”): granice
+  na pasku z miniaturami kształtów, Podziel / Rozłóż / Odwróć / Usuń, pasmo
+  „Puste”, wielkość i szerokość pasma, wtapianie pasm, „Jedna wielkość
+  w paśmie”, zestawy kształtów (10 wbudowanych, własne, plik).
+- **Biblioteka 173 kształtów** odtworzona z jej zbliżeń kafelków Dither Boya
+  (Basic, Triangles, Symbols, Lines, Spooky, Pixel), okienko z kafelkami,
+  wybór kształtu obrazkiem zamiast nazwy (raster, riso, tony), „Twoje
+  kształty” (wczytane obrazki, biel → przezroczysta).
+- **Siatka**: losowy obrót kształtów, ostre krawędzie.
+- **Efekty**: Neo glow (smugi), Kule światła (Orbs), Zużycie druku (Stress
+  Relief), Krzywizna soczewki (Lens Curve). Epsilon Glow = nasza Poświata.
+- Poprawka wyścigu przy zmianie trybu (spóźniony wynik workera nadpisywał
+  podgląd — podejrzenie zgłoszonego „ASCII nie działa”; u mnie ASCII działało).
+- **Instalator 0.2.0** w `dist/` (stare 0.1.0 obok — do usunięcia przez nią).
+- Każda zmiana przy wartościach domyślnych co do bajtu jak przed nią
+  (podgląd porównywany ze starą wersją z `git archive` na porcie 8001 —
+  21 ustawień rastra).
 
-**Następne kroki, po kolei:**
-1. [ ] **Zapytać o ocenę wydajności** — klasyczny raster i Skan na jej
-       zdjęciu pod `http://localhost:8000` (`python serwer.py`). U mnie
-       domyślny raster był płynny już przed zmianą (22 ms), więc jeśli
-       u niej dalej się tnie, szukać gdzie indziej: czy nie używa starego
-       .exe z 3.10, skalowanie Windowsa, rysowanie panelu. Skrypty
-       pomiarowe były tymczasowe (katalog sesji) — w razie potrzeby
-       odtworzyć wg opisu w `PLAN-WYDAJNOSC.md` i przenieść do `testy/`.
-2. [ ] **Nowe funkcje z Dither Boya** — `PLAN-PASMA-I-EFEKTY.md`, decyzje
-       z 25.10 już tam są: rozbudowa „Znaków według tonu” (pasma o nierównej
-       szerokości z przeciąganymi granicami, wielkość na pasmo, wtapianie,
-       biblioteka ~150 kształtów, zestawy) i **wszystkie** efekty (Stress
-       Relief, Orbs, Neo Glow, Lick, Lens Curve, Epsilon Glow). Zacząć od
-       etapu 1 (pasma). Zrzuty wzoru są tylko w rozmowie z 25.10 — opis
-       w planie; kart Lick, Lens Curve, Epsilon Glow jeszcze nie ma
-       (użytkowniczka szuka) — przed nimi poprosić o zrzuty.
-       Nowy materiał do rysowania (np. kształty-bitmapy) musi trafić też
-       do workera rastra — patrz CLAUDE.md.
-3. [ ] Dalej otwarte z handoveru 20.10 (niżej): ocena Glitcha i list
-       „Z 14.10” … „Z 19.10”, **stary instalator** (`npm run paczka` —
-       teraz tym bardziej, bo .exe nie ma poprawek wydajności).
+**Następne kroki, po kolei (zacząć od zapytania):**
+1. [ ] **Jej ocena na zdjęciach** — lista „Z 25.10” w „Do przetestowania na
+       koniec”: pasma, biblioteka (który kafelek odstaje od Dither Boya),
+       zestawy, Twoje kształty, nowe efekty, ASCII (czy działa i co nie
+       działało), wersja na pulpit 0.2.0. Poprawić według uwag.
+2. [ ] **Lick** — ostatni efekt z listy Dither Boya; czeka na zrzut karty
+       albo kadr przed / po (nie wiadomo, co robi — nie zgadywać).
+3. [ ] Drobne otwarte z planu: czy „Epsilon Glow” to na pewno poświata;
+       kolejność pasm w wbudowanych zestawach (u nas pasmo 1 = cienie —
+       na jasne kształty na ciemnym tle „Odwróć”), może przełącznik.
+4. [ ] Starsze, z handoveru 20.10 (niżej): ocena Glitcha i list „Z 14.10” …
+       „Z 19.10”, lista „Na później”. Po kolejnych zmianach — przebudować
+       instalator (`npm run paczka`, wersja w package.json).
 
-Etap 3 wydajności (poświata rastra na mniejszym obrazie, Glitch Ciecz /
-Topnienie ~0,4 s) — tylko jeśli będzie potrzeba, opis w planie.
+**Do wiedzenia przy pracy:**
+- Skrypty sprawdzające z tej sesji (pomiar, profil, porównanie starej i nowej
+  wersji, testy panelu w Chrome) były tymczasowe, w katalogu sesji — zasada
+  porównania opisana w `CLAUDE.md` („Raster też liczy się w workerze”). Jeśli
+  mają zostać na stałe — przenieść do `testy/` (decyzja użytkowniczki).
+- Zrzuty Dither Boya (biblioteka, pasma, karty efektów) są tylko w rozmowie
+  z 25.10; opis i odwzorowanie w `PLAN-PASMA-I-EFEKTY.md` i
+  `src/biblioteka-ksztaltow.js`.
 
 ## Handover — 20 października 2026 (poprzedni)
 
@@ -80,10 +79,10 @@ puszczone 20.10 — 0 błędów.
       przetestowania na koniec”. Najświeższe: tryb Glitch (presety, film
       w trybie Glitch z „Nowy glitch co kilka klatek” — niesprawdzony,
       zakresy suwaków, szybkość Liquid ~1 s). Poprawić według uwag.
-- [ ] **Instalator jest stary** — `dist/` (`Raster Setup 0.1.0.exe`,
-      `Raster-0.1.0-przenosny.exe`) z 3.10, bez wszystkiego od wtyczek
-      (14.10) po Glitch. Przebudować `npm run paczka` (najlepiej po ocenie
-      i poprawkach; ewentualnie podbić `version` w `package.json`).
+- [x] **Instalator jest stary** — przebudowany 25.10 jako 0.2.0
+      (`npm run paczka`, wersja podbita w package.json); stare 0.1.0 dalej
+      leżą w `dist/` — do usunięcia przez użytkowniczkę. Po kolejnych
+      zmianach — przebudować znowu.
 - [ ] Reszta listy „Na później” niżej (krzywa cieni / świateł we wtyczkach
       VFX, starsze pomysły).
 
@@ -481,6 +480,25 @@ to przegląd bez zmian w kodzie.
     16 ustawień podglądu, zapis PNG ×2, obrazki tonów; `przegladarka.mjs`
     i 18 testów w Node — 0 błędów; Electron startuje bez błędów.
 
+34. **Pasma, biblioteka kształtów i efekty jak Dither Boy** (25.10) — plan
+    i wynik w `PLAN-PASMA-I-EFEKTY.md`, po zrzutach z Dither Boya
+    (Studio AAA) od użytkowniczki. Rozbudowa „Znaków według tonu”: granice
+    pasm (`znakiGranice`, nieufnie, puste = dawne równe pasma co do bitu),
+    pasek z miniaturami i uchwytami, Podziel / Rozłóż / Odwróć / Usuń, pasmo
+    „Puste”, wielkość (`znakiR*`) i szerokość pasma, wtapianie
+    (`znakiWtapianie`, Bayer w układzie siatki / skrót położenia), „Jedna
+    wielkość w paśmie” (`znakiStala`), zestawy kształtów (wbudowane, własne
+    w localStorage, plik JSON). Biblioteka 173 kształtów
+    (`biblioteka-ksztaltow.js`, kafelek [−1, 1] = komórka, kontury się
+    sumują, `{otwory}` tylko gdzie trzeba), okienko kafelków, wybór
+    kształtu obrazkiem (`wyborWizualny()`), „Twoje kształty”. Siatka: losowy
+    obrót (`obrotLos`), ostre krawędzie (`ostreKrawedzie`). Efekty w stosie:
+    Neo glow, Kule światła, Zużycie druku, Krzywizna soczewki. Poprawka
+    wyścigu przy zmianie trybu. Instalator 0.2.0. Sprawdzone: nowe testy
+    w `siatki.mjs` i `stos.mjs`, podgląd starych ustawień co do bajtu
+    (porównanie ze starą wersją), panel w Chrome bez okna, Electron
+    (`RASTER_ZRZUT` na spakowanej apce).
+
 ## Do przetestowania na koniec
 
 Lista użytkowniczki — rzeczy sprawdzone tylko na obrazach generowanych
@@ -538,7 +556,10 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   (JPEG z białym tłem, PNG z alfą, SVG); losowy obrót i ostre krawędzie
   — zwłaszcza ostre krawędzie przy zapisie w skali (próg liczony
   w rozdzielczości zapisu, więc to nie jest piksel w piksel powiększony
-  podgląd).
+  podgląd). Nowe efekty: Neo glow na ciemnym ASCII / ditheringu (czy
+  przypomina Dither Boya, zakres długości), Kule światła w filmie
+  (przesunięcie klatkami), Zużycie druku na rastrze i ditheringu — siła
+  plamek i ziarna.
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)
