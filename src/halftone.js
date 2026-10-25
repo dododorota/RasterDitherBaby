@@ -125,9 +125,15 @@ function rysujGrupe(x, kropki, g, ksztalt, numery){
     }
     return;
   }
+  /* Powrót do jednostkowej zamiast save/restore przy każdej kropce — płótno
+     farby ma na wejściu transformację jednostkową (jak w rysujZnaki), a stos
+     save/restore przy ~100 tys. kropek (oczko 2,5) to była połowa czasu
+     renderu. Dalej translate + rotate, nie gotowa macierz z cos/sin: Chrome
+     liczy rotate() o ostatnią cyfrę inaczej i kilka kropek CMYK zmieniało
+     antyaliasing o 1/255. */
   const cell = g.cell;
   for(const [px,py,r,kat] of kropki){
-    x.save(); x.translate(px,py); x.rotate(kat);
+    x.setTransform(1, 0, 0, 1, 0, 0); x.translate(px,py); x.rotate(kat);
     switch(ksztalt){
       case "square": x.fillRect(-r,-r,r*2,r*2); break;
       case "diamond": x.beginPath(); x.moveTo(0,-r*1.3); x.lineTo(r*1.3,0); x.lineTo(0,r*1.3); x.lineTo(-r*1.3,0); x.closePath(); x.fill(); break;
@@ -135,8 +141,8 @@ function rysujGrupe(x, kropki, g, ksztalt, numery){
       case "cross": x.fillRect(-r*1.5,-r*0.45,r*3,r*0.9); x.fillRect(-r*0.45,-r*1.5,r*0.9,r*3); break;
       default: x.beginPath(); x.arc(0,0,r,0,6.2832); x.fill();
     }
-    x.restore();
   }
+  x.setTransform(1, 0, 0, 1, 0, 0);
 }
 function rysujLinie(x, linie){
   x.beginPath();

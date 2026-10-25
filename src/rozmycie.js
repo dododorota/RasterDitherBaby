@@ -80,15 +80,21 @@ function rozmyjWiersze(a, b, w, h, sigma){
     wierszeBox(a,b,w,h,(sz[2]-1)/2);
   }
 }
+/* jedna płaszczyzna w miejscu (b, c — bufory pomocnicze, opcjonalne) */
+export function rozmyjPlaszczyzne(a, w, h, sigma, b, c){
+  if(sigma < 0.05) return;
+  b = b || new Float32Array(w*h); c = c || new Float32Array(w*h);
+  rozmyjWiersze(a,b,w,h,sigma);     /* poziomo */
+  transponuj(b,c,w,h);
+  rozmyjWiersze(c,b,h,w,sigma);     /* to samo po transpozycji = pionowo */
+  transponuj(b,a,h,w);
+}
 export function rozmyj(p, w, h, sigma){
   if(sigma < 0.05) return;
   const n=w*h, a=new Float32Array(n), b=new Float32Array(n), c=new Float32Array(n);
   for(let ch=0; ch<3; ch++){
     for(let i=0,j=ch;i<n;i++,j+=4) a[i]=p[j];
-    rozmyjWiersze(a,b,w,h,sigma);     /* poziomo */
-    transponuj(b,c,w,h);
-    rozmyjWiersze(c,b,h,w,sigma);     /* to samo po transpozycji = pionowo */
-    transponuj(b,a,h,w);
+    rozmyjPlaszczyzne(a,w,h,sigma,b,c);
     for(let i=0,j=ch;i<n;i++,j+=4) p[j]=a[i];
   }
 }

@@ -11,14 +11,27 @@
    faktura w podglądzie i w pliku, a zapis 6× nie liczy szumu 36 razy. */
 import { S } from "./state.js";
 import { skrot } from "./fx.js";
-import { rozmyj } from "./rozmycie.js";
+import { rozmyjPlaszczyzne } from "./rozmycie.js";
 
 export const fakturaWlaczona = () => S.szorstkosc > 0 || S.rozlanie > 0 || S.plamy > 0 || S.dziury > 0 || S.walek > 0;
 
+/* Pola szumu nie zależą od obrazu, tylko od rozmiaru, skali i ziarna — bez
+   pamięci każdy ruch suwaka liczył je od nowa (przy dwóch farbach z plamami
+   i szorstkością ~150 ms z ~550). Pole 1400 px to ~5 MB, stąd limit. */
+const pamiecPol = new Map(), MAKS_POL = 16;
+function poleSzumu(W, H, skala, ziarno){
+  const klucz = W + "," + H + "," + skala + "," + ziarno;
+  let pole = pamiecPol.get(klucz);
+  if(pole){ pamiecPol.delete(klucz); pamiecPol.set(klucz, pole); return pole; }
+  pole = liczPoleSzumu(W, H, skala, ziarno);
+  if(pamiecPol.size >= MAKS_POL) pamiecPol.delete(pamiecPol.keys().next().value);
+  pamiecPol.set(klucz, pole);
+  return pole;
+}
 /* szum wartości: losowe wartości w węzłach co `skala` pikseli, gładko między
    nimi. Siatka węzłów obrócona (kąt z ziarna) — szum wartości na siatce
    prostej zdradza ją: plamy układały się w poziome i pionowe prostokąty. */
-function poleSzumu(W, H, skala, ziarno){
+function liczPoleSzumu(W, H, skala, ziarno){
   const kat = 0.45 + (ziarno % 7)*0.31, c = Math.cos(kat)/skala, s = Math.sin(kat)/skala;
   const pole = new Float32Array((W + 1)*(H + 1));
   for(let y=0; y<=H; y++){
@@ -56,14 +69,15 @@ export function krycie(p, W, H, z, ziarno){
      na czystym papierze nic się nie pojawia. */
   const brzeg = sz > 0 ? [poleSzumu(W, H, 1.6*ks, ziarno*7 + 1), poleSzumu(W, H, 5*ks, ziarno*7 + 2)] : null;
   if(roz > 0 || brzeg){
-    const b = new Float32Array(n*4);
-    for(let i=0; i<n; i++) b[i*4] = a[i];
-    rozmyj(b, OW, OH, Math.max(roz > 0 ? 0.6 + 2.2*roz : 0, brzeg ? 0.9 + 1.2*sz : 0)*ks*z);
+    /* rozmyte krycie — jedna płaszczyzna (dawniej bufor RGBA, w którym
+       rozmywały się też dwa puste kanały) */
+    const b = new Float32Array(a);
+    rozmyjPlaszczyzne(b, OW, OH, Math.max(roz > 0 ? 0.6 + 2.2*roz : 0, brzeg ? 0.9 + 1.2*sz : 0)*ks*z);
     const prog = 0.5 - 0.38*roz;
     for(let y=0; y<OH; y++){
       const v = Math.min(H - 0.001, Math.max(0, (y + 0.5)/z - 0.5));
       for(let x=0; x<OW; x++){
-        const i = y*OW + x, k = b[i*4];
+        const i = y*OW + x, k = b[i];
         if(k <= 0.002){ a[i] = 0; continue; }
         let s = 0;
         if(brzeg){
