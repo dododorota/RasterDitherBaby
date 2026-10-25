@@ -96,9 +96,21 @@ Orbs, Neo Glow.
        Obejrzane na pasku gradientu (zrzut w katalogu sesji).
        Po etapach 1–3: podgląd co do bajtu jak przed zmianą (21 ustawień),
        wszystkie testy 0 błędów.
-4. [ ] Biblioteka kształtów w kafelkach z grupami; nowe kształty jako
-       kontury (`kontury()` w siatki.js) albo małe bitmapy piksel-art
-       (materiał → worker rastra, jak obrazki tonów).
+4. [x] Biblioteka kształtów (25.10): `src/biblioteka-ksztaltow.js` (czysty)
+       — 106 kształtów w 6 grupach (Podstawowe z kostkami i siatkami kropek,
+       Trójkąty, Symbole, Linie z kodami kreskowymi, Spooky, Piksel — 17
+       bitmap tekstem → prostokąty). Kafelek [−1, 1] × r, pole NIE
+       wyrównane do koła; id „b-…”. Wchodzi przez `kontury()` /
+       `sciezkowy()`, więc działa w rastrze, SVG, workerze, riso, pasmach.
+       Panel: optgroupy w liście „Kształt” (kopiują je riso i tony),
+       przycisk „Biblioteka kształtów…”, miniatura kształtu w każdym wierszu
+       tonu; okienko z kafelkami obok panelu (Esc / klik obok zamyka).
+       Sprawdzone: arkusz wszystkich 106 w rastrze (zrzut), testy w
+       siatki.mjs (kontury × r z obrotem, otwory — złapał nos czaszki bez
+       otworu), SVG z biblioteką rasteryzuje się, podgląd starych ustawień
+       co do bajtu, wszystkie testy 0 błędów.
+       „Twoje kształty” — dziś obrazek na ton (↥); do biblioteki trafią
+       w etapie 5 razem z zestawami.
 5. [ ] Zestawy kształtów: wbudowane + własne (localStorage, try/catch),
        import / eksport w formacie presetu.
 6. [ ] Siatka: Rotation Jitter, Crisp Edges, Tone Scaling — sprawdzić,

@@ -517,7 +517,15 @@ i musi pasować do liczby tonów, inaczej null = równe pasma dawnym wzorem
 zaokrąglone i przesunęłyby pojedyncze punkty w starych presetach). Kształt
 tonu `pusty` (tylko w listach tonów) pomija `znakiWGrupach()`. Operacje
 panelu (`przestawTony()` w app.js) przestawiają kształty, kolory i ZNAKI
-razem z granicami (i wielkości `znakiR`). Wielkość pasma mnoży r w
+razem z granicami (i wielkości `znakiR`). **Biblioteka kształtów**
+(`biblioteka-ksztaltow.js`, od 25.10): kontury w kafelku [−1, 1], id „b-…”
+w S i presetach — raz nadanego nie zmieniać. Nowy kształt: wpis w grupie
+i tyle (kontury(), lista, okienko i miniatury biorą go same). Kontury
+nachodzące na siebie (części jednej sylwetki) zaczynaj od punktu poza
+sąsiednim konturem, a otwory — od punktu leżącego w dokładnie jednym:
+`orientuj()` rozpoznaje otwór po pierwszym punkcie (test w siatki.mjs
+liczy otwory kilku kształtów). Opcje biblioteki dokłada app.js do `#shape`
+przed `panelRiso()`/`panelZnakow()`, bo te kopiują listę. Wielkość pasma mnoży r w
 `geometria()` PO podmianie tonów; wtapianie (`poziomPunktu()`) zmienia
 poziom przy granicy — próg z położenia w pikselach podglądu, Bayer po
 węzłach w układzie siatki (`u.uklad`). Oba przy wartościach neutralnych

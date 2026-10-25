@@ -17,6 +17,7 @@ import { S } from "./state.js";
 import { skrot } from "./fx.js";
 import { kodQR } from "./qr.js";
 import { niebieskiSzum, BAYER8 } from "./kernels.js";
+import { KONTURY_BIBLIOTEKI, czyBiblioteczny } from "./biblioteka-ksztaltow.js";
 
 /* pokrycie farby w punkcie podglądu — najbliższa próbka, jak w collectScreen().
    Przezroczysty piksel (PNG z alfą, kompozycja z przezroczystym tłem) to
@@ -740,6 +741,13 @@ function cyfra(id, r){
                f: p(-w/2, -h/2, t, h/2 + t/2), b: p(w/2 - t, -h/2, t, h/2 + t/2), e: p(-w/2, -t/2, t, h/2 + t/2), c: p(w/2 - t, -t/2, t, h/2 + t/2)};
   return [...SEGMENTY[n]].map(s => seg[s]);
 }
+/* kontury z biblioteki z poprawionymi obiegami (otwory) — raz na kształt */
+const pamiecBiblioteki = new Map();
+function konturyBiblioteki(k){
+  let c = pamiecBiblioteki.get(k);
+  if(!c) pamiecBiblioteki.set(k, c = orientuj(KONTURY_BIBLIOTEKI.get(k)));
+  return c;
+}
 export function kontury(nazwa, x, y, r, kat, komorka, id){
   const obr = (pts, k) => pts.map(([px, py]) => [x + px*Math.cos(k) - py*Math.sin(k), y + px*Math.sin(k) + py*Math.cos(k)]);
   const wielokat = (n, R, k0) => Array.from({length: n}, (_, i) => { const f = k0 + i*2*Math.PI/n; return [R*Math.cos(f), R*Math.sin(f)]; });
@@ -780,6 +788,8 @@ export function kontury(nazwa, x, y, r, kat, komorka, id){
     if(!k) return [obr(wielokat(24, r, 0), kat)];
     return k.map(c => obr(c.map(([a, b]) => [a*r, b*r]), kat));
   }
+  /* biblioteka kształtów: kafelek [−1, 1] razy r (pole nie wyrównane do koła) */
+  if(czyBiblioteczny(nazwa)) return konturyBiblioteki(nazwa).map(c => obr(c.map(([a, b]) => [a*r, b*r]), kat));
   /* dawne kształty jako kontury — do obrysu (zwykle rysowane wprost) */
   if(nazwa === "square") return [obr([[-r, -r], [r, -r], [r, r], [-r, r]], kat)];
   if(nazwa === "diamond") return [obr([[0, -r*1.3], [r*1.3, 0], [0, r*1.3], [-r*1.3, 0]], kat)];
@@ -850,7 +860,7 @@ export const kolorCSS = c => "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
 
 /* Czy punkty rysować ścieżką (konturami z obrys()) zamiast wprost: nowe
    kształty, postrzępione brzegi i tryb obrysu (wtedy każdy kształt). */
-export const sciezkowy = (ksztalt, g) => NOWE_KSZTALTY.includes(ksztalt) || !!g.postrzep || !!g.rozciag || (S.obrys || 0) > 0 || ((S.zaokraglenie || 0) > 0 && ksztalt !== "circle");
+export const sciezkowy = (ksztalt, g) => NOWE_KSZTALTY.includes(ksztalt) || czyBiblioteczny(ksztalt) || !!g.postrzep || !!g.rozciag || (S.obrys || 0) > 0 || ((S.zaokraglenie || 0) > 0 && ksztalt !== "circle");
 /* grubość obrysu w pikselach podglądu (0 = wypełnienie) */
 export const grubostObrysu = () => (S.obrys || 0)/10;
 /* znak dla punktu: tekst z panelu, znaki po kolei (spacje pomijane) */

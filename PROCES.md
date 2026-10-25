@@ -7,11 +7,12 @@ w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 ## Wznowienie — 25 października 2026 (wieczór)
 
 Wydajność oceniona przez użytkowniczkę: „już jest lepiej” — punkt 1
-handoveru niżej zamknięty. **Pasma — etapy 1–3 z `PLAN-PASMA-I-EFEKTY.md`
+handoveru niżej zamknięty. **Etapy 1–4 z `PLAN-PASMA-I-EFEKTY.md`
 zrobione** (granice pasm z paskiem i uchwytami, Podziel / Rozłóż / Odwróć /
-Usuń, pasmo „Puste”, wielkość na pasmo, wtapianie pasm),
-niezacommitowane, czekają na jej ocenę (lista „Z 25.10”). Następny:
-etap 4 — biblioteka kształtów.
+Usuń, pasmo „Puste”, wielkość na pasmo, wtapianie pasm, biblioteka 106
+kształtów z okienkiem kafelków). Etapy 1–3 zacommitowała; etap 4
+niezacommitowany. Wszystko czeka na jej ocenę (lista „Z 25.10”).
+Następny: etap 5 — zestawy kształtów (i „Twoje kształty”).
 
 ## Handover — 25 października 2026
 
@@ -520,6 +521,10 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   „Puste”, zakresy w wierszach; czy działa tak, jak w Dither Boyu się
   przyzwyczaiła. Wielkość w paśmie (suwak pod wybranym pasmem) i wtapianie
   pasm — uporządkowane / rozproszone, czy siła 0–100 ma dobry zakres.
+  Biblioteka kształtów: czy rysunki się podobają (własne, w duchu Dither
+  Boya — łatwo poprawić pojedyncze), czy kształty bez wyrównanego pola
+  (np. kwadrat ciemniejszy od koła) nie przeszkadzają w tonie; okienko
+  na jej ekranie (położenie obok panelu).
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)

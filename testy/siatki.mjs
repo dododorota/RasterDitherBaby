@@ -1,8 +1,9 @@
 /* Geometria rastra (siatki.js) i faktura farby (faktura-farby.js).
    Uruchom z katalogu projektu: node testy/siatki.mjs */
 import { S, DEFAULTS } from "../src/state.js";
-import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY, odcinkiBarwne, przesuniecie, ustawieniaFarby, normalizujKsztalt, ksztaltWlasny, zaokraglij, granicePasm, graniceRowne, wielkosciPasm } from "../src/siatki.js";
+import { geometria, kontury, konturLinii, obrys, NOWE_KSZTALTY, odcinkiBarwne, przesuniecie, ustawieniaFarby, normalizujKsztalt, ksztaltWlasny, zaokraglij, granicePasm, graniceRowne, wielkosciPasm, sciezkowy } from "../src/siatki.js";
 import { znakiWGrupach } from "../src/znaki-tonu.js";
+import { GRUPY_KSZTALTOW, czyBiblioteczny } from "../src/biblioteka-ksztaltow.js";
 import { gradientLUT } from "../src/palettes.js";
 import { krycie, ziarnoFaktury } from "../src/faktura-farby.js";
 
@@ -479,6 +480,24 @@ console.log("--- znaki według tonu ---");
   sprawdz(wk3.length === wk.length && wk.every((p, i) => Math.abs(p[2]*3 - wk3[i][2]) < 1e-9), "wielkość pasma: z=3 dokładnie ×3");
   ustaw({cell: 8, shape: "tony", znakiIle: 6, znakiR2: "abc", znakiR3: NaN});
   sprawdz(wielkosciPasm(6) === null, "wielkość pasma nie-liczba (zepsuty preset) — jak 100%");
+  /* biblioteka kształtów: każdy kształt ma kontury w kafelku × r, obroty
+     działają, otwory mają odwrotny obieg, kształt w paśmie tonu idzie ścieżką */
+  {
+    const pole = c => { let s = 0; for(let i=0; i<c.length; i++){ const [a, b] = c[i], [x, y] = c[(i + 1) % c.length]; s += a*y - b*x; } return s/2; };
+    const ids = GRUPY_KSZTALTOW.flatMap(g => g.ksztalty.map(k => k.id));
+    const zle = ids.filter(id => { const k = kontury(id, 10, 20, 3, 0.4), k2 = kontury(id, 0, 0, 1, 0);
+      return !k.length || k.length !== k2.length || k.some((c, i) => c.length !== k2[i].length || c.some(([x, y], j) => {
+        const [a, b] = k2[i][j]; return Math.abs(10 + 3*(a*Math.cos(0.4) - b*Math.sin(0.4)) - x) > 1e-9 || Math.abs(20 + 3*(a*Math.sin(0.4) + b*Math.cos(0.4)) - y) > 1e-9 || Math.abs(a) > 1.25 || Math.abs(b) > 1.25; })); });
+    const otwory = id => { const k = kontury(id, 0, 0, 1, 0); return k.filter(c => Math.sign(pole(c)) !== Math.sign(pole(k[0]))).length; };
+    sprawdz(ids.length >= 100 && zle.length === 0 && GRUPY_KSZTALTOW.every(g => g.ksztalty.every(k => czyBiblioteczny(k.id))),
+            `biblioteka: ${ids.length} kształtów w ${GRUPY_KSZTALTOW.length} grupach, kontury × r z obrotem${zle.length ? " — ŹLE: " + zle.join(", ") : ""}`);
+    sprawdz(otwory("b-pierscien") === 1 && otwory("b-ramka") === 1 && otwory("b-czaszka") === 6 && otwory("b-oko") === 1 && otwory("b-kot") === 3 && otwory("b-kolo") === 0 && otwory("b-trefl") === 0,
+            "biblioteka: otwory z odwrotnym obiegiem (pierścień 1, czaszka 6, oko 1, kot 3), nachodzące części bez otworów (trefl, kot — uszy)");
+    ustaw({cell: 8, shape: "b-czaszka"});
+    const gb = geometria(gradient, W, H, inkP, 1), gb3 = geometria(gradient, W, H, inkP, 3);
+    sprawdz(sciezkowy("b-czaszka", gb) && gb.kropki.length === gb3.kropki.length && gb.kropki.every((p, i) => Math.abs(p[2]*3 - gb3.kropki[i][2]) < 1e-9),
+            "kształt z biblioteki jako główny: rysowany ścieżką, z=3 dokładnie ×3");
+  }
   /* wtapianie pasm: tylko o jedno pasmo, tylko w strefie przy granicy, z=3 te same, wzory różne */
   for(const [gr2, opis] of [["", "równe"], ["30,70,120,180,230", "własne"]]){
     ustaw({cell: 6, shape: "tony", znakiIle: 6, znakiGranice: gr2});

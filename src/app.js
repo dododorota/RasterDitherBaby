@@ -14,7 +14,8 @@ import { tekstAscii, ZESTAWY } from "./ascii.js";
 import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, przelacz as przelaczEfekt, przesun as przesunEfekt,
          baza as bazaEfektu, kopie as kopieEfektow, ustawParametrKopii, czyMoznaDodac } from "./stos.js";
 import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
-import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS, granicePasm, graniceRowne } from "./siatki.js";
+import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS, granicePasm, graniceRowne, kontury, znakPunktu } from "./siatki.js";
+import { GRUPY_KSZTALTOW } from "./biblioteka-ksztaltow.js";
 import { stopnieTla, tloGradientowe, MAKS_STOPNI } from "./papier.js";
 import { ZNAKI, wczytajZnak, usunZnak, saObrazki, konturySVG, liczbaPoziomow, wczytajObrazek } from "./znaki-tonu.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
@@ -192,6 +193,16 @@ const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key
    farbę widać; to stan panelu, nie wygląd. */
 const ZRODLA_RISO = [["farba","Swój kolor"], ["jasnosc","Jasność"], ["r","Kanał R"], ["g","Kanał G"], ["b","Kanał B"],
                      ["c","CMYK — C"], ["m","CMYK — M"], ["y","CMYK — Y"], ["k","CMYK — K"]];
+/* Biblioteka kształtów (biblioteka-ksztaltow.js) w liście „Kształt" — tu, przed
+   panelRiso() i panelZnakow(), które tę listę kopiują; grupy jako optgroup. */
+(function bibliotekaWLiscie(){
+  const sel = document.querySelector("#shape");
+  for(const g of GRUPY_KSZTALTOW){
+    const og = document.createElement("optgroup"); og.label = "Biblioteka — " + g.nazwa;
+    for(const k of g.ksztalty){ const o = document.createElement("option"); o.value = k.id; o.textContent = k.nazwa; og.appendChild(o); }
+    sel.appendChild(og);
+  }
+})();
 let farbaRiso = 1;
 (function panelRiso(){
   const box = document.querySelector("#riso-warstwy"), zak = document.querySelector("#riso-zakladki");
@@ -323,11 +334,15 @@ let tonObrazka = 0;                    /* ton, dla którego otwarto wybór pliku
 (function panelZnakow(){
   const lista = document.querySelector("#znaki-lista");
   /* „Puste" tylko w tonach — pasmo bez punktów (jak „Empty" w Dither Boyu) */
-  const opcje = `<option value="pusty">Puste — bez punktów</option>` + [...document.querySelector("#shape").options].filter(o => o.value !== "tony" && o.value !== "pasy")
-    .map(o => `<option value="${o.value}">${o.textContent}</option>`).join("");
+  const opcja = o => `<option value="${o.value}">${o.textContent}</option>`;
+  const opcje = `<option value="pusty">Puste — bez punktów</option>` + [...document.querySelector("#shape").children].map(el =>
+    el.tagName === "OPTGROUP" ? `<optgroup label="${el.label}">${[...el.children].map(opcja).join("")}</optgroup>`
+    : el.value === "tony" || el.value === "pasy" ? "" : opcja(el)).join("");
   for(let i=1; i<=ZNAKI_MAKS; i++){
     const w = document.createElement("div"); w.className = "znak-ton"; w.id = "znak-ton" + i;
-    w.innerHTML = `<span class="nr">${i}<small class="zakres"></small></span><select id="znakiS${i}" aria-label="Kształt tonu ${i}">${opcje}</select>
+    w.innerHTML = `<span class="nr">${i}<small class="zakres"></small></span>
+      <button class="btn miniatura" type="button" aria-label="Kształt tonu ${i} z biblioteki" title="Wybierz kształt z biblioteki"><canvas width="44" height="44"></canvas></button>
+      <select id="znakiS${i}" aria-label="Kształt tonu ${i}">${opcje}</select>
       <input type="color" id="znakiK${i}" value="${DEFAULTS["znakiK" + i]}" aria-label="Kolor tonu ${i}">
       <button class="btn obr" type="button" aria-label="Obrazek dla tonu ${i}" title="Obrazek dla tonu ${i} (albo przeciągnij plik na wiersz)">↥</button>
       <button class="btn usun hidden" type="button" aria-label="Usuń obrazek tonu ${i}" title="Usuń obrazek">×</button>`;
@@ -342,6 +357,7 @@ let tonObrazka = 0;                    /* ton, dla którego otwarto wybór pliku
     KOLORY.push({id: "znakiK" + i, key: "znakiK" + i});
     w.querySelector(".obr").addEventListener("click", () => { tonObrazka = i - 1; document.querySelector("#znak-plik").click(); });
     w.querySelector(".usun").addEventListener("click", () => { usunZnak(i - 1); komunikatZnakow(""); znakiUI(); schedule(); });
+    w.querySelector(".miniatura").addEventListener("click", e => otworzBiblioteke(document.querySelector("#znakiS" + i), e.currentTarget));
     /* wiersz wybiera pasmo — na nim działają Podziel / Usuń */
     w.addEventListener("focusin", () => wybierzPasmo(i - 1));
     w.querySelector(".nr").addEventListener("click", () => wybierzPasmo(i - 1));
@@ -580,6 +596,8 @@ function pasmaUI(){
     el.setAttribute("aria-label", "Pasmo " + (i + 1) + ": " + a + "–" + b);
     const w = document.querySelector("#znak-ton" + (i + 1));
     w.querySelector(".zakres").textContent = a + "–" + b;
+    rysujMiniature(w.querySelector(".miniatura canvas"), S["znakiS" + (i + 1)]);
+    w.querySelector(".miniatura").disabled = !!ZNAKI[i];
     w.classList.toggle("wybrany", i === pasmoWybrane);
   }
   for(let i=n; i<ZNAKI_MAKS; i++) document.querySelector("#znak-ton" + (i + 1)).classList.remove("wybrany");
@@ -591,6 +609,73 @@ function pasmaUI(){
   document.querySelector("#pasma-usun").disabled = n <= 2;
   document.querySelector("#pasma-rozloz").disabled = !wlasne;
 }
+/* ---------- biblioteka kształtów: miniatury i okienko z kafelkami ----------
+   Wartość dalej mieszka w <select> (lista waliduje presety, syncUI ją zna) —
+   kafelek ustawia listę i wysyła jej „change", jakby wybrano ją ręcznie.
+   Miniatura z tego samego opisu co raster (kontury() z siatki.js), w kolorze
+   tuszu motywu. */
+const SPECJALNE = ["tony", "pasy"];
+function rysujMiniature(c, ksztalt){
+  const x = c.getContext("2d"), s = c.width, ink = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#000";
+  x.clearRect(0, 0, s, s);
+  x.fillStyle = x.strokeStyle = ink;
+  if(ksztalt === "pusty"){ x.setLineDash([3, 3]); x.lineWidth = 1.5; x.strokeRect(s*0.22, s*0.22, s*0.56, s*0.56); x.setLineDash([]); return; }
+  if(ksztalt === "znak"){ x.font = "700 " + Math.round(s*0.6) + 'px Archivo, "Segoe UI Emoji", sans-serif'; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(znakPunktu(0), s/2, s/2 + 1); return; }
+  x.beginPath();
+  for(const k of kontury(ksztalt, s/2, s/2, s*0.36, 0, s*0.72, 3)){ x.moveTo(k[0][0], k[0][1]); for(let i=1; i<k.length; i++) x.lineTo(k[i][0], k[i][1]); x.closePath(); }
+  x.fill("nonzero");
+}
+let bibCel = null, bibOtwierajacy = null;
+const biblioteka = document.createElement("div");
+biblioteka.className = "biblioteka hidden"; biblioteka.id = "biblioteka";
+biblioteka.setAttribute("role", "dialog"); biblioteka.setAttribute("aria-label", "Biblioteka kształtów");
+biblioteka.innerHTML = `<div class="bib-naglowek"><span id="bib-tytul">Biblioteka kształtów</span><button class="btn" type="button" id="bib-zamknij">Zamknij</button></div><div class="bib-tresc"></div>`;
+document.body.appendChild(biblioteka);
+function zamknijBiblioteke(){
+  if(biblioteka.classList.contains("hidden")) return;
+  biblioteka.classList.add("hidden");
+  if(bibOtwierajacy) bibOtwierajacy.focus();
+  bibCel = bibOtwierajacy = null;
+}
+function otworzBiblioteke(sel, otwierajacy){
+  if(sel.disabled) return;
+  bibCel = sel; bibOtwierajacy = otwierajacy;
+  /* grupy: kształty apki (pierwszy poziom listy, bez specjalnych), potem optgroupy biblioteki */
+  const grupy = [];
+  const apki = [...sel.children].filter(el => el.tagName === "OPTION" && !SPECJALNE.includes(el.value));
+  if(apki.length) grupy.push(["Kształty apki", apki]);
+  for(const og of sel.querySelectorAll("optgroup")) grupy.push([og.label.replace(/^Biblioteka — /, ""), [...og.children]]);
+  const tresc = biblioteka.querySelector(".bib-tresc");
+  tresc.innerHTML = "";
+  let wybrany = null;
+  for(const [nazwa, opcje] of grupy){
+    const h = document.createElement("div"); h.className = "bib-grupa"; h.textContent = nazwa; tresc.appendChild(h);
+    const siatka = document.createElement("div"); siatka.className = "bib-siatka"; tresc.appendChild(siatka);
+    for(const o of opcje){
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "bib-kafel"; b.title = o.textContent; b.setAttribute("aria-label", o.textContent);
+      b.setAttribute("aria-pressed", o.value === sel.value);
+      const c = document.createElement("canvas"); c.width = c.height = 40; b.appendChild(c);
+      rysujMiniature(c, o.value);
+      b.addEventListener("click", () => {
+        const cel = bibCel; zamknijBiblioteke();
+        if(cel.value !== o.value){ cel.value = o.value; cel.dispatchEvent(new Event("change", {bubbles: true})); }
+      });
+      if(o.value === sel.value) wybrany = b;
+      siatka.appendChild(b);
+    }
+  }
+  document.querySelector("#bib-tytul").textContent = "Biblioteka kształtów" + (sel.id.startsWith("znakiS") ? " — ton " + sel.id.slice(6) : "");
+  biblioteka.classList.remove("hidden");
+  (wybrany || tresc.querySelector(".bib-kafel")).focus();
+  if(wybrany) wybrany.scrollIntoView({block: "center"});
+}
+document.querySelector("#bib-zamknij").addEventListener("click", zamknijBiblioteke);
+document.addEventListener("keydown", e => { if(e.key === "Escape") zamknijBiblioteke(); });
+document.addEventListener("pointerdown", e => {
+  if(!biblioteka.classList.contains("hidden") && !biblioteka.contains(e.target) && !(bibOtwierajacy && bibOtwierajacy.contains(e.target))) zamknijBiblioteke();
+});
+document.querySelector("#ksztalt-biblioteka").addEventListener("click", e => otworzBiblioteke(document.querySelector("#shape"), e.currentTarget));
 function przesunGranice(j, v){
   const n = liczbaPoziomow(), g = graniceTeraz(n).slice();
   const lo = j === 0 ? 1 : g[j - 1] + 1, hi = j === n - 2 ? 255 : g[j + 1] - 1;
@@ -1156,6 +1241,7 @@ for(const k of LISTY) $("#"+k).addEventListener("change", e=>{
   if(k==="inkmode" || k==="shape" || k==="siatka" || k==="papierRodzaj" || k==="rasterGrad" || k==="qrKorekcja" || /^risoS/.test(k) || k==="znakiBarwa" || k==="papierTlo") risoUI();
   if(k==="papierTlo") eksportUI();
   if(k==="shape" || /^risoS/.test(k) || /^znakiS/.test(k)) eksportUI();
+  if(/^znakiS/.test(k)) pasmaUI();          /* miniatura kształtu w wierszu */
   schedule();
 });
 function koloryUI(){ for(const {id, key} of KOLORY) $("#"+id).value = S[key]; }
