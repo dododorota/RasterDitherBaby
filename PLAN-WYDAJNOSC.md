@@ -52,16 +52,34 @@ CPU). Jeśli mają zostać — przenieść do `testy/` (decyzja użytkowniczki).
 
 Jak dithering: render rastra w osobnym wątku na `OffscreenCanvas`,
 wyparte zadania wypadają z kolejki, główny wątek tylko wkleja gotowy obraz.
-Do rozpoznania przed startem (każde może zmienić zakres):
-- [ ] `halftone.js`, `papier.js`, `faktura-farby.js`, efekty po rastrze —
-      bez DOM-u (dziś `document.createElement("canvas")`, `dom.js`).
-- [ ] Obraz źródłowy → `ImageBitmap` przy każdej zmianie `S.img` (film:
-      co klatkę), obrazki znaków tonu (`ZNAKI`) → bitmapy do workera.
-- [ ] Krój Archivo w workerze (`self.fonts` + `FontFace`) — kształt „znak”.
-- [ ] Zgodność: render w workerze = render na głównym wątku (geometria co
-      do bitu; piksele — `OffscreenCanvas` rasteryzuje antyaliasing trochę
-      inaczej niż płótno na stronie, porównywać udziałem różnych pikseli).
-- [ ] Zapis PNG / folder / film dalej przez `renderuj()` — bez osobnej drogi.
+Decyzja użytkowniczki 25.10: robimy przed nowymi funkcjami. Tnie się jej
+„klasyczny raster bez presetów” i mocno „Skan”.
+- [x] Podział `halftone.js`: rysowanie bez DOM-u → `raster-rysuj.js`
+      (`rasterPelny()` = papier, farby, efekty, ziarno); w halftone.js
+      zostaje `sampler()` i `renderHalftone()` (async, null gdy wyparty).
+      Płótna robocze przez `plotno()` (plotno.js) — też w papier.js
+      i znaki-tonu.js.
+- [x] Obraz źródłowy NIE idzie do workera — idą gotowe próbki z `sampler()`
+      (~2 ms na stronie, ta sama semantyka drawImage co dawniej). Obrazki
+      znaków tonu → ImageBitmap tylko po zmianie (`nr`).
+- [x] Krój Archivo w workerze (`self.fonts` + FontFace, te same pliki
+      i zakresy co styles.css) — kształt „znak” porównany na wycinku.
+- [x] `worker-client.js`: jedna kolejka z wypieraniem na dwa workery
+      (dyfuzja bez zmian w zachowaniu).
+- [x] Zgodność: podgląd stara apka (HEAD, port 8001) = nowa co do bajtu,
+      16 ustawień; zapis PNG ×2 (zwykły, riso z fakturą, tony, sortowanie
+      + poświata) identyczny; obrazki tonów (wczytanie, podmiana, usunięcie,
+      kolor poziomu) identyczne. `testy/przegladarka.mjs` 0 błędów, 18
+      testów w Node 0 błędów, Electron startuje bez błędów (render rastra
+      w Electronie nie klikany).
+- [x] Pomiar: **blokada suwaków 0 ms we wszystkich ustawieniach** (było do
+      1233 ms), najdłuższa klatka interfejsu 17–40 ms (tony 16 / gwiazda:
+      do ~130 ms). Sam render bez zmian (Skan ~375 ms, Riso duo ~335 ms) —
+      podgląd dogania, ale apka się nie zacina.
+- [ ] **Ocena użytkowniczki** na jej zdjęciu: klasyczny raster i Skan.
+      U mnie domyślny raster był płynny już przed zmianą (22 ms) — jeśli
+      u niej dalej się tnie, szukać gdzie indziej (stara wersja .exe z 3.10?
+      skalowanie ekranu, rysowanie panelu).
 
 ## Etap 3. Do rozważenia po etapie 2
 

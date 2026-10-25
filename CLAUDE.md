@@ -87,6 +87,26 @@ których `npx serve` nie wystawia.
 Zmieniając cokolwiek w `dither-core.js` pamiętaj, że ten moduł biega w workerze —
 **żadnych odwołań do DOM-u**, bo `document` tam nie istnieje.
 
+**Raster też liczy się w workerze** (od 25.10, `PLAN-WYDAJNOSC.md`). Na stronie
+zostaje tylko `sampler()` (halftone.js — czyta S.img) i wklejenie gotowej
+bitmapy do `out`; całe rysowanie jest w `raster-rysuj.js` (`rasterPelny()`:
+papier, farby, efekty po rastrze, ziarno) i biega w `worker-raster.js` na
+OffscreenCanvas. Ten sam kod jest zapasem na głównym wątku, gdy workera nie
+ma. Z tego wynika:
+- `raster-rysuj.js` i wszystko, co importuje (siatki, papier, faktura-farby,
+  znaki-tonu, stos, fx, effects), **bez DOM-u na poziomie modułu**, a płótna
+  robocze tylko przez `plotno()` (plotno.js), nie `document.createElement`.
+  Funkcje strony w znaki-tonu.js (wczytywanie SVG) są wołane tylko z app.js.
+- `renderHalftone()` jest asynchroniczny i zwraca null, gdy wyparty —
+  jak dithering; zapis woła z `{keep:true}`.
+- Materiał spoza S, którego potrzebuje rysowanie, trzeba dosłać: obrazki
+  znaków tonu idą jako ImageBitmap tylko po zmianie (`nr`, worker-client.js);
+  krój Archivo worker dodaje sam (`self.fonts`, te same pliki co styles.css).
+  Nowy materiał (np. biblioteka kształtów-obrazków) — ta sama droga.
+- Podgląd z workera porównany ze starym rysowaniem na stronie: co do bajtu
+  (16 ustawień, zapis ×2, obrazki tonów) — porównuj tak dalej, stara wersja
+  z `git archive` na drugim porcie.
+
 Raster jest tani — liczba punktów to `W*H/cell²` na farbę — ale przy CMYK
 i gęstości 3 px to już setki tysięcy rysowań. Przy zmianach w `collectScreen()`
 testuj na gęstości 3 i 40.

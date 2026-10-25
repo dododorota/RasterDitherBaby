@@ -53,14 +53,36 @@ Orbs, Neo Glow.
   bez kart. Lens Curve to pewnie zniekształcenie beczkowate soczewki;
   Lick i Epsilon Glow — nie wiadomo.
 
-## Do decyzji
+## Decyzje (25.10)
 
-- [ ] Kolejność: najpierw wydajność (PLAN-WYDAJNOSC.md, etap 2), potem to?
-- [ ] Pasma: rozbudować istniejące „Znaki według tonu” (stare presety
-      zostają co do bitu), czy osobny kształt / tryb?
-- [ ] Biblioteka ~150 kształtów: które grupy (wszystkie? bez Spooky?),
-      czy wystarczy rysunek „w duchu” Dither Boya (własne, nie kopie).
-- [ ] Efekty: które z Stress Relief / Orbs / Neo Glow / Lens Curve; co
-      robią Lick i Epsilon Glow (nagranie albo zrzut karty).
-- [ ] Wygląd panelu: obecny wygląd z Figmy czy coś od Dither Boya (pasek
-      gradientu z granicami to nowa kontrolka tak czy inaczej).
+- [x] Kolejność: najpierw wydajność (PLAN-WYDAJNOSC.md) — zrobione.
+- [x] Pasma: **rozbudować istniejące „Znaki według tonu”** — stare presety
+      (równe pasma, bez wielkości na pasmo) mają dać obraz co do bitu.
+- [x] Efekty: **wszystkie** (Stress Relief, Orbs, Neo Glow, Lick, Lens
+      Curve, Epsilon Glow). Użytkowniczka szuka zrzutów kart Lick, Lens
+      Curve, Epsilon Glow — do tego czasu robimy te, które widać.
+- [ ] Biblioteka kształtów: rysunki własne „w duchu” Dither Boya (nie
+      kopie ich plików) — założenie, potwierdzić przy pierwszym podglądzie.
+- [ ] Panel: zostaje wygląd z Figmy (PLAN-UI.md); pasek gradientu
+      z przeciąganymi granicami to nowa kontrolka w tym stylu.
+
+## Etapy (szkic checklisty — doprecyzować przed każdym)
+
+1. [ ] Pasma o nierównej szerokości: granice w S (tekst, jak `papierGrad`,
+       czytany nieufnie), pasek gradientu z uchwytami, Podziel / Rozłóż /
+       Odwróć / usuń, pasmo „Puste”. Puste granice = równe pasma (dawny
+       wynik co do bitu — test w siatki.mjs).
+2. [ ] Wielkość kształtu na pasmo (Band Size) w geometrii (`podmienTony` /
+       poziom → mnożnik r), SVG z tej samej geometrii.
+3. [ ] Wtapianie między pasmami (uporządkowane z macierzy Bayera /
+       rozproszone ze skrótu położenia — bez Math.random).
+4. [ ] Biblioteka kształtów w kafelkach z grupami; nowe kształty jako
+       kontury (`kontury()` w siatki.js) albo małe bitmapy piksel-art
+       (materiał → worker rastra, jak obrazki tonów).
+5. [ ] Zestawy kształtów: wbudowane + własne (localStorage, try/catch),
+       import / eksport w formacie presetu.
+6. [ ] Siatka: Rotation Jitter, Crisp Edges, Tone Scaling — sprawdzić,
+       co z tego już jest pod inną nazwą (drganie, obrót, krzywa wielkości).
+7. [ ] Efekty w stosie (`stos.js`/`fx.js`, czyste i deterministyczne):
+       Stress Relief, Orbs, Neo Glow; potem Lick, Lens Curve, Epsilon
+       Glow po zrzutach.

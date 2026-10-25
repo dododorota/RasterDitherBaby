@@ -7,11 +7,13 @@ w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 ## Wznowienie — 25 października 2026
 
 Zgłoszenie: apka tnie się przy zdjęciu 2000×1333. Plan z pomiarami
-w **`PLAN-WYDAJNOSC.md`** — etap 1 zrobiony (faktura farby z pamięcią pól
-szumu, rysowanie kropek bez save/restore; obraz co do bajtu jak przed
-zmianą), niezacommitowany. Etap 2 (raster w workerze) czeka na jej „tak”.
-Nowe funkcje z Dither Boya (pasma kształtów, biblioteka kształtów, Stress
-Relief, Orbs, Neo Glow) — szkic i pytania w **`PLAN-PASMA-I-EFEKTY.md`**.
+w **`PLAN-WYDAJNOSC.md`** — etap 1 (faktura farby z pamięcią pól szumu,
+kropki bez save/restore) i etap 2 (raster w workerze: `raster-rysuj.js`,
+`worker-raster.js`, `plotno.js`) zrobione, obraz co do bajtu jak przed
+zmianą; niezacommitowane, czeka na jej ocenę.
+Potem nowe funkcje z Dither Boya — decyzje 25.10 i checklista
+w **`PLAN-PASMA-I-EFEKTY.md`** (rozbudowa „Znaków według tonu”, wszystkie
+efekty).
 
 ## Handover — 20 października 2026
 

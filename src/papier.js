@@ -11,6 +11,7 @@
 import { S } from "./state.js";
 import { skrot } from "./fx.js";
 import { hex2rgb } from "./palettes.js";
+import { plotno } from "./plotno.js";
 
 /* rodzaj → [siła chmurek, pikseli na włókno, długość włókna, pikseli na drobinkę] */
 const RODZAJE = {
@@ -74,8 +75,7 @@ export function papier(ctx, W, H, z){
 
   /* chmurki: szum na siatce co 10 px (dwie skale), ciemniej i jaśniej od papieru */
   if(chm){
-    const k = 10, cw = Math.ceil(W/k) + 3, ch = Math.ceil(H/k) + 3, c = document.createElement("canvas");
-    c.width = cw; c.height = ch;
+    const k = 10, cw = Math.ceil(W/k) + 3, ch = Math.ceil(H/k) + 3, c = plotno(cw, ch);
     const x = c.getContext("2d"), d = x.createImageData(cw, ch);
     for(let j=0; j<ch; j++) for(let i=0; i<cw; i++){
       const v = skrot(i, j, 501)*0.45 + skrot(i >> 2, j >> 2, 502)*0.55, o = (j*cw + i)*4, a = Math.abs(v - 0.5)*2*s*chm*0.28*255;

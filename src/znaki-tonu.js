@@ -13,14 +13,14 @@
    „tylko wektory". */
 import { S } from "./state.js";
 import { ZNAKI_MAKS, kolorCSS, normalizujKsztalt, orientuj } from "./siatki.js";
+import { plotno } from "./plotno.js";
 
 const BOK = 512;
 /* wpis: {nazwa, obraz: canvas, kontury: [[[x, y], …], …] | null, nr} — kontury
-   tylko z SVG: środek pudełka w zerze, dłuższy bok pudełka = 1 */
+   tylko z SVG: środek pudełka w zerze, dłuższy bok pudełka = 1. W workerze
+   rastra ta sama tablica, z obrazem jako ImageBitmap (worker-client.js). */
 export const ZNAKI = new Array(ZNAKI_MAKS).fill(null);
 let licznik = 0;
-
-const plotno = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
 
 /* ---------- wczytywanie ---------- */
 export function rodzajPliku(f){
