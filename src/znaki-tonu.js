@@ -28,13 +28,33 @@ export function rodzajPliku(f){
   if(/^image\/(png|jpeg|webp|gif|avif|bmp)$/.test(f.type) || /\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(f.name)) return "bitmapa";
   return null;
 }
-/* obrazek z pliku, przycięty do treści — {obraz, kontury}; też dla obrazków zamiast liter napisu (tekst.js) */
-export async function wczytajObrazek(f){
+/* obrazek z pliku, przycięty do treści — {obraz, kontury}; też dla obrazków zamiast liter napisu (tekst.js).
+   {bialePrzezroczyste}: obrazek bez żadnego przezroczystego piksela (JPEG,
+   PNG bez alfy) dostaje przezroczystą biel — jak „Your Shapes” w Dither Boyu */
+export async function wczytajObrazek(f, opcje){
   const rodzaj = rodzajPliku(f);
   if(!rodzaj) throw new Error("To nie jest obrazek — wczytaj PNG, JPEG, WebP albo SVG.");
   if(f.size > 30*1024*1024) throw new Error("Plik jest za duży (ponad 30 MB).");
   const {obraz, kontury} = rodzaj === "svg" ? await zSVG(f) : {obraz: await zBitmapy(f), kontury: null};
+  if(opcje && opcje.bialePrzezroczyste) bielNaPrzezroczysta(obraz);
   return {obraz: przytnij(obraz), kontury};
+}
+/* tylko gdy nigdzie nie ma przezroczystości: jasne piksele (≥ 240) znikają,
+   pas 200–240 przechodzi płynnie, żeby brzeg sylwetki nie był postrzępiony */
+function bielNaPrzezroczysta(c){
+  const x = c.getContext("2d"), d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  for(let i=3; i<p.length; i+=4) if(p[i] < 255) return;
+  for(let i=0; i<p.length; i+=4){
+    const j = Math.min(p[i], p[i+1], p[i+2]);
+    p[i+3] = j >= 240 ? 0 : j <= 200 ? 255 : Math.round(255*(240 - j)/40);
+  }
+  x.putImageData(d, 0, 0);
+}
+/* gotowy obrazek (np. z „Twoich kształtów”) jako znak tonu i — nowy numer,
+   więc pamięć wersji i worker rastra biorą go od nowa */
+export function ustawZnak(i, {nazwa, obraz, kontury}){
+  ZNAKI[i] = {nazwa, obraz, kontury: kontury || null, nr: ++licznik};
+  return ZNAKI[i];
 }
 export async function wczytajZnak(i, f){
   const {obraz, kontury} = await wczytajObrazek(f);

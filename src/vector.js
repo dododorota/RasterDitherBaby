@@ -167,7 +167,7 @@ export function svgHalftone(){
   litery = S.svgLitery === "tekst" ? null : new Litery(px => '700 ' + px + 'px Archivo, "Segoe UI Emoji", sans-serif', "znak");
   const farby = inkList();
   const smp = sampler(W, H, Math.min(...farby.map(k => k.cell || S.cell)));
-  const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+  const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"${S.ostreKrawedzie ? ' shape-rendering="crispEdges"' : ""}>`];
   /* papier: kolor albo gradient (wektorowo — <linearGradient>/<radialGradient>) */
   const [gradTla, tlo] = svgTla(W, H);
   parts.push(`<rect width="${W}" height="${H}" fill="${tlo}"/>`);

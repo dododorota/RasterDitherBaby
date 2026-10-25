@@ -155,8 +155,23 @@ Orbs, Neo Glow.
        Zastosowanie = krok historii. Sprawdzone w Chrome (wszystkie drogi,
        zły plik, cofanie). „Twoje kształty” z Dither Boya — dziś obrazek
        na ton (↥); osobnej grupy w bibliotece nie robiłam (do decyzji).
-6. [ ] Siatka: Rotation Jitter, Crisp Edges, Tone Scaling — sprawdzić,
-       co z tego już jest pod inną nazwą (drganie, obrót, krzywa wielkości).
+5a. [x] „Twoje kształty” (25.10, „robimy”): grupa w okienku biblioteki
+       (tylko dla tonów — to obrazki, nie kontury), kafelek „+”, × na
+       kafelku usuwa. localStorage `raster.twojeKsztalty` (PNG + sylwetka
+       SVG, nieufnie). Obrazek bez przezroczystości: biel → przezroczysta
+       (`wczytajObrazek(f, {bialePrzezroczyste})`, tylko ta droga — ↥ na
+       tonie po staremu). Ton z obrazkiem: przycisk pokazuje obrazek i dalej
+       otwiera bibliotekę; wybór kształtu usuwa obrazek tonu. Sprawdzone
+       w Chrome (JPEG → kółko 60×60 z przezroczystymi rogami, powrót po
+       przeładowaniu). Miniatury biblioteki na cały kafelek (×0,5).
+6. [x] Siatka (25.10): z Dither Boya brakowało Rotation Jitter i Crisp
+       Edges — „Losowy obrót kształtów” (`obrotLos`, ±°, skrót położenia
+       w pikselach podglądu) i „Ostre krawędzie” (`ostreKrawedzie`: próg
+       krycia ½ warstwy farby przed fakturą; SVG — shape-rendering).
+       Tone Scaling = „Najmniejszy punkt” odwrotnie (100% — jedna wielkość),
+       Layout Square/Offset = siatka kwadratowa / heks, Rotation = kąt —
+       bez nowych kontrolek. Przy wartościach domyślnych co do bajtu jak
+       przed zmianą (21 ustawień); wszystkie testy 0 błędów.
 7. [ ] Efekty w stosie (`stos.js`/`fx.js`, czyste i deterministyczne):
        Stress Relief, Orbs, Neo Glow; potem Lick, Lens Curve, Epsilon
        Glow po zrzutach.

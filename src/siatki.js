@@ -324,7 +324,11 @@ export function geometria(smp, W, H, ink, z){
     /* „obracaj kształt z siatką" wyłączone: kształt stoi prosto (logo, litery), obraca go tylko płyta */
     const zSiatka = S.obrotZSiatka !== false;
     const obrot = ruch && ruch.kat;
-    wyn.kropki = wyn.kropki.map(([x, y, r, k, ...id]) => { const [a, b] = t(x, y); return [a, b, r*z, (zSiatka ? k : 0) + ob + (obrot ? obrot(x, y) : 0), ...id]; });
+    /* losowy obrót każdego kształtu (Rotation Jitter): ±obrotLos° ze skrótu
+       położenia w pikselach podglądu — zapis w skali i SVG mają ten sam układ */
+    const los = (S.obrotLos || 0)*Math.PI/180;
+    const losowo = los ? (x, y) => los*(2*skrot(Math.round(x*4), Math.round(y*4), 6151 + u.ziarno) - 1) : null;
+    wyn.kropki = wyn.kropki.map(([x, y, r, k, ...id]) => { const [a, b] = t(x, y); return [a, b, r*z, (zSiatka ? k : 0) + ob + (obrot ? obrot(x, y) : 0) + (losowo ? losowo(x, y) : 0), ...id]; });
     /* postrzępione brzegi tylko dla okrągłych punktów — reszta kształtów ma własny obrys */
     if(u.post && (u.ksztalt === "circle" || u.tony)) wyn.postrzep = u.post;
   }

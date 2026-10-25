@@ -248,6 +248,11 @@ input[type=color]::-webkit-color-swatch{border:0; border-radius:3px}
 .bib-kafel:hover{background:var(--kropka-szara) 0 0/4px 4px, var(--kropka-szara) 2px 2px/4px 4px, var(--field)}
 .bib-kafel[aria-pressed="true"]{outline:2px solid var(--ink); outline-offset:1px}
 .bib-kafel:focus-visible{outline:2px dashed var(--ink); outline-offset:1px}
+.bib-twoj{position:relative; display:grid}
+.bib-usun{position:absolute; top:-5px; right:-5px; width:18px; height:18px; padding:0; display:none; place-items:center; font-size:12px; line-height:1;
+  background:var(--paper); color:var(--ink); border:1px solid var(--rule); border-radius:50%; cursor:pointer}
+.bib-twoj:hover .bib-usun, .bib-twoj:focus-within .bib-usun{display:grid}
+.bib-plus{font-size:22px; color:var(--soft); border-style:dashed}
 .znak-ton-wiel{margin:-2px 0 6px 48px}
 .znak-ton-wiel .row{margin-top:4px}
 /* pasma tonów: pasek jasności z granicami. Gradient czerń → biel na sztywno —

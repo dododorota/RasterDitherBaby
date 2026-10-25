@@ -17,9 +17,10 @@ wyścigu przy zmianie trybu (podejrzenie zgłoszonego „ASCII nie działa”).
 Potem 4b: biblioteka przepisana według jej zbliżeń kafelków Dither Boya
 (173 kształty; poprzednie 106 w `99c8e07`), pasek pasm z miniaturami, szerokość pasma, „jedna wielkość
 w paśmie” (zacommitowane, `a3bfaf0`). Potem etap 5 — zestawy kształtów
-(10 wbudowanych, własne, plik), niezacommitowane. Następny: etap 6 — opcje
-siatki z Dither Boya (Rotation Jitter, Crisp Edges, Tone Scaling), potem
-efekty (etap 7).
+(10 wbudowanych, własne, plik; zacommitowane, `797070c`). Potem „Twoje
+kształty” w bibliotece i etap 6 — losowy obrót kształtów, ostre krawędzie
+(niezacommitowane). Następny: **etap 7 — efekty** (Neo Glow, Orbs, Stress
+Relief; Lick, Lens Curve, Epsilon Glow — poprosić o zrzuty kart).
 
 ## Handover — 25 października 2026
 
@@ -533,7 +534,11 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   (np. kwadrat ciemniejszy od koła) nie przeszkadzają w tonie; okienko
   na jej ekranie (położenie obok panelu). Wybór kształtu przyciskiem
   z miniaturą (raster, riso, tony). ASCII — co dokładnie nie działało
-  i czy po poprawce wyścigu działa.
+  i czy po poprawce wyścigu działa. Zestawy kształtów; Twoje kształty
+  (JPEG z białym tłem, PNG z alfą, SVG); losowy obrót i ostre krawędzie
+  — zwłaszcza ostre krawędzie przy zapisie w skali (próg liczony
+  w rozdzielczości zapisu, więc to nie jest piksel w piksel powiększony
+  podgląd).
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)

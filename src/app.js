@@ -15,9 +15,9 @@ import { EFEKTY, wpisEfektu, lista, dodaj as dodajEfekt, usun as usunEfekt, prze
          baza as bazaEfektu, kopie as kopieEfektow, ustawParametrKopii, czyMoznaDodac } from "./stos.js";
 import { BIBLIOTEKA, wpisPalety, palette, paletaGradientu, rgb2hex, hex2rgb, TUSZE_RISO } from "./palettes.js";
 import { normalizujKsztalt, biezacyQR, ZNAKI_MAKS, granicePasm, graniceRowne, kontury, znakPunktu } from "./siatki.js";
-import { GRUPY_KSZTALTOW } from "./biblioteka-ksztaltow.js";
+import { GRUPY_KSZTALTOW, czyBiblioteczny } from "./biblioteka-ksztaltow.js";
 import { stopnieTla, tloGradientowe, MAKS_STOPNI } from "./papier.js";
-import { ZNAKI, wczytajZnak, usunZnak, saObrazki, konturySVG, liczbaPoziomow, wczytajObrazek } from "./znaki-tonu.js";
+import { ZNAKI, wczytajZnak, usunZnak, saObrazki, konturySVG, liczbaPoziomow, wczytajObrazek, ustawZnak } from "./znaki-tonu.js";
 import { paletaZPikseli } from "./kwantyzacja.js";
 import { fit } from "./image.js";
 import { FAKTURY_TRYB, DAWNE_FAKTURY } from "./fx.js";
@@ -262,7 +262,8 @@ let farbaRiso = 1;
     {id: "szorstkosc", key: "szorstkosc", opis: v => v ? v + "%" : "brak"}, {id: "rozlanie", key: "rozlanie", opis: v => v ? v + "%" : "brak"},
     {id: "plamy", key: "plamy", opis: v => v ? v + "%" : "brak"}, {id: "dziury", key: "dziury", opis: v => v ? v + "%" : "brak"});
   LISTY.push("siatka", "papierRodzaj", "rasterGrad", "tonRodzaj", "qrKorekcja");
-  PTASZKI.push("gradOdwroc", "rozmiarJasnosc", "pustePrzezr", "obrotZSiatka");
+  PTASZKI.push("gradOdwroc", "rozmiarJasnosc", "pustePrzezr", "obrotZSiatka", "ostreKrawedzie");
+SUWAKI.push({id: "obrotLos", key: "obrotLos", opis: v => v ? "±" + v + "°" : "brak"});
   /* gradienty do mapy w rastrze: palety „według jasności" z biblioteki */
   const sel = document.querySelector("#rasterGrad");
   let grupa = null, nazwa = "";
@@ -643,7 +644,9 @@ function rysujMiniature(c, ksztalt, skala = 1){
   /* tryby, nie kształty: znaki według tonu — trzy różne kształty rosnące; linie — pasy coraz grubsze */
   if(ksztalt === "tony"){ wypelnij([...kontury("square", s*0.2, s*0.5, s*0.11, 0), ...kontury("circle", s*0.5, s*0.5, s*0.14, 0), ...kontury("gwiazda", s*0.8, s*0.5, s*0.11, 0)]); return; }
   if(ksztalt === "pasy"){ [0.04, 0.07, 0.1].forEach((g, i) => x.fillRect(s*0.15, s*(0.25 + i*0.25) - s*g/2, s*0.7, s*g)); return; }
-  wypelnij(kontury(ksztalt, s/2, s/2, s*0.36*skala, 0, s*0.72*skala, 3));
+  /* kształt z biblioteki to cały kafelek [−1, 1] — rysowany na całą miniaturę, jak w Dither Boyu */
+  const q = czyBiblioteczny(ksztalt) ? 0.5 : 0.36;
+  wypelnij(kontury(ksztalt, s/2, s/2, s*q*skala, 0, s*0.72*skala, 3));
 }
 /* Przycisk z miniaturą zamiast listy z nazwami (lista zostaje, ukryta — trzyma
    wartość, waliduje presety, syncUI ją ustawia). Odświeżanie z risoUI()
@@ -657,15 +660,98 @@ function wyborWizualny(sel){
   b.addEventListener("click", () => otworzBiblioteke(sel, b));
   WYBORY.push([sel, b]);
 }
+/* obrazek (znak tonu, twój kształt) wpisany w kwadratową miniaturę */
+function miniaturaObrazka(c, obraz){
+  const x = c.getContext("2d"), s = c.width, k = s*0.82/Math.max(obraz.width, obraz.height);
+  x.clearRect(0, 0, s, s); x.drawImage(obraz, (s - obraz.width*k)/2, (s - obraz.height*k)/2, obraz.width*k, obraz.height*k);
+}
+const tonListy = sel => /^znakiS/.test(sel.id) ? +sel.id.slice(6) - 1 : -1;
 function odswiezWybory(){
   for(const [sel, b] of WYBORY){
-    const o = sel.selectedOptions[0], nazwa = o ? o.textContent : "";
-    rysujMiniature(b.querySelector("canvas"), sel.value, /^znakiS/.test(sel.id) ? skalaPasma(+sel.id.slice(6) - 1) : 1);
+    /* ton z obrazkiem: lista jest wyłączona (obrazek wygrywa z kształtem), ale
+       przycisk działa — w bibliotece można wybrać inny kształt albo twój obrazek */
+    const ton = tonListy(sel), zn = ton >= 0 ? ZNAKI[ton] : null;
+    const o = sel.selectedOptions[0], nazwa = zn ? zn.nazwa : o ? o.textContent : "";
+    if(zn) miniaturaObrazka(b.querySelector("canvas"), zn.obraz);
+    else rysujMiniature(b.querySelector("canvas"), sel.value, ton >= 0 ? skalaPasma(ton) : 1);
     b.querySelector("span").textContent = nazwa;
-    b.disabled = sel.disabled;
-    b.title = sel.disabled ? sel.title : nazwa + " — kliknij, żeby wybrać kształt";
+    b.disabled = sel.disabled && !zn;
+    b.title = nazwa + " — kliknij, żeby wybrać kształt";
     b.setAttribute("aria-label", (sel.getAttribute("aria-label") || "Kształt") + ": " + nazwa);
   }
+}
+/* ---------- Twoje kształty (jak „Your Shapes” w Dither Boyu) ----------
+   Wczytane obrazki w okienku biblioteki, do użycia w tonach — to obrazki,
+   nie kontury, więc rysują się jak obrazek tonu (↥). Pamiętane w
+   localStorage jako PNG z sylwetką SVG; przy pełnej pamięci albo w trybie
+   prywatnym — tylko do zamknięcia karty. Obrazek bez przezroczystości
+   dostaje przezroczystą biel. */
+const KLUCZ_TWOICH = "raster.twojeKsztalty", TWOJE = [];
+const poprawneKontury = k => Array.isArray(k) && k.every(c => Array.isArray(c) && c.length >= 3 && c.every(p => Array.isArray(p) && p.length === 2 && p.every(v => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 10)));
+function zapiszTwoje(){
+  try{ localStorage.setItem(KLUCZ_TWOICH, JSON.stringify(TWOJE.map(t => ({nazwa: t.nazwa, png: t.obraz.toDataURL("image/png"), kontury: t.kontury})))); return true; }
+  catch{ return false; }
+}
+(async function wczytajTwoje(){
+  let d = [];
+  try{ d = JSON.parse(localStorage.getItem(KLUCZ_TWOICH) || "[]"); }catch{ d = []; }
+  if(!Array.isArray(d)) return;
+  for(const t of d){
+    if(!t || typeof t.png !== "string" || !t.png.startsWith("data:image/png;base64,")) continue;
+    try{
+      const im = new Image(); im.src = t.png; await im.decode();
+      const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; c.getContext("2d").drawImage(im, 0, 0);
+      TWOJE.push({nazwa: typeof t.nazwa === "string" ? t.nazwa.slice(0, 80) : "kształt", obraz: c, kontury: poprawneKontury(t.kontury) ? t.kontury : null});
+    }catch{}
+  }
+})();
+const plikTwoich = document.createElement("input");
+plikTwoich.type = "file"; plikTwoich.accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg"; plikTwoich.className = "hidden";
+document.body.appendChild(plikTwoich);
+plikTwoich.addEventListener("change", async () => {
+  const f = plikTwoich.files[0]; plikTwoich.value = "";
+  if(!f) return;
+  const cel = bibCel, otw = bibOtwierajacy;
+  let msg;
+  try{
+    const {obraz, kontury} = await wczytajObrazek(f, {bialePrzezroczyste: true});
+    TWOJE.push({nazwa: f.name.slice(0, 80), obraz, kontury});
+    msg = zapiszTwoje() ? "Dodano „" + f.name + "” do twoich kształtów." : "Dodano „" + f.name + "” — tylko do zamknięcia karty (przeglądarka nie pozwoliła zapamiętać).";
+  }catch(err){ msg = f.name + ": " + err.message; }
+  komunikatZnakow(msg);
+  if(cel) otworzBiblioteke(cel, otw);
+});
+/* grupa „Twoje kształty” w okienku — tylko dla tonów (obrazków nie da się użyć jako kształtu rastra) */
+function grupaTwoich(tresc, ton){
+  const h = document.createElement("div"); h.className = "bib-grupa"; h.textContent = "Twoje kształty"; tresc.appendChild(h);
+  const siatka = document.createElement("div"); siatka.className = "bib-siatka"; tresc.appendChild(siatka);
+  let wybrany = null;
+  TWOJE.forEach((t, j) => {
+    const w = document.createElement("div"); w.className = "bib-twoj";
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "bib-kafel"; b.title = t.nazwa; b.setAttribute("aria-label", "Twój kształt: " + t.nazwa);
+    const jest = ZNAKI[ton] && ZNAKI[ton].obraz === t.obraz;
+    b.setAttribute("aria-pressed", !!jest); if(jest) wybrany = b;
+    const c = document.createElement("canvas"); c.width = c.height = 40; b.appendChild(c); miniaturaObrazka(c, t.obraz);
+    b.addEventListener("click", () => {
+      zamknijBiblioteke();
+      ustawZnak(ton, t); komunikatZnakow("Ton " + (ton + 1) + ": " + t.nazwa);
+      znakiUI(); eksportUI(); schedule();
+    });
+    const u = document.createElement("button");
+    u.type = "button"; u.className = "bib-usun"; u.textContent = "×"; u.title = "Usuń z twoich kształtów"; u.setAttribute("aria-label", "Usuń " + t.nazwa + " z twoich kształtów");
+    u.addEventListener("click", () => { TWOJE.splice(j, 1); zapiszTwoje(); otworzBiblioteke(bibCel, bibOtwierajacy); });
+    w.append(b, u); siatka.appendChild(w);
+  });
+  const plus = document.createElement("button");
+  plus.type = "button"; plus.className = "bib-kafel bib-plus"; plus.textContent = "+"; plus.title = "Wczytaj obrazek do twoich kształtów (PNG, JPEG, WebP, SVG)";
+  plus.setAttribute("aria-label", "Wczytaj obrazek do twoich kształtów");
+  plus.addEventListener("click", () => plikTwoich.click());
+  siatka.appendChild(plus);
+  const p = document.createElement("p"); p.className = "hint";
+  p.textContent = "PNG, JPEG, WebP albo SVG. W obrazku bez przezroczystości biel staje się przezroczysta. Kształt trafia do tonu jak obrazek (↥).";
+  tresc.appendChild(p);
+  return wybrany;
 }
 let bibCel = null, bibOtwierajacy = null;
 const biblioteka = document.createElement("div");
@@ -680,7 +766,8 @@ function zamknijBiblioteke(){
   bibCel = bibOtwierajacy = null;
 }
 function otworzBiblioteke(sel, otwierajacy){
-  if(sel.disabled) return;
+  const ton = tonListy(sel);
+  if(sel.disabled && !(ton >= 0 && ZNAKI[ton])) return;
   bibCel = sel; bibOtwierajacy = otwierajacy;
   /* grupy: kształty apki (pierwszy poziom listy, bez specjalnych), potem optgroupy biblioteki */
   const grupy = [];
@@ -696,17 +783,22 @@ function otworzBiblioteke(sel, otwierajacy){
     for(const o of opcje){
       const b = document.createElement("button");
       b.type = "button"; b.className = "bib-kafel"; b.title = o.textContent; b.setAttribute("aria-label", o.textContent);
-      b.setAttribute("aria-pressed", o.value === sel.value);
+      const obecny = o.value === sel.value && !(ton >= 0 && ZNAKI[ton]);
+      b.setAttribute("aria-pressed", obecny);
       const c = document.createElement("canvas"); c.width = c.height = 40; b.appendChild(c);
       rysujMiniature(c, o.value);
       b.addEventListener("click", () => {
         const cel = bibCel; zamknijBiblioteke();
+        /* ton miał obrazek — wybrany kształt go zastępuje */
+        if(ton >= 0 && ZNAKI[ton]){ usunZnak(ton); znakiUI(); eksportUI(); }
         if(cel.value !== o.value){ cel.value = o.value; cel.dispatchEvent(new Event("change", {bubbles: true})); }
+        else { pasmaUI(); schedule(); }
       });
-      if(o.value === sel.value) wybrany = b;
+      if(obecny) wybrany = b;
       siatka.appendChild(b);
     }
   }
+  if(ton >= 0) wybrany = grupaTwoich(tresc, ton) || wybrany;
   document.querySelector("#bib-tytul").textContent = "Biblioteka kształtów" + (sel.id.startsWith("znakiS") ? " — ton " + sel.id.slice(6) : "");
   biblioteka.classList.remove("hidden");
   (wybrany || tresc.querySelector(".bib-kafel")).focus();

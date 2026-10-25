@@ -58,12 +58,21 @@ function drawScreen(target, smp, W,H, ink, z){
   else if(g.plamy){ x.beginPath(); for(const k of g.plamy) sciezka(x, k); if(grubostObrysu() > 0) x.stroke(); else x.fill("evenodd"); }
   else if(g.linie) rysujLinie(x, g.linie);
   else rysujGrupe(x, g.kropki, g, ksztalt);
+  if(S.ostreKrawedzie) progKrycia(c);
   fakturaFarby(c, W, H, z, ink.color);
   target.save();
   target.globalCompositeOperation = mieszanieFarby(ink);
   if(ink.krycie !== undefined && ink.krycie < 1) target.globalAlpha = ink.krycie;
   target.drawImage(c,0,0);
   target.restore();
+}
+/* Ostre krawędzie (Crisp Edges): płótno 2D nie umie rysować ścieżek bez
+   wygładzania, więc krycie warstwy farby przycinamy progiem ½ — zanim
+   faktura farby zrobi swoje miękkie brzegi. W SVG: shape-rendering. */
+function progKrycia(c){
+  const x = c.getContext("2d"), d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  for(let i=3; i<p.length; i+=4) p[i] = p[i] >= 128 ? 255 : 0;
+  x.putImageData(d, 0, 0);
 }
 /* Grupa punktów jednego koloru (fillStyle/strokeStyle już ustawione):
    znaki tekstem, kształty ścieżką (nowe, postrzępione, obrys) albo wprost
