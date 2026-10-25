@@ -141,8 +141,20 @@ Orbs, Neo Glow.
        „Jedna wielkość w paśmie — jak Dither Boy” (`znakiStala`, domyślnie
        wyłączony — dawny wygląd co do bitu). Testy: siatki.mjs, podgląd
        starych ustawień co do bajtu (21), przegladarka.mjs, panel w Chrome.
-5. [ ] Zestawy kształtów: wbudowane + własne (localStorage, try/catch),
-       import / eksport w formacie presetu.
+5. [x] Zestawy kształtów (25.10): lista ◀ ▶ na górze „Znaków według
+       tonu”: 10 wbudowanych (Kropki rastra, Geometryczne, Kwadraty, Gwiazdy,
+       Siatki kropek, Kreskowanie, Kod kreskowy, Piksel, Spooky, Księżyce —
+       wszystkie z „jedną wielkością w paśmie”, pasmo 1 = cienie), własne
+       w localStorage (`raster.zestawy`, nazwa z pola — prompt nie działa
+       w Electronie), usuń, plik JSON `{app, typ:"zestaw-ksztaltow", ustaw}`
+       w obie strony (wczyta też pasma z pliku presetu). Zestaw = klucze
+       pasm (`KSZTALT_ZESTAWU`); własne i pliki dokładają kolory tonów,
+       wbudowane ich nie ruszają. Nieufnie: tylko te klucze, typ jak
+       w DEFAULTS, liczby skończone; resztę przycina syncUI. Lista pokazuje
+       „Własny układ (niezapisany)”, gdy pasma nie pasują do żadnego.
+       Zastosowanie = krok historii. Sprawdzone w Chrome (wszystkie drogi,
+       zły plik, cofanie). „Twoje kształty” z Dither Boya — dziś obrazek
+       na ton (↥); osobnej grupy w bibliotece nie robiłam (do decyzji).
 6. [ ] Siatka: Rotation Jitter, Crisp Edges, Tone Scaling — sprawdzić,
        co z tego już jest pod inną nazwą (drganie, obrót, krzywa wielkości).
 7. [ ] Efekty w stosie (`stos.js`/`fx.js`, czyste i deterministyczne):

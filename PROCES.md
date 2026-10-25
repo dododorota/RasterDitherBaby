@@ -16,7 +16,10 @@ Potem (25.10, późno): wybór kształtu obrazkiem zamiast nazwy, poprawka
 wyścigu przy zmianie trybu (podejrzenie zgłoszonego „ASCII nie działa”).
 Potem 4b: biblioteka przepisana według jej zbliżeń kafelków Dither Boya
 (173 kształty; poprzednie 106 w `99c8e07`), pasek pasm z miniaturami, szerokość pasma, „jedna wielkość
-w paśmie”. Niezacommitowane. Następny: etap 5 — zestawy kształtów.
+w paśmie” (zacommitowane, `a3bfaf0`). Potem etap 5 — zestawy kształtów
+(10 wbudowanych, własne, plik), niezacommitowane. Następny: etap 6 — opcje
+siatki z Dither Boya (Rotation Jitter, Crisp Edges, Tone Scaling), potem
+efekty (etap 7).
 
 ## Handover — 25 października 2026
 

@@ -624,6 +624,7 @@ function pasmaUI(){
   document.querySelector("#pasma-usun").disabled = n <= 2;
   document.querySelector("#pasma-rozloz").disabled = !wlasne;
   odswiezWybory();
+  zestawUI();
 }
 /* ---------- biblioteka kształtów: miniatury i okienko z kafelkami ----------
    Wartość dalej mieszka w <select> (lista waliduje presety, syncUI ją zna) —
@@ -750,6 +751,127 @@ function podepnijUchwyt(h, j){
     przesunGranice(j, graniceTeraz(liczbaPoziomow())[j] + d*(e.shiftKey ? 10 : 1));
   });
 }
+
+/* ---------- zestawy kształtów (jak „Shape Set” w Dither Boyu) ----------
+   Zestaw to układ pasm: liczba tonów, granice, kształt i wielkość każdego
+   pasma, jedna wielkość, wtapianie. Własne zestawy (localStorage, plik)
+   pamiętają też kolory tonów; wbudowane kolorów nie ruszają. Wartości
+   czytane nieufnie (tylko klucze zestawu, typ jak w DEFAULTS), resztę
+   przycina syncUI(). Obrazki tonów to materiał — zostają, jak przy presecie.
+   Kolejność jak w apce: pasmo 1 to cienie (czarna farba na białym papierze);
+   jasne kształty na ciemnym tle, jak w Dither Boyu — „Odwróć”. */
+const KSZTALT_ZESTAWU = ["znakiIle", "znakiGranice", "znakiStala", "znakiWtapianie", "znakiWtapWzor",
+  ...Array.from({length: ZNAKI_MAKS}, (_, i) => ["znakiS" + (i + 1), "znakiR" + (i + 1)]).flat()];
+const KOLOR_ZESTAWU = ["znakiBarwa", ...Array.from({length: ZNAKI_MAKS}, (_, i) => "znakiK" + (i + 1))];
+const KLUCZ_ZESTAWOW = "raster.zestawy";
+const zPasm = (ksztalty, wielkosci) => {
+  const o = {znakiIle: ksztalty.length, znakiStala: true};
+  ksztalty.forEach((k, i) => { o["znakiS" + (i + 1)] = k; o["znakiR" + (i + 1)] = wielkosci ? wielkosci[i] : 100; });
+  return o;
+};
+const ZESTAWY_WBUDOWANE = [
+  ["Kropki rastra", zPasm(["b-kolo", "b-kolo", "b-kolo", "b-kolo", "b-kolo", "pusty"], [130, 105, 80, 55, 30, 100])],
+  ["Geometryczne", zPasm(["b-kwadrat", "b-trojkat-gora", "b-plus", "b-kolo"])],
+  ["Kwadraty", zPasm(["b-kwadrat", "b-kw-4", "b-kw-3", "b-kw-2", "b-kw-1", "pusty"])],
+  ["Gwiazdy", zPasm(["b-pieczec16", "b-gwiazda8", "b-gwiazda5", "b-gwiazda8-cienka", "b-gwiazda16", "pusty"])],
+  ["Siatki kropek", zPasm(["b-siatka-gruba-2", "b-siatka-4", "b-siatka-2", "b-gesta-2", "b-gesta-1", "pusty"])],
+  ["Kreskowanie", zPasm(["b-kreskowanie-4", "b-kreskowanie-3", "b-kreskowanie-2", "b-kreskowanie-1", "pusty"])],
+  ["Kod kreskowy", zPasm(["b-kod-4", "b-kod-3", "b-kod-2", "b-kod-1", "pusty"])],
+  ["Piksel", zPasm(["b-px-kostka", "b-px-szachownica-5", "b-px-iks-krata", "b-px-kropki", "b-px-dwa-male", "pusty"])],
+  ["Spooky", zPasm(["b-czaszka", "b-nagrobek", "b-nietoperz", "b-krysztal", "pusty"])],
+  ["Księżyce", zPasm(["b-ksiezyce-4", "b-ksiezyce-3", "b-ksiezyce-2", "b-ksiezyce-1", "pusty"])]
+];
+/* nieufnie: tylko klucze zestawu z typem jak w DEFAULTS; null — nic nie zostało */
+function zestawZDanych(o){
+  if(!o || typeof o !== "object" || Array.isArray(o)) return null;
+  const w = {};
+  for(const k of [...KSZTALT_ZESTAWU, ...KOLOR_ZESTAWU]) if(k in o && typeof o[k] === typeof DEFAULTS[k] && (typeof o[k] !== "number" || Number.isFinite(o[k]))) w[k] = o[k];
+  return "znakiIle" in w ? w : null;
+}
+function zestawyWlasne(){
+  let d = [];
+  try{ d = JSON.parse(localStorage.getItem(KLUCZ_ZESTAWOW) || "[]"); }catch{ d = []; }
+  return Array.isArray(d) ? d.map(z => z && typeof z.nazwa === "string" ? {nazwa: z.nazwa.slice(0, 40), ustaw: zestawZDanych(z.ustaw)} : null).filter(z => z && z.ustaw) : [];
+}
+function zapiszWlasne(lista){
+  try{ localStorage.setItem(KLUCZ_ZESTAWOW, JSON.stringify(lista)); return true; }catch{ return false; }
+}
+const komunikatZestawu = t => { document.querySelector("#zestaw-msg").textContent = t; };
+/* bieżący układ w postaci zestawu (z kolorami — do pliku i do zapamiętania) */
+function biezacyZestaw(){ const o = {}; for(const k of [...KSZTALT_ZESTAWU, ...KOLOR_ZESTAWU]) o[k] = S[k]; return o; }
+/* czy S ma układ zestawu: klucze kształtu (brakujące = domyślne), kolory tylko podane */
+function pasujeZestaw(u){
+  return KSZTALT_ZESTAWU.every(k => S[k] === (k in u ? u[k] : DEFAULTS[k])) && KOLOR_ZESTAWU.every(k => !(k in u) || S[k] === u[k]);
+}
+function zastosujZestaw(u, nazwa){
+  utrwalStan();
+  for(const k of KSZTALT_ZESTAWU) S[k] = k in u ? u[k] : DEFAULTS[k];
+  for(const k of KOLOR_ZESTAWU) if(k in u) S[k] = u[k];
+  /* zestaw ma sens tylko przy znakach według tonu */
+  if(S.shape !== "tony" && !(S.inkmode === "riso" && [1, 2, 3, 4].some(i => S["risoS" + i] === "tony"))) S.shape = "tony";
+  pasmoWybrane = 0;
+  syncUI(); eksportUI(); schedule(); utrwalStan();
+  komunikatZestawu(nazwa ? "Zestaw: " + nazwa + "." : "");
+}
+/* lista: wbudowane i własne; pierwsza pozycja — bieżący układ spoza listy */
+function budujZestawy(){
+  const sel = document.querySelector("#zestaw"), wl = zestawyWlasne();
+  sel.innerHTML = `<option value="">Własny układ (niezapisany)</option><optgroup label="Wbudowane">${ZESTAWY_WBUDOWANE.map(([n], i) => `<option value="w:${i}">${n}</option>`).join("")}</optgroup>` +
+    (wl.length ? `<optgroup label="Twoje">${wl.map((z, i) => `<option value="t:${i}"></option>`).join("")}</optgroup>` : "");
+  /* nazwy własnych przez textContent — wpisała je użytkowniczka, nie markup */
+  wl.forEach((z, i) => { sel.querySelector(`option[value="t:${i}"]`).textContent = z.nazwa; });
+  zestawUI();
+}
+function zestawPo(v, wl){
+  if(v.startsWith("w:")){ const z = ZESTAWY_WBUDOWANE[+v.slice(2)]; return z && {nazwa: z[0], ustaw: z[1]}; }
+  if(v.startsWith("t:")) return (wl || zestawyWlasne())[+v.slice(2)] || null;
+  return null;
+}
+/* zaznacza na liście zestaw równy bieżącemu układowi (wołane z pasmaUI) */
+function zestawUI(){
+  const sel = document.querySelector("#zestaw"), wl = zestawyWlasne();
+  const pas = [...sel.options].find(o => o.value && (z => z && pasujeZestaw(z.ustaw))(zestawPo(o.value, wl)));
+  sel.value = pas ? pas.value : "";
+  document.querySelector("#zestaw-usun").classList.toggle("hidden", !sel.value.startsWith("t:"));
+}
+budujZestawy();
+document.querySelector("#zestaw").addEventListener("change", e => { const z = zestawPo(e.target.value); if(z) zastosujZestaw(z.ustaw, z.nazwa); });
+for(const [id, d] of [["#zestaw-prev", -1], ["#zestaw-next", 1]]) document.querySelector(id).addEventListener("click", () => {
+  const sel = document.querySelector("#zestaw"), wart = [...sel.options].map(o => o.value).filter(Boolean);
+  const i = wart.indexOf(sel.value), j = i < 0 ? (d > 0 ? 0 : wart.length - 1) : (i + d + wart.length) % wart.length;
+  const z = zestawPo(wart[j]); if(z) zastosujZestaw(z.ustaw, z.nazwa);
+});
+document.querySelector("#zestaw-zapamietaj").addEventListener("click", () => {
+  const pole = document.querySelector("#zestaw-nazwa"), nazwa = pole.value.trim().slice(0, 40);
+  if(!nazwa){ komunikatZestawu("Wpisz nazwę zestawu."); pole.focus(); return; }
+  const wl = zestawyWlasne().filter(z => z.nazwa !== nazwa);
+  wl.push({nazwa, ustaw: biezacyZestaw()});
+  if(!zapiszWlasne(wl)){ komunikatZestawu("Przeglądarka nie pozwoliła zapamiętać (tryb prywatny albo pełna pamięć)."); return; }
+  pole.value = ""; budujZestawy(); komunikatZestawu("Zapamiętano zestaw „" + nazwa + "”.");
+});
+document.querySelector("#zestaw-usun").addEventListener("click", () => {
+  const v = document.querySelector("#zestaw").value; if(!v.startsWith("t:")) return;
+  const wl = zestawyWlasne(), z = wl[+v.slice(2)];
+  wl.splice(+v.slice(2), 1); zapiszWlasne(wl); budujZestawy();
+  komunikatZestawu(z ? "Usunięto zestaw „" + z.nazwa + "”." : "");
+});
+document.querySelector("#zestaw-eksport").addEventListener("click", () => {
+  const sel = document.querySelector("#zestaw"), nazwa = sel.value ? sel.selectedOptions[0].textContent : "zestaw";
+  const plik = {app: "raster", typ: "zestaw-ksztaltow", wersja: 1, nazwa, ustaw: biezacyZestaw()};
+  pobierz(new Blob([JSON.stringify(plik, null, 2)], {type: "application/json"}), "zestaw-" + (nazwa.replace(/[\/\\:*?"<>|]+/g, "").replace(/\s+/g, "-") || "ksztaltow") + ".json", 2000);
+  komunikatZestawu("Zapisano plik zestawu.");
+});
+document.querySelector("#zestaw-wczytaj").addEventListener("click", () => document.querySelector("#zestaw-plik").click());
+document.querySelector("#zestaw-plik").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if(!f) return;
+  let d;
+  try{ d = JSON.parse(await f.text()); }catch{ komunikatZestawu("To nie jest poprawny plik zestawu (JSON)."); return; }
+  /* plik zestawu albo cały preset ustawień — z presetu bierzemy same pasma */
+  const u = d && d.app === "raster" ? zestawZDanych(d.typ === "zestaw-ksztaltow" ? d.ustaw : d.look) : null;
+  if(!u){ komunikatZestawu("W tym pliku nie ma zestawu kształtów."); return; }
+  zastosujZestaw(u, typeof d.nazwa === "string" ? d.nazwa.slice(0, 40) : f.name);
+});
 
 /* Własny kształt: plik SVG wstawiony na chwilę do strony (niewidoczny), żeby
    przeglądarka sama policzyła geometrię — krzywe, łuki, przekształcenia
