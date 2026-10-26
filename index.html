@@ -1270,32 +1270,36 @@
       <div class="fx hidden" data-fx="neo"><div class="fx-cialo">
         <div class="row"><label for="neoSila">Intensywność</label><span class="val" id="neoSila-v">brak</span></div>
         <input type="range" id="neoSila" min="0" max="100" value="0">
-        <div class="row"><label for="neoProg">Świeci od jasności</label><span class="val" id="neoProg-v">40%</span></div>
-        <input type="range" id="neoProg" min="0" max="95" value="40">
-        <div class="row"><label for="neoOs">Kierunek smug</label></div>
+        <div class="row"><label for="neoOs">Kierunek</label></div>
         <select id="neoOs">
-          <option value="pion" selected>Pionowo — w dół</option>
-          <option value="poziomo">Poziomo — w prawo</option>
+          <option value="pion" selected>Pionowo</option>
+          <option value="poziomo">Poziomo</option>
         </select>
-        <label class="check" style="margin-top:8px"><input type="checkbox" id="neoLustro"> Lustro — w obie strony</label>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="neoLustro"> Lustro — odcinki w drugą stronę</label>
         <div class="row"><label for="neoDlugosc">Maks. długość</label><span class="val" id="neoDlugosc-v">12</span></div>
         <input type="range" id="neoDlugosc" min="1" max="60" value="12">
         <div class="row"><label for="neoPrzes">Przesunięcie</label><span class="val" id="neoPrzes-v">0</span></div>
-        <input type="range" id="neoPrzes" min="0" max="60" value="0">
-        <div class="row"><label for="neoRozrzut">Rozrzut długości</label><span class="val" id="neoRozrzut-v">100%</span></div>
+        <input type="range" id="neoPrzes" min="0" max="100" value="0">
+        <div class="row"><label for="neoRozrzut">Rozrzut (stagger)</label><span class="val" id="neoRozrzut-v">100%</span></div>
         <input type="range" id="neoRozrzut" min="0" max="100" value="100">
-        <div class="row"><label for="neoZanik">Zanik</label><span class="val" id="neoZanik-v">0%</span></div>
+        <div class="row"><label for="neoZanik">Zanik ogona</label><span class="val" id="neoZanik-v">0%</span></div>
         <input type="range" id="neoZanik" min="0" max="100" value="0">
-        <div class="row"><label for="neoMrok">Mrok pod smugami</label><span class="val" id="neoMrok-v">brak</span></div>
+        <div class="row"><label for="neoMrok">Mrok — przygaszenie reszty</label><span class="val" id="neoMrok-v">brak</span></div>
         <input type="range" id="neoMrok" min="0" max="100" value="0">
+        <div class="row"><label for="neoKolumna">Szerokość kolumny</label><span class="val" id="neoKolumna-v">8 px</span></div>
+        <input type="range" id="neoKolumna" min="1" max="40" value="8">
+        <div class="row"><label for="neoProg">Świecą znaki od jasności</label><span class="val" id="neoProg-v">20%</span></div>
+        <input type="range" id="neoProg" min="0" max="95" value="20">
+        <div class="row"><label for="neoPredkosc">Ruch w filmie</label><span class="val" id="neoPredkosc-v">stoi</span></div>
+        <input type="range" id="neoPredkosc" min="0" max="20" value="0">
         <div class="swatches" style="margin-top:10px">
-          <select id="neoZrodlo" aria-label="Kolor smug">
+          <select id="neoZrodlo" aria-label="Kolor świecenia">
             <option value="obraz" selected>Kolor z obrazu</option>
             <option value="kolor">Własny kolor →</option>
           </select>
-          <input type="color" id="neoKolor" value="#39ff6a" aria-label="Własny kolor smug">
+          <input type="color" id="neoKolor" value="#39ff6a" aria-label="Własny kolor świecenia">
         </div>
-        <p class="hint">Jasne miejsca ciągną za sobą smugi jak w „deszczu Matrixa”. Najlepiej na ciemnym tle — w ASCII, ditheringu albo rastrze.</p>
+        <p class="hint">Rozjaśnia odcinki znaków w kolumnach — znaki zostają na miejscu, jak w „deszczu Matrixa”. „Szerokość kolumny” ustaw na szerokość znaku ASCII. Przesunięcie z klatkami kluczowymi albo „Ruch w filmie” — odcinki wędrują.</p>
       </div></div>
 
       <div class="fx hidden" data-fx="orby"><div class="fx-cialo">
@@ -1326,6 +1330,27 @@
           <input type="color" id="orbyKolor" value="#ffffff" aria-label="Własny kolor kul">
         </div>
         <p class="hint">Rozsiane miękkie kule światła. „Przesunięcie” z klatkami kluczowymi — kule płyną w filmie.</p>
+      </div></div>
+
+      <div class="fx hidden" data-fx="lick"><div class="fx-cialo">
+        <div class="row"><label for="lickDlugosc">Długość pociągnięć</label><span class="val" id="lickDlugosc-v">brak</span></div>
+        <input type="range" id="lickDlugosc" min="0" max="40" value="0">
+        <div class="row"><label for="lickTryb">Rodzaj</label></div>
+        <select id="lickTryb">
+          <option value="farba" selected>Farba — plamy kolorów palety</option>
+          <option value="rozmycie">Rozmycie — gładkie smugi</option>
+        </select>
+        <div class="row"><label for="lickKat">Kierunek</label><span class="val" id="lickKat-v">45°</span></div>
+        <input type="range" id="lickKat" min="0" max="180" value="45">
+        <div class="row"><label for="lickWir">Zawirowanie</label><span class="val" id="lickWir-v">40%</span></div>
+        <input type="range" id="lickWir" min="0" max="100" value="40">
+        <div class="row"><label for="lickSkala">Skala zawirowań</label><span class="val" id="lickSkala-v">60 px</span></div>
+        <input type="range" id="lickSkala" min="8" max="300" value="60">
+        <div class="row"><label for="lickLos">Układ</label><span class="val" id="lickLos-v">1</span></div>
+        <input type="range" id="lickLos" min="1" max="99" value="1">
+        <div class="row"><label for="lickMix">Mieszanie z oryginałem</label><span class="val" id="lickMix-v">100%</span></div>
+        <input type="range" id="lickMix" min="0" max="100" value="100">
+        <p class="hint">Rozmazuje obraz w smugi pędzla wzdłuż płynącego pola kierunków — dithering daje fakturę farby. Razem z „Zużyciem druku” wygląda jak malowane (Mixed Media w Dither Boyu).</p>
       </div></div>
 
       <div class="fx hidden" data-fx="soczewka"><div class="fx-cialo">

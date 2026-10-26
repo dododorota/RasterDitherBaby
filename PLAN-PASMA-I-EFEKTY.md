@@ -200,7 +200,23 @@ Orbs, Neo Glow.
        aberracja. Obejrzane na siatce linii.
     [x] Epsilon Glow — jedyna poświata na ich liście → to nasza „Poświata”,
        bez nowego efektu (potwierdzić z użytkowniczką, gdyby to było co innego).
-    [ ] Lick — **czeka na zrzut karty** (nie wiadomo, co robi).
+    [x] Lick (26.10) — z bloga Studio AAA („Introducing Shape Shifter…
+       v6.6.6”): Lick i Stress Relief to ich „Mixed Media”, wygląd
+       malowany, szczegół farby z algorytmu ditheringu; karty nie znamy,
+       suwaki nasze. „Pociągnięcia farby (Lick)” (`lick*`): każdy piksel
+       bierze kolor wzdłuż linii płynącej polem kierunków (kąt + zawirowanie
+       z szumu); rodzaj „farba” — kolor dominujący (zostają kolory palety,
+       włosiste brzegi jak od pędzla), „rozmycie” — średnia. ~0,8 s na
+       1400 px (w workerze). Testy w stos.mjs.
+    [x] Neo Glow przerobiony (26.10) według tego samego wpisu: u nich
+       „rozjaśnia wybrane odcinki znaków ASCII, znaki zostają na miejscu,
+       jasne odcinki mogą wędrować”, a nie smugi od jasnych miejsc.
+       `neoGlow()` punktowo: kolumny (w ASCII = komórka znaku, gdzie
+       indziej suwak), w kolumnach odcinki z długością / odstępem /
+       położeniem ze skrótu numeru kolumny (rozrzut), rozjaśnienie
+       z zachowaniem barwy (albo własny kolor), zanik ogona, mrok reszty,
+       przesunięcie (klatki kluczowe) i ruch w filmie (`neoPredkosc`).
+       Zapis w skali dokładny (0,00/255).
 8. [x] Instalator 0.2.0 (25.10): wersja w package.json 0.1.0 → 0.2.0,
        `npm run paczka` → `dist/Raster Setup 0.2.0.exe` i
        `dist/Raster-0.2.0-przenosny.exe` (niepodpisane, jak wcześniej);

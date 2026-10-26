@@ -182,6 +182,8 @@ const SUWAKI = [
   /* efekty z Dither Boya: Neo Glow, Orbs, Stress Relief */
   {id:"neoSila",    key:"neoSila",    opis:v=>v?v+"%":"brak"},
   {id:"neoProg",    key:"neoProg",    opis:v=>v+"%"},
+  {id:"neoKolumna", key:"neoKolumna", opis:v=>v+" px"},
+  {id:"neoPredkosc",key:"neoPredkosc",opis:v=>v?v+" px/kl.":"stoi"},
   {id:"neoDlugosc", key:"neoDlugosc", opis:v=>String(v)},
   {id:"neoPrzes",   key:"neoPrzes",   opis:v=>String(v)},
   {id:"neoRozrzut", key:"neoRozrzut", opis:v=>v+"%"},
@@ -201,10 +203,16 @@ const SUWAKI = [
   {id:"zuzLos",     key:"zuzLos",     opis:v=>String(v)},
   {id:"zuzMix",     key:"zuzMix",     opis:v=>v+"%"},
   {id:"soczKrzyw",  key:"soczKrzyw",  opis:v=>!v?"brak":(v>0?"beczka +"+v:"poduszka "+v)},
-  {id:"soczSkala",  key:"soczSkala",  opis:v=>v+"%"}
+  {id:"soczSkala",  key:"soczSkala",  opis:v=>v+"%"},
+  {id:"lickDlugosc",key:"lickDlugosc",opis:v=>v?v+" px":"brak"},
+  {id:"lickKat",    key:"lickKat",    opis:v=>v+"°"},
+  {id:"lickWir",    key:"lickWir",    opis:v=>v+"%"},
+  {id:"lickSkala",  key:"lickSkala",  opis:v=>v+" px"},
+  {id:"lickLos",    key:"lickLos",    opis:v=>String(v)},
+  {id:"lickMix",    key:"lickMix",    opis:v=>v+"%"}
 ];
 const PTASZKI = ["inv","serp","percept","czasCykl","asciiDither","neoLustro"];
-const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor","glowZrodlo","neoOs","neoZrodlo","orbyTryb","orbyZrodlo","soczBrzeg"];
+const LISTY   = ["algo","pal","mapa","shape","inkmode","sort","tintTryb","faktura","faktTryb","asciiZestaw","asciiTryb","asciiKolor","glowZrodlo","neoOs","neoZrodlo","orbyTryb","orbyZrodlo","soczBrzeg","lickTryb"];
 /* jeden klucz może mieć kilka pól: farba i papier są i w palecie ditheringu,
    i w siatce rastra */
 const KOLORY  = [{id:"ink",key:"ink"}, {id:"paper",key:"paper"}, {id:"ink-r",key:"ink"}, {id:"paper-r",key:"paper"}, {id:"tintKolor",key:"tintKolor"}, {id:"ink-a",key:"ink"}, {id:"paper-a",key:"paper"}, {id:"glowKolor",key:"glowKolor"},

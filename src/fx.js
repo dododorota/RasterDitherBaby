@@ -14,6 +14,7 @@
    więc zapis w skali jest dokładnym powiększeniem podglądu. */
 import { S } from "./state.js";
 import { hex2rgb } from "./palettes.js";
+import { wymiaryKomorki } from "./ascii-znaki.js";
 
 /* skrót trzech liczb całkowitych → [0, 1), na Math.imul (patrz CLAUDE.md) */
 export function skrot(x, y, t){
@@ -480,44 +481,44 @@ export function cyklMacierzy(){
    zużycie — wprost na dużym z siatką z×z. */
 const jas01 = (p, o) => (p[o]*0.299 + p[o+1]*0.587 + p[o+2]*0.114)/255;
 
-/* Neo Glow — smugi jak w „deszczu Matrixa": każdy piksel ciągnie za sobą
-   smugę swojego koloru wzdłuż osi (w dół albo w prawo, z lustrem w obie
-   strony); jaśniejszy wygrywa z gasnącą smugą. Długość różna w każdej
-   kolumnie (rozrzut, ze skrótu numeru kolumny), zanik — jak szybko smuga
-   ciemnieje, przesunięcie — odstęp smugi od źródła, mrok — przyciemnienie
-   obrazu pod smugami. Zwraca warstwę do nalozPoswiate(). */
-export function warstwaNeo(p, w, h, jednostka){
+/* Neo Glow — jak w Dither Boyu („rozjaśnia wybrane odcinki znaków ASCII,
+   znaki zostają na miejscu, jasne odcinki mogą wędrować po obrazie"):
+   obraz dzielony na kolumny (szerokość ≈ znak), w każdej kolumnie jasne
+   odcinki o długości do „maks. długości", z odstępami i położeniem ze
+   skrótu numeru kolumny (rozrzut — ile kolumny różnią się od siebie;
+   przy 0 wszystkie razem, jak pas). W odcinku piksele jaśniejsze od progu
+   (znaki, nie tło) jaśnieją albo przybierają kolor — najmocniej na czole
+   odcinka, zanik przyciemnia ogon; reszta przygasa o mrok. Położenie
+   (klatkami kluczowymi) i ruch w filmie (× numer klatki) przesuwają
+   odcinki. Punktowo w siatce podglądu (`z` pikseli bufora na piksel
+   podglądu) — zapis w skali ma odcinki w tych samych miejscach. */
+export function neoGlow(p, w, h, z){
   const sila = S.neoSila/100;
-  if(!(sila > 0)) return null;
-  const poz = S.neoOs === "poziomo", L = new Float32Array(w*h*4);
-  const dl = Math.max(1, S.neoDlugosc*6*jednostka), przes = Math.round(S.neoPrzes*2*jednostka), rozrzut = S.neoRozrzut/100;
-  const wyk = 1 + S.neoZanik/100*3, wlasny = S.neoZrodlo === "kolor", kol = hex2rgb(S.neoKolor), prog = Math.min(0.95, (S.neoProg ?? 40)/100);
-  const n = poz ? h : w, m = poz ? w : h;              /* n linii, m pikseli w linii */
-  const idx = (a, b) => ((poz ? a*w + b : b*w + a))*4;   /* linia a, pozycja b */
-  for(const kier of S.neoLustro ? [1, -1] : [1]){
-    for(let a=0; a<n; a++){
-      const dlA = Math.max(1, dl*(1 - rozrzut*skrot(Math.floor(a/Math.max(1, jednostka)), 31, 7177))), spadek = 1/dlA;
-      let T = 0, r = 0, g = 0, b = 0;
-      for(let k=0; k<m; k++){
-        const bb = kier > 0 ? k : m - 1 - k, zr = bb - kier*przes;
-        if(zr >= 0 && zr < m){
-          const o = idx(a, zr), s = Math.max(0, (jas01(p, o) - prog)/(1 - prog));
-          if(s >= T){ T = s; if(wlasny){ r = kol[0]; g = kol[1]; b = kol[2]; } else { r = p[o]; g = p[o+1]; b = p[o+2]; } }
-          else T = Math.max(0, T - spadek);
-        } else T = Math.max(0, T - spadek);
-        if(T <= 0) continue;
-        const f = Math.pow(T, wyk)*sila, o = idx(a, bb);
-        L[o] = Math.max(L[o], r*f); L[o+1] = Math.max(L[o+1], g*f); L[o+2] = Math.max(L[o+2], b*f);
-      }
+  if(!(sila > 0)) return;
+  /* w ASCII kolumny i długość w znakach (komórka znaku), gdzie indziej — suwak */
+  const poz = S.neoOs === "poziomo", [cw, ch] = wymiaryKomorki(), ascii = S.mode === "ascii";
+  const kol = ascii ? (poz ? ch : cw) : Math.max(1, S.neoKolumna || 8), D0 = Math.max(1, S.neoDlugosc)*(ascii ? (poz ? cw : ch) : kol), rozrzut = S.neoRozrzut/100;
+  const kier = S.neoLustro ? -1 : 1, przes = (S.neoPrzes || 0)*kol + (S.klatkaNr | 0)*(S.neoPredkosc || 0);
+  const wyk = S.neoZanik/100*3, prog = Math.min(0.95, (S.neoProg ?? 20)/100), mrok = 1 - S.neoMrok/100*0.85;
+  const wlasny = S.neoZrodlo === "kolor", kc = hex2rgb(S.neoKolor);
+  const nKol = Math.ceil((poz ? h : w)/z/kol) + 1, D = new Float64Array(nKol), P = new Float64Array(nKol), F = new Float64Array(nKol);
+  for(let c=0; c<nKol; c++){
+    D[c] = D0*(1 - 0.75*rozrzut*skrot(c, 1, 7177));
+    P[c] = D[c]*(2 + 4*(rozrzut ? skrot(c, 2, 7177) : 0.5));
+    F[c] = rozrzut*skrot(c, 3, 7177)*P[c];
+  }
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const c = Math.floor((poz ? y : x)/z/kol), t = Math.floor((poz ? x : y)/z)*kier;
+    const s = (((t - przes - F[c]) % P[c]) + P[c]) % P[c], f = s < D[c] ? Math.pow(s/D[c], wyk) : 0;
+    const o = (y*w + x)*4, j = jas01(p, o), e = j > prog ? f*sila : 0;
+    /* rozjaśnienie z zachowaniem barwy: zielony znak robi się jaskrawo
+       zielony, nie biały — kolor podbity do pełnej jasności i lekko rozbielony */
+    const mx = Math.max(1, p[o], p[o+1], p[o+2]), wzm = 255/mx;
+    for(let k=0; k<3; k++){
+      const v = p[o+k], baza = v*mrok, zr = wlasny ? kc[k] : v*wzm, cel = Math.min(255, zr*(0.75 + 0.25*j) + 70*j*j);
+      p[o+k] = baza + (cel - baza)*e;
     }
   }
-  return L;
-}
-/* mrok pod smugami (Gloom) — punktowo, ten sam w każdej skali */
-export function mrokNeo(p){
-  const m = 1 - S.neoMrok/100*0.85;
-  if(m >= 1) return;
-  for(let o=0; o<p.length; o+=4){ p[o] *= m; p[o+1] *= m; p[o+2] *= m; }
 }
 
 /* Orbs — rozsiane miękkie kule światła: miejsca i wielkości ze skrótu numeru
@@ -613,5 +614,64 @@ export function soczewka(p, w, h){
     }
     const q = (sy*w + sx)*4;
     p[o] = zr[q]; p[o+1] = zr[q+1]; p[o+2] = zr[q+2];
+  }
+}
+
+/* Lick — pociągnięcia farby (w Dither Boyu „Mixed Media”: wygląd malowany,
+   szczegół farby z algorytmu ditheringu). Każdy piksel uśrednia obraz wzdłuż
+   krótkiej linii płynącej polem kierunków — kąt plus zawirowania z szumu
+   (wir, skala wiru) — więc wynik ditheringu rozmazuje się w smugi pędzla.
+   Wagi trójkątne (środek najmocniej), próbki najbliższym pikselem.
+   „Farba” (domyślnie): kolor dominujący na linii — zostają kolory palety
+   i plamy o wyraźnych brzegach jak od pędzla; „rozmycie”: średnia (gładko,
+   jak akwarela). Pole kierunków na rzadkiej siatce (co 4 piksele podglądu),
+   wszystko w pikselach podglądu (`z` pikseli bufora na piksel podglądu) —
+   zapis w skali ma te same pociągnięcia. Karty efektu w Dither Boyu nie
+   widziałyśmy — suwaki są nasze. */
+export function pociagniecia(p, w, h, z){
+  const dl = S.lickDlugosc, mix = S.lickMix/100;
+  if(!(dl > 0) || !(mix > 0)) return;
+  const zr = p.slice(), U = w/z, V = h/z, K = 4, gw = Math.ceil(U/K) + 2, gh = Math.ceil(V/K) + 2;
+  const k0 = S.lickKat*Math.PI/180, wir = S.lickWir/100*Math.PI, sk = Math.max(4, S.lickSkala), ziarno = 6007 + (S.lickLos | 0)*19;
+  const kx = new Float32Array(gw*gh), ky = new Float32Array(gw*gh);
+  for(let j=0; j<gh; j++) for(let i=0; i<gw; i++){
+    const a = k0 + wir*(fbm(i*K/sk, j*K/sk, ziarno, 2) - 0.5)*2;
+    kx[j*gw + i] = Math.cos(a); ky[j*gw + i] = Math.sin(a);
+  }
+  const kierunek = (u, v) => { const i = Math.min(gw - 1, Math.max(0, Math.round(u/K))), j = Math.min(gh - 1, Math.max(0, Math.round(v/K))); return j*gw + i; };
+  const n = Math.max(1, Math.min(12, Math.round(dl))), krok = dl/n, farba = S.lickTryb !== "rozmycie";
+  /* próbki jednej linii: indeks piksela i waga (środek + 2n) */
+  const idx = new Int32Array(2*n + 1), wag = new Float32Array(2*n + 1), uk = new Int32Array(2*n + 1), us = new Float32Array(2*n + 1), ui = new Int32Array(2*n + 1);
+  for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+    const u0 = (x + 0.5)/z, v0 = (y + 0.5)/z, o = (y*w + x)*4;
+    let m = 0; idx[m] = o; wag[m++] = 1;
+    for(const znak of [1, -1]){
+      let u = u0, v = v0;
+      for(let s=1; s<=n; s++){
+        const q = kierunek(u, v);
+        u += kx[q]*krok*znak; v += ky[q]*krok*znak;
+        if(u < 0 || v < 0 || u >= U || v >= V) break;
+        idx[m] = (Math.min(h - 1, Math.floor(v*z))*w + Math.min(w - 1, Math.floor(u*z)))*4; wag[m++] = 1 - s/(n + 1);
+      }
+    }
+    let r = 0, g = 0, b = 0;
+    if(farba){
+      /* kolor o największej sumie wag (lista unikalnych — palety mają mało
+         kolorów); remis — kolor spotkany wcześniej, czyli bliżej środka */
+      let nu = 0;
+      for(let i=0; i<m; i++){
+        const a = idx[i], key = (zr[a] << 16) | (zr[a+1] << 8) | zr[a+2];
+        let j = 0; while(j < nu && uk[j] !== key) j++;
+        if(j === nu){ uk[nu] = key; us[nu] = 0; ui[nu] = a; nu++; }
+        us[j] += wag[i];
+      }
+      let best = 0; for(let j=1; j<nu; j++) if(us[j] > us[best]) best = j;
+      const a = ui[best]; r = zr[a]; g = zr[a+1]; b = zr[a+2];
+    } else {
+      let sw = 0;
+      for(let i=0; i<m; i++){ const t = idx[i]; r += zr[t]*wag[i]; g += zr[t+1]*wag[i]; b += zr[t+2]*wag[i]; sw += wag[i]; }
+      r /= sw; g /= sw; b /= sw;
+    }
+    p[o] = zr[o] + (r - zr[o])*mix; p[o+1] = zr[o+1] + (g - zr[o+1])*mix; p[o+2] = zr[o+2] + (b - zr[o+2])*mix;
   }
 }

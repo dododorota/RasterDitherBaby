@@ -45,10 +45,11 @@ export const DEFAULTS = {
   stylOdstep:8, stylKat:0, stylWygiecie:50, stylFala:0, stylFalaDl:24, stylSila:60, stylPredkosc:0, stylSrodekX:0, stylSrodekY:0,
   crtLinie:0, crtOdstep:2, crtMaska:0, glowRozciag:0, glowKatSmugi:0,
   /* efekty z Dither Boya (25.10): Neo Glow, Orbs, Stress Relief — fx.js */
-  neoSila:0, neoProg:40, neoDlugosc:12, neoPrzes:0, neoRozrzut:100, neoZanik:0, neoMrok:0, neoOs:"pion", neoLustro:false, neoZrodlo:"obraz", neoKolor:"#39ff6a",
+  neoSila:0, neoProg:20, neoKolumna:8, neoDlugosc:12, neoPrzes:0, neoPredkosc:0, neoRozrzut:100, neoZanik:0, neoMrok:0, neoOs:"pion", neoLustro:false, neoZrodlo:"obraz", neoKolor:"#39ff6a",
   orbyIle:0, orbyWielk:30, orbySila:0, orbyLos:0, orbyPrzes:0, orbyZiarno:1, orbyZrodlo:"kolor", orbyKolor:"#ffffff", orbyTryb:"zwykly",
   zuzBrzeg:0, zuzSzorstkosc:50, zuzZiarno:0, zuzPlamki:0, zuzPlamkiWielk:3, zuzLos:1, zuzMix:100,
   soczKrzyw:0, soczSkala:100, soczBrzeg:"rozciagnij",
+  lickDlugosc:0, lickKat:45, lickWir:40, lickSkala:60, lickLos:1, lickMix:100, lickTryb:"farba",
   /* tryb Glitch (glitch.js, wartości jak w glitch.h wtyczki VFX Glitch; pozycje w % kadru) */
   glAnim:false, glAnimCo:2,
   glJpeg:true, glJakosc:30, glBajty:0, glBajtyOd:0, glBajtyDo:100, glBajtyZiarno:1,

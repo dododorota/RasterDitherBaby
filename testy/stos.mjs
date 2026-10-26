@@ -169,7 +169,8 @@ console.log("--- efekty z Dither Boya: neo, kule, zużycie ---");
                 ["kule ekran z obrazu", {efekty: "orby", orbyIle: 20, orbySila: 60, orbyTryb: "ekran", orbyZrodlo: "obraz", orbyPrzes: 40}],
                 ["zużycie", {efekty: "zuzycie", zuzBrzeg: 4, zuzPlamki: 60, zuzZiarno: 5}],
                 ["soczewka beczka", {efekty: "soczewka", soczKrzyw: 60}],
-                ["soczewka poduszka z czernią", {efekty: "soczewka", soczKrzyw: -60, soczBrzeg: "czarny"}]];
+                ["soczewka poduszka z czernią", {efekty: "soczewka", soczKrzyw: -60, soczBrzeg: "czarny"}],
+                ["lick", {efekty: "lick", lickDlugosc: 8, lickWir: 60}]];
   for(const [nazwa, ust] of NOWE){
     ustaw(ust);
     const w = 64, h = 48, a = gradient(w, h), b = gradient(w, h), zr = gradient(w, h);
@@ -185,7 +186,7 @@ console.log("--- efekty z Dither Boya: neo, kule, zużycie ---");
     let inne = 0; for(let i=0; i<p.length; i+=4) if(!((p[i] === 0 || p[i] === 255) && p[i] === p[i+1] && p[i] === p[i+2])) inne++;
     sprawdz(inne === 0, "soczewka: same piksele z obrazu, bez nowych odcieni");
   }
-  for(const [nazwa, ust] of [["neo", {efekty: "neo"}], ["kule", {efekty: "orby", orbyIle: 30}], ["zużycie (mieszanie 0)", {efekty: "zuzycie", zuzBrzeg: 5, zuzMix: 0}], ["soczewka", {efekty: "soczewka"}]]){
+  for(const [nazwa, ust] of [["neo", {efekty: "neo"}], ["kule", {efekty: "orby", orbyIle: 30}], ["zużycie (mieszanie 0)", {efekty: "zuzycie", zuzBrzeg: 5, zuzMix: 0}], ["soczewka", {efekty: "soczewka"}], ["lick", {efekty: "lick"}]]){
     ustaw(ust);
     const p = gradient(40, 30), q = new Uint8ClampedArray(p); uruchomNaBuforze(q, 40, 30, 1);
     sprawdz(rowne(p, q), `${nazwa} przy zerowej sile: obraz bez zmian`);
@@ -199,7 +200,7 @@ console.log("--- efekty z Dither Boya: neo, kule, zużycie ---");
   }
   /* smugi, kule, wytarte brzegi — powiększane płynnie: średnio blisko powiększonego podglądu */
   for(const [nazwa, ust] of [["neo", {efekty: "neo", neoSila: 90, neoDlugosc: 4}], ["kule", {efekty: "orby", orbyIle: 15, orbySila: 80, orbyWielk: 40}],
-                             ["wytarte brzegi", {efekty: "zuzycie", zuzBrzeg: 3}]]){
+                             ["wytarte brzegi", {efekty: "zuzycie", zuzBrzeg: 3}], ["lick", {efekty: "lick", lickDlugosc: 6}]]){
     ustaw(ust);
     const W = 48, H = 32, z = 3, maly = gradient(W, H), podglad = new Uint8ClampedArray(maly); uruchomWSkali(podglad, podglad, W, H, 1);
     const duzy = powieksz(maly, W, H, z), m = new Uint8ClampedArray(maly); uruchomWSkali(duzy, m, W, H, z);

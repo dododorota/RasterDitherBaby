@@ -19,7 +19,7 @@
    i pliki sprzed stosu dają obraz co do bajtu taki jak wcześniej. */
 import { S, DEFAULTS } from "./state.js";
 import { permutacjaSortu, zastosujPermutacje, przesuniecieRGB, przesunRGB, warstwaPoswiaty, nalozPoswiate, ekranCRT } from "./effects.js";
-import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka, warstwaNeo, mrokNeo, warstwaOrbow, nalozOrby, zuzycie, soczewka } from "./fx.js";
+import { zabarwienie, aberracja, jpeg, warstwaGwiazd, faktura, obrobka, neoGlow, warstwaOrbow, nalozOrby, zuzycie, soczewka, pociagniecia } from "./fx.js";
 
 /* id, nazwa w panelu, klucze w S, ustawienia przy dodaniu, czy zostaje w SVG
    z ditheringu (tylko te, które nie tworzą nowych kolorów… i przesunięcie RGB,
@@ -36,8 +36,9 @@ export const EFEKTY = [
   {id:"faktura", nazwa:"Faktura",            klucze:["faktura","faktSkala","faktTryb","faktKrycie"], start:{faktura:"papier"}},
   {id:"post",    nazwa:"Obróbka końcowa",    klucze:["postJas","postKon","postNas","winieta","postZiarno"], start:{winieta:45}},
   /* z Dither Boya (25.10) */
-  {id:"neo",     nazwa:"Neo glow — smugi",   klucze:["neoSila","neoProg","neoDlugosc","neoPrzes","neoRozrzut","neoZanik","neoMrok","neoOs","neoLustro","neoZrodlo","neoKolor"], start:{neoSila:80}},
+  {id:"neo",     nazwa:"Neo glow",           klucze:["neoSila","neoProg","neoKolumna","neoDlugosc","neoPrzes","neoPredkosc","neoRozrzut","neoZanik","neoMrok","neoOs","neoLustro","neoZrodlo","neoKolor"], start:{neoSila:80, neoMrok:40}},
   {id:"orby",    nazwa:"Kule światła (Orbs)", klucze:["orbyIle","orbyWielk","orbySila","orbyLos","orbyPrzes","orbyZiarno","orbyZrodlo","orbyKolor","orbyTryb"], start:{orbyIle:30, orbySila:30}},
+  {id:"lick",    nazwa:"Pociągnięcia farby (Lick)", klucze:["lickDlugosc","lickKat","lickWir","lickSkala","lickLos","lickMix","lickTryb"], start:{lickDlugosc:10}},
   {id:"soczewka", nazwa:"Krzywizna soczewki (Lens Curve)", klucze:["soczKrzyw","soczSkala","soczBrzeg"], start:{soczKrzyw:40}},
   {id:"zuzycie", nazwa:"Zużycie druku (Stress Relief)", klucze:["zuzBrzeg","zuzSzorstkosc","zuzZiarno","zuzPlamki","zuzPlamkiWielk","zuzLos","zuzMix"], start:{zuzBrzeg:3, zuzPlamki:30, zuzZiarno:3}},
   {id:"czas",    nazwa:"Zmienność w czasie", klucze:["czasSzum","czasDrganie","czasCykl"], start:{czasSzum:30}, przed:true}
@@ -87,7 +88,8 @@ const DZIALA = {
   neo: () => S.neoSila > 0,
   orby: () => S.orbyIle > 0 && S.orbySila > 0,
   zuzycie: () => S.zuzMix > 0 && (S.zuzBrzeg > 0 || S.zuzZiarno > 0 || S.zuzPlamki > 0),
-  soczewka: () => S.soczKrzyw !== 0 || S.soczSkala !== 100
+  soczewka: () => S.soczKrzyw !== 0 || S.soczSkala !== 100,
+  lick: () => S.lickDlugosc > 0 && S.lickMix > 0
 };
 
 /* [{id, widoczny}] w kolejności stosu */
@@ -180,10 +182,11 @@ function naBuforze(id, p, w, h, jednostka){
   else if(id === "tint") zabarwienie(p);
   else if(id === "faktura") faktura(p, w, h, 1);
   else if(id === "post") obrobka(p, w, h, 1);
-  else if(id === "neo"){ const L = warstwaNeo(p, w, h, jednostka); if(L){ mrokNeo(p); nalozPoswiate(p, L); } }
+  else if(id === "neo") neoGlow(p, w, h, 1);
   else if(id === "orby"){ const L = warstwaOrbow(p, w, h, jednostka); if(L) nalozOrby(p, L); }
   else if(id === "zuzycie") zuzycie(p, w, h, 1);
   else if(id === "soczewka") soczewka(p, w, h);
+  else if(id === "lick") pociagniecia(p, w, h, 1);
 }
 
 /* ---------- uruchamianie: raster w skali z ----------
@@ -223,9 +226,8 @@ function wSkali(id, duzy, maly, W, H, z){
   } else if(id === "post"){
     obrobka(duzy, OW, OH, z); if(!jeden) obrobka(maly, W, H, 1);
   } else if(id === "neo"){
-    /* smugi z małego, powiększone płynnie; mrok punktowo na obu */
-    const L = warstwaNeo(maly, W, H, 1);
-    if(L){ mrokNeo(duzy); nalozPoswiate(duzy, jeden ? L : powiekszGladko(L, W, H, z)); if(!jeden){ mrokNeo(maly); nalozPoswiate(maly, L); } }
+    /* punktowo w siatce podglądu — odcinki w tych samych miejscach */
+    neoGlow(duzy, OW, OH, z); if(!jeden) neoGlow(maly, W, H, 1);
   } else if(id === "orby"){
     const L = warstwaOrbow(maly, W, H, 1);
     if(L){ nalozOrby(duzy, jeden ? L : powiekszGladko(L, W, H, z, 4)); if(!jeden) nalozOrby(maly, L); }
@@ -233,6 +235,8 @@ function wSkali(id, duzy, maly, W, H, z){
     zuzycie(duzy, OW, OH, z); if(!jeden) zuzycie(maly, W, H, 1);
   } else if(id === "soczewka"){
     soczewka(duzy, OW, OH); if(!jeden) soczewka(maly, W, H);
+  } else if(id === "lick"){
+    pociagniecia(duzy, OW, OH, z); if(!jeden) pociagniecia(maly, W, H, 1);
   } else if(id === "jpeg"){
     if(jeden){ jpeg(duzy, W, H); return; }
     const przed = new Uint8ClampedArray(maly);

@@ -4,16 +4,17 @@ Zapis sesji z 22–30 września 2026 (Mac) i od 1 października 2026 (Windows).
 Szczegóły techniczne (dlaczego kod wygląda tak, a nie inaczej) są
 w `CLAUDE.md`; tu jest przebieg, stan i to, co zostało otwarte.
 
-## Handover — 25 października 2026 (wieczór)
+## Handover — 25–26 października 2026
 
 Ta sekcja jest na początek następnej sesji.
 
 **Stan:** nic nie jest w toku, nic nie jest w połowie. Ostatni commit
-`796851a` (Twoje kształty, losowy obrót, ostre krawędzie). **Niezacommitowane:**
-efekty z Dither Boya (Neo glow, Kule światła, Zużycie druku, Krzywizna
-soczewki), wersja 0.2.0 w package.json, ten handover. Jeśli `git status`
-dalej je pokazuje, użytkowniczka commituje:
-`git add -A && git commit -m "Efekty z Dither Boya (Neo glow, Kule światła, Zużycie druku, Krzywizna soczewki), wersja 0.2.0, handover"`.
+`1e4f98c` (efekty z Dither Boya, soczewka, wersja 0.2.0, handover z 25.10).
+**Niezacommitowane (26.10):** efekt Lick (Pociągnięcia farby), Neo Glow
+przerobiony na wersję Dither Boya, ten dopisek. Jeśli `git status` dalej je
+pokazuje, użytkowniczka commituje:
+`git add -A && git commit -m "Lick (pociągnięcia farby), Neo glow jak w Dither Boyu"`.
+Instalator 0.2.0 w `dist/` przebudowany 26.10 razem z tymi zmianami.
 Testy na koniec: 18 w Node i `przegladarka.mjs` — 0 błędów
 (`przegladarka.mjs` raz na kilka uruchomień zgłasza znany błąd dekodowania
 dźwięku — „Niestabilny test” niżej; powtórka czysta). Serwer:
@@ -32,8 +33,14 @@ i `PLAN-PASMA-I-EFEKTY.md`, zasady w `CLAUDE.md`):
   wybór kształtu obrazkiem zamiast nazwy (raster, riso, tony), „Twoje
   kształty” (wczytane obrazki, biel → przezroczysta).
 - **Siatka**: losowy obrót kształtów, ostre krawędzie.
-- **Efekty**: Neo glow (smugi), Kule światła (Orbs), Zużycie druku (Stress
-  Relief), Krzywizna soczewki (Lens Curve). Epsilon Glow = nasza Poświata.
+- **Efekty**: Neo glow, Kule światła (Orbs), Zużycie druku (Stress Relief),
+  Krzywizna soczewki (Lens Curve), Pociągnięcia farby (Lick, 26.10).
+  Epsilon Glow = nasza Poświata (strona Studio AAA wymienia ją jako ich
+  poświatę „dla ditheringu”). 26.10 — opis z bloga Studio AAA (wpis
+  „Introducing Shape Shifter! Free in Dither Boy v6.6.6”): Lick i Stress
+  Relief to „Mixed Media” (wygląd malowany), Neo Glow „rozjaśnia odcinki
+  znaków, znaki zostają na miejscu” — Neo przerobiony z dawnych „smug” na
+  to. Szczegóły w `PLAN-PASMA-I-EFEKTY.md` (7b).
 - Poprawka wyścigu przy zmianie trybu (spóźniony wynik workera nadpisywał
   podgląd — podejrzenie zgłoszonego „ASCII nie działa”; u mnie ASCII działało).
 - **Instalator 0.2.0** w `dist/` (stare 0.1.0 obok — do usunięcia przez nią).
@@ -46,11 +53,11 @@ i `PLAN-PASMA-I-EFEKTY.md`, zasady w `CLAUDE.md`):
        koniec”: pasma, biblioteka (który kafelek odstaje od Dither Boya),
        zestawy, Twoje kształty, nowe efekty, ASCII (czy działa i co nie
        działało), wersja na pulpit 0.2.0. Poprawić według uwag.
-2. [ ] **Lick** — ostatni efekt z listy Dither Boya; czeka na zrzut karty
-       albo kadr przed / po (nie wiadomo, co robi — nie zgadywać).
-3. [ ] Drobne otwarte z planu: czy „Epsilon Glow” to na pewno poświata;
-       kolejność pasm w wbudowanych zestawach (u nas pasmo 1 = cienie —
-       na jasne kształty na ciemnym tle „Odwróć”), może przełącznik.
+2. [x] Lick — zrobiony 26.10 z opisu z bloga (karty nie znamy, suwaki
+       nasze). Gdyby przysłała zrzut karty — dopasować suwaki.
+3. [ ] Drobne otwarte z planu: kolejność pasm w wbudowanych zestawach
+       (u nas pasmo 1 = cienie — na jasne kształty na ciemnym tle
+       „Odwróć”), może przełącznik.
 4. [ ] Starsze, z handoveru 20.10 (niżej): ocena Glitcha i list „Z 14.10” …
        „Z 19.10”, lista „Na później”. Po kolejnych zmianach — przebudować
        instalator (`npm run paczka`, wersja w package.json).
@@ -556,10 +563,12 @@ w kodzie albo tylko w Chrome; do obejrzenia w prawdziwej pracy:
   (JPEG z białym tłem, PNG z alfą, SVG); losowy obrót i ostre krawędzie
   — zwłaszcza ostre krawędzie przy zapisie w skali (próg liczony
   w rozdzielczości zapisu, więc to nie jest piksel w piksel powiększony
-  podgląd). Nowe efekty: Neo glow na ciemnym ASCII / ditheringu (czy
-  przypomina Dither Boya, zakres długości), Kule światła w filmie
-  (przesunięcie klatkami), Zużycie druku na rastrze i ditheringu — siła
-  plamek i ziarna.
+  podgląd). Nowe efekty: Neo glow na ciemnym ASCII (zielone na czarnym —
+  czy odcinki wyglądają jak w Dither Boyu; ruch w filmie), Kule światła
+  w filmie (przesunięcie klatkami), Zużycie druku na rastrze i ditheringu —
+  siła plamek i ziarna; Pociągnięcia farby (Lick) razem z Zużyciem i paletą
+  „średniowieczną” — czy to ten malowany wygląd, którego szukała
+  (~0,8 s na 1400 px).
 - **Z 19.10:** tryb Glitch na jej zdjęciach i filmie — presety, zapis GIF /
   MP4 z „Nowy glitch co kilka klatek” (film w trybie Glitch nie był
   sprawdzany osobno), czy zakresy suwaków (np. uszkodzone bajty do 300)
